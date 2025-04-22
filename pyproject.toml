@@ -12,6 +12,9 @@ dependencies = [
     "fastapi>=0.100.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
+    "fsspec==2023.9.2",
+    "huggingface-hub==0.16.4",
+    "tokenizers==0.13.3",
 ]
 
 [project.optional-dependencies]
