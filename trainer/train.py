@@ -16,6 +16,7 @@ try:
 except ImportError:
     wandb = None
 
+
 @dataclass
 class TrainingConfig:
     model_name: str = "gpt2"
@@ -24,9 +25,10 @@ class TrainingConfig:
     output_dir: str = "./output"
     num_train_epochs: int = 3
     per_device_train_batch_size: int = 4
-    learning_rate: float = 5e-5
+    learning_rate: float = 5e-4
     max_steps: Optional[int] = 100
     wandb_token: Optional[str] = "730d1f892f99dc720c240db8f320c39607bf6995"  # Add wandb token to config
+
 
 def train(config: TrainingConfig):
     # Explicitly login to wandb if token is provided
@@ -51,12 +53,20 @@ def train(config: TrainingConfig):
     dataset = load_dataset(config.dataset_name, config.dataset_config)
     
     def tokenize_function(examples):
+        # Check if examples contain text and are not empty
+        if not examples["text"]:
+            return {"input_ids": [], "attention_mask": []}
         return tokenizer(examples["text"], truncation=True, max_length=512)
 
     tokenized_dataset = dataset.map(
         tokenize_function,
         batched=True,
         remove_columns=dataset["train"].column_names,
+    )
+
+    # Filter out empty examples
+    tokenized_dataset = tokenized_dataset.filter(
+        lambda example: len(example["input_ids"]) > 0
     )
 
     # Initialize trainer
@@ -84,6 +94,7 @@ def train(config: TrainingConfig):
     # Save the model
     trainer.save_model()
     tokenizer.save_pretrained(config.output_dir)
+
 
 if __name__ == "__main__":
     # You can set the wandb token here, or via environment variable, or pass as argument
