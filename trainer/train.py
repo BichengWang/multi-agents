@@ -1,8 +1,7 @@
-import os
 from dataclasses import dataclass
 from typing import Optional
+import os
 
-import torch
 from datasets import load_dataset
 from transformers import (
     AutoModelForCausalLM,
@@ -11,6 +10,11 @@ from transformers import (
     Trainer,
     DataCollatorForLanguageModeling,
 )
+
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 @dataclass
 class TrainingConfig:
@@ -21,12 +25,27 @@ class TrainingConfig:
     num_train_epochs: int = 3
     per_device_train_batch_size: int = 4
     learning_rate: float = 5e-5
-    max_steps: Optional[int] = None
+    max_steps: Optional[int] = 100
+    wandb_token: Optional[str] = "730d1f892f99dc720c240db8f320c39607bf6995"  # Add wandb token to config
 
 def train(config: TrainingConfig):
+    # Explicitly login to wandb if token is provided
+    if config.wandb_token is not None and wandb is not None:
+        wandb.login(key=config.wandb_token)
+    elif config.wandb_token is not None and wandb is None:
+        raise ImportError("wandb is not installed but a wandb_token was provided.")
+
     # Load tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(config.model_name)
     model = AutoModelForCausalLM.from_pretrained(config.model_name)
+
+    # Ensure tokenizer has a pad token
+    if tokenizer.pad_token is None:
+        if tokenizer.eos_token is not None:
+            tokenizer.pad_token = tokenizer.eos_token
+        else:
+            tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            model.resize_token_embeddings(len(tokenizer))
 
     # Load and prepare dataset
     dataset = load_dataset(config.dataset_name, config.dataset_config)
@@ -49,6 +68,7 @@ def train(config: TrainingConfig):
         max_steps=config.max_steps,
         save_strategy="epoch",
         logging_steps=100,
+        report_to=["wandb"] if config.wandb_token is not None else [],
     )
 
     trainer = Trainer(
@@ -66,5 +86,7 @@ def train(config: TrainingConfig):
     tokenizer.save_pretrained(config.output_dir)
 
 if __name__ == "__main__":
-    config = TrainingConfig()
+    # You can set the wandb token here, or via environment variable, or pass as argument
+    wandb_token = os.environ.get("WANDB_API_KEY", None)
+    config = TrainingConfig(wandb_token=wandb_token)
     train(config)
