@@ -22,7 +22,7 @@ class TrainingConfig:
     model_name: str = "gpt2"
     dataset_name: str = "wikitext"
     dataset_config: str = "wikitext-2-raw-v1"
-    output_dir: str = "./output"
+    output_dir: str = "./trainer/output"
     num_train_epochs: int = 3
     per_device_train_batch_size: int = 4
     learning_rate: float = 5e-4
