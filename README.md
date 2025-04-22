@@ -27,7 +27,7 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
-uv pip install -e .[train,serve]
+uv pip install -e '.[train,serve]'
 ```
 
 ## Training
