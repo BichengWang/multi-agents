@@ -1,1 +1,1 @@
-# onlinechat-prototype
+# Online Chatbot Monorepo
