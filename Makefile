@@ -19,8 +19,54 @@ ifdef LOG_FILE
     log_file := $(LOG_FILE)
 endif
 
-.DEFAULT_GOAL := test
+.DEFAULT_GOAL := help
 
+.PHONY: help
+help:
+	@echo "Available targets:"
+	@echo "  setup        - Initial setup of the project"
+	@echo "  install-uv   - Install uv package manager"
+	@echo "  venv         - Create and activate virtual environment"
+	@echo "  install      - Install project dependencies"
+	@echo "  install-dev  - Install development dependencies"
+	@echo "  train        - Run model training"
+	@echo "  serve        - Start the FastAPI server"
+	@echo "  update-deps  - Update dependencies"
+	@echo "  bootstrap    - Bootstrap the environment"
+	@echo "  test         - Run tests"
+	@echo "  clean        - Clean up generated files"
+
+.PHONY: setup
+setup: install-uv venv install
+
+.PHONY: install-uv
+install-uv:
+	pip install uv
+
+.PHONY: venv
+venv:
+	python -m venv .venv
+	@echo "Virtual environment created. Please run: source .venv/bin/activate"
+
+.PHONY: install
+install:
+	uv pip install -e '.[train,serve]'
+
+.PHONY: install-dev
+install-dev:
+	uv pip install -e '.[dev]'
+
+.PHONY: train
+train:
+	cd trainer && python train.py
+
+.PHONY: serve
+serve:
+	cd server && python serve.py
+
+.PHONY: update-deps
+update-deps:
+	uv pip compile pyproject.toml -o requirements.txt
 
 .PHONY: bootstrap
 bootstrap:
