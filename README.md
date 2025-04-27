@@ -91,3 +91,21 @@ MODEL_PATH=./output
 MAX_LENGTH=100
 TEMPERATURE=0.7
 ```
+
+## Optional
+
+```shell
+git config --global alias.co checkout
+git config --global alias.br branch
+git config --global alias.ci commit
+git config --global alias.st status
+git config --global alias.ll "log --oneline"
+git config --global alias.lg "log --oneline --graph --all --decorate"
+git config --global alias.rb "pull --rebase origin"
+git config --global alias.sq "rebase -i HEAD~10"
+git config --global alias.dl '!git branch -D $1 && git push --delete origin $1'
+git config --global push.default current
+git config --global core.editor "vim"
+git config --global alias.amendpush '!git add . && git commit --amend --no-edit && git push --force origin'
+git config --global alias.pr '!f() { git add . && git commit -am "$1" && git rebase origin/master && git push origin && gh pr create --title "$1" --body ""; }; f'
+```
