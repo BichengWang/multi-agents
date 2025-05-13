@@ -81,12 +81,9 @@ uv pip compile pyproject.toml -o requirements.txt
 
 ## Environment Variables
 
-Create a `.envrc` file in the parent directory with the following variables:
 ```
-export OPENAI_API_KEY=""
-export ANTHROPIC_API_KEY=""
-export XAI_API_KEY=""
-export GOOGLE_API_KEY=""
+brew install direnv
+direnv allow
 ```
 
 Create a `.env` file in the root directory with the following variables:
