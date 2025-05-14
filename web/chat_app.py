@@ -1,4 +1,4 @@
-# To run this app, use the command: streamlit run py-notebook/site/flask/chat_app.py
+# To run this app, use the command: streamlit run web/chat_app.py
 import streamlit as st
 import openai
 import os
