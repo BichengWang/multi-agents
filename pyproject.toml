@@ -17,6 +17,7 @@ dependencies = [
     "tokenizers==0.13.3",
     "openai==0.28.0",
     "streamlit==1.45.1",
+    "llama_index",
 ]
 
 [project.optional-dependencies]
