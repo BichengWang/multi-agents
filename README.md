@@ -3,7 +3,7 @@
 A monorepo for training and serving LLM models using `uv` for dependency management.
 ## Project Structure
 ```
-online-chat/
+multi-agents/
 ├── trainer/           # Training scripts and configuration
 ├── server/            # FastAPI server for model serving
 ├── client/            # Client applications
