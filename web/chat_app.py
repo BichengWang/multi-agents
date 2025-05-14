@@ -55,7 +55,7 @@ if prompt := st.chat_input("Ask your financial question here..."):
     # OpenAI call (use updated API as previously discussed)
     client = openai.OpenAI()
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4.1",
         messages=st.session_state.messages
     )
     assistant_reply = response.choices[0].message.content
