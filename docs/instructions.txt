@@ -1,0 +1,9 @@
+# Investment Basics
+
+Investing is the process of allocating resources, usually money, with the expectation of generating an income or profit. Common investment types include stocks, bonds, mutual funds, and real estate.
+
+## Stocks
+Stocks represent ownership in a company. When you buy a stock, you own a share of that company's assets and earnings.
+
+## Bonds
+Bonds are debt securities issued by governments or corporations. When you buy a bond, you are lending money to the issuer in exchange for periodic interest payments and the return of the bond's face value when it matures.
