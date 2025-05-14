@@ -1,5 +1,5 @@
 [project]
-name = "online-chat"
+name = "multi-agents"
 version = "0.1.0"
 description = "LLM training and serving environment"
 requires-python = ">=3.9"
@@ -15,6 +15,8 @@ dependencies = [
     "fsspec==2023.9.2",
     "huggingface-hub==0.16.4",
     "tokenizers==0.13.3",
+    "openai==0.28.0",
+    "streamlit==1.45.1",
 ]
 
 [project.optional-dependencies]
