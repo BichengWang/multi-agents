@@ -5,6 +5,7 @@ A monorepo for training and serving LLM models using `uv` for dependency managem
 ```
 multi-agents/
 ├── trainer/           # Training scripts and configuration
+├── eval/              # Evaluating scripts and configuration
 ├── server/            # FastAPI server for model serving
 ├── client/            # Client applications
 ├── pyproject.toml     # Project dependencies and configuration
