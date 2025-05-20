@@ -80,6 +80,9 @@ uv pip install -e .[dev]
 uv pip compile pyproject.toml -o requirements.txt
 ```
 
+## Tracing
+TBD, https://openai.github.io/openai-agents-python/ref/tracing/
+
 ## Environment Variables
 
 ```
