@@ -1,0 +1,24 @@
+Modal Deployment Guide
+
+Modal is a cloud platform that makes it easy to deploy and scale machine learning models and applications. It provides serverless infrastructure that automatically handles scaling, resource management, and deployment.
+
+Key Features:
+1. Serverless Functions: Deploy code as serverless functions that scale automatically
+2. GPU Support: Access to high-performance GPUs for ML workloads
+3. Container Support: Deploy containerized applications
+4. Easy Integration: Simple Python decorators for deployment
+
+Deploying LLMs on Modal:
+- Use @app.function() decorator to define serverless functions
+- Specify GPU requirements with gpu="A10G" or similar
+- Handle model loading and inference in the function
+- Expose HTTP endpoints with @app.web_endpoint()
+
+Benefits:
+- No infrastructure management
+- Automatic scaling based on demand
+- Pay-per-use pricing model
+- Fast cold start times
+- Built-in monitoring and logging
+
+Modal is particularly well-suited for deploying large language models like Qwen because it can handle the computational requirements and provide scalable inference endpoints. 
