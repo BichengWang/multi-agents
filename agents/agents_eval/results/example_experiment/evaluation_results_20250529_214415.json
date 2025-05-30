@@ -1,0 +1,42 @@
+[
+  {
+    "timestamp": "2025-05-29T21:44:15.789335",
+    "agent": {
+      "type": "example_agent",
+      "config": {
+        "name": "Agent1"
+      }
+    },
+    "evaluator": {
+      "type": "example_evaluator",
+      "config": {}
+    },
+    "result": {
+      "score": 1.0,
+      "feedback": "Good job!",
+      "metrics": {
+        "completion_detected": true
+      }
+    }
+  },
+  {
+    "timestamp": "2025-05-29T21:44:15.789532",
+    "agent": {
+      "type": "example_agent",
+      "config": {
+        "name": "Agent2"
+      }
+    },
+    "evaluator": {
+      "type": "example_evaluator",
+      "config": {}
+    },
+    "result": {
+      "score": 1.0,
+      "feedback": "Good job!",
+      "metrics": {
+        "completion_detected": true
+      }
+    }
+  }
+]
