@@ -13,28 +13,49 @@ online-chat/
 └── README.md          # Documentation
 ```
 
-## Quick Start
+## Setup
 
-Run the following commands to set up and run the project:
+Run the following command to set up the project:
 
 ```bash
-# Initial setup
 make setup
+```
 
-# Activate virtual environment
+This will:
+1. Install `uv` package manager
+2. Create a virtual environment
+3. Install project dependencies
+
+After setup, activate the virtual environment:
+```bash
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
 
-# Train the model
+## Training
+
+To train the model:
+
+```bash
 make train
+```
 
-# Start the server
+The training script will:
+- Load a pre-trained GPT-2 model
+- Fine-tune it on the Wikitext dataset
+- Save the model to the `output` directory
+
+## Serving
+
+To serve the trained model:
+
+```bash
 make serve
 ```
 
-For a list of all available commands, run:
-```bash
-make help
-```
+The server will:
+- Load the trained model from the `output` directory
+- Start a FastAPI server on port 8000
+- Provide a `/chat` endpoint for generating responses
 
 ## API Usage
 
@@ -48,6 +69,18 @@ Send a POST request to `http://localhost:8000/chat` with the following JSON body
 }
 ```
 
+## Development
+
+- To install development dependencies:
+```bash
+make install-dev
+```
+
+- To update dependencies:
+```bash
+make update-deps
+```
+
 ## Environment Variables
 
 Create a `.env` file in the root directory with the following variables:
@@ -58,7 +91,7 @@ MAX_LENGTH=100
 TEMPERATURE=0.7
 ```
 
-## Git Aliases (Optional)
+## Optional
 
 ```shell
 git config --global alias.co checkout

@@ -1,105 +1,54 @@
-project := python-notebook
-pytest_args := -rs --tb short --junitxml junit.xml --suppress-no-test-exit-code
-pytest := py.test $(pytest_args)
-file_name := ''
-ifdef FILE_NAME
-	file_name := $(FILE_NAME)
-endif
-ifdef TEST_NAME
-	pytest_extra_args := -k "$(TEST_NAME)"
-endif
-server := sim-dev.dev
-ifdef SERVER
-	server := $(SERVER).dev
-endif
-ifdef VERSION
-    version := $(VERSION)
-endif
-ifdef LOG_FILE
-    log_file := $(LOG_FILE)
-endif
+.PHONY: setup train serve install-dev update-deps help
 
 .DEFAULT_GOAL := help
 
-.PHONY: help
 help:
-	@echo "Available targets:"
-	@echo "  setup        - Initial setup of the project"
-	@echo "  install-uv   - Install uv package manager"
-	@echo "  venv         - Create and activate virtual environment"
-	@echo "  install      - Install project dependencies"
-	@echo "  install-dev  - Install development dependencies"
-	@echo "  train        - Run model training"
-	@echo "  serve        - Start the FastAPI server"
-	@echo "  update-deps  - Update dependencies"
-	@echo "  bootstrap    - Bootstrap the environment"
-	@echo "  test         - Run tests"
-	@echo "  clean        - Clean up generated files"
+	@echo "Available commands:"
+	@echo "  make setup       - Initial project setup"
+	@echo "  make train       - Train the model"
+	@echo "  make serve       - Start the FastAPI server"
+	@echo "  make install-dev - Install development dependencies"
+	@echo "  make update-deps - Update dependencies"
 
-.PHONY: setup
-setup: install-uv venv install
-
-.PHONY: install-uv
-install-uv:
+bootstrap:
+	@echo "Installing uv..."
 	pip install uv
+	@echo "Detecting OS and installing direnv..."
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "Detected macOS. Installing direnv with brew..."; \
+		brew install direnv; \
+	elif [ "$$(uname)" = "Linux" ]; then \
+		echo "Detected Linux. Installing direnv with apt (requires sudo)..."; \
+		sudo apt-get update && sudo apt-get install -y direnv; \
+	elif [ "$$(uname -o 2>/dev/null)" = "Msys" ] || [ "$$(uname -o 2>/dev/null)" = "Cygwin" ] || [ "$$(uname -o 2>/dev/null)" = "Windows_NT" ]; then \
+		echo "Detected Windows. Please install direnv manually from https://direnv.net/docs/installation.html"; \
+	else \
+		echo "Unknown OS. Please install direnv manually from https://direnv.net/docs/installation.html"; \
+	fi
+	@echo "Creating virtual environment..."
+	python3.12 -m venv .venv
+	@echo "Bootstrap complete! Activate the virtual environment with: source .venv/bin/activate"
 
-.PHONY: venv
-venv:
-	python -m venv .venv
-	@echo "Virtual environment created. Please run: source .venv/bin/activate"
+reload:
+	direnv allow
+	direnv reload
 
-.PHONY: install
 install:
-	uv pip install -e '.[train,serve]'
+	@echo "Installing dependencies..."
+	. .venv/bin/activate && uv pip install -e '.[train,serve]'
+	@echo "Dependencies installed!"
 
-.PHONY: install-dev
-install-dev:
-	uv pip install -e '.[dev]'
+setup: bootstrap reload install
+	@echo "Setup complete! Activate the virtual environment with: source .venv/bin/activate"
 
-.PHONY: train
 train:
 	cd trainer && python train.py
 
-.PHONY: serve
 serve:
 	cd server && python serve.py
 
-.PHONY: update-deps
+install-dev:
+	uv pip install -e .[dev]
+
 update-deps:
 	uv pip compile pyproject.toml -o requirements.txt
-
-.PHONY: bootstrap
-bootstrap:
-	pip3 install -U pip>=25.0.1 setuptools>=75.8.0 wheel pip-tools>=44.0.0
-	pip3 install --no-deps -r requirements.txt --no-cache-dir
-	pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu123
-
-.PHONY: compile
-compile:
-	pip-compile requirements.in
-
-.PHONY: env
-env:
-	python3 -m venv venv
-
-.PHONY: test
-test: clean lint
-	SIM_TEST_MODE=true $(pytest) -k "not personal_transport_e2e" tests/$(file_name) $(pytest_extra_args)
-
-.PHONY: all_test
-all_test: test
-
-.PHONY: open_tunnels
-open_tunnels:
-	echo "Opening tunnels to $(server)"
-# 	ssh -fN -L port:localhost:port $(server)
-
-.PHONY: close_tunnels
-close_tunnels:
-	echo "Closing tunnels"
-	kill $$(lsof -ti:port) 2> /dev/null &
-
-.PHONY: clean
-clean:
-	@find . "(" -name "*.pyc" -o -name "coverage.xml" -o -name "junit.xml" ")" -delete
-	@rm -rf coverage
