@@ -1,11 +1,11 @@
 import asyncio
 from agents import Runner
 
-from .agents.generator_agent import generator_agent
-from .agents.explainer_agent import explainer_agent
-from .agents.evaluator_agent import evaluator_agent
-from .agents.manager_agent import manager_agent
-from .agents.coordinator_agent import coordinator_agent
+from .my_agents.generator_agent import generator_agent
+from .my_agents.explainer_agent import explainer_agent
+from .my_agents.evaluator_agent import evaluator_agent
+from .my_agents.manager_agent import manager_agent
+from .my_agents.coordinator_agent import coordinator_agent
 
 class StoreAgentManager:
     """
