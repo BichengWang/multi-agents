@@ -1,12 +1,35 @@
-# Import and re-export Agent and Runner from the openai-agents-python project
-import sys
-import os
+# Simple Agent and Runner implementation for the multi-agents project
 
-# Add the other-repo/openai-agents-python/src directory to the Python path
-other_repo_path = os.path.join(os.path.dirname(__file__), '..', '..', 'other-repo', 'openai-agents-python', 'src')
-if other_repo_path not in sys.path:
-    sys.path.insert(0, other_repo_path)
+from typing import Any, Optional
+from dataclasses import dataclass
 
-from agents import Agent, Runner
+@dataclass
+class RunResult:
+    """Result from running an agent."""
+    final_output: str
+    input: str
+    context: Optional[Any] = None
 
-__all__ = ['Agent', 'Runner']
+class Agent:
+    """Simple Agent class for the multi-agents project."""
+    
+    def __init__(self, name: str, instructions: str):
+        self.name = name
+        self.instructions = instructions
+
+class Runner:
+    """Simple Runner class for the multi-agents project."""
+    
+    @classmethod
+    async def run(cls, agent: Agent, input_text: str, context: Optional[Any] = None) -> RunResult:
+        """Run an agent with the given input and return the result."""
+        # For now, just return a simple result
+        # In a real implementation, this would call the agent's logic
+        output = f"Agent '{agent.name}' processed: {input_text}"
+        return RunResult(
+            final_output=output,
+            input=input_text,
+            context=context
+        )
+
+__all__ = ['Agent', 'Runner', 'RunResult']
