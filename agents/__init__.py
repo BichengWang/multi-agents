@@ -1,7 +1,8 @@
-# Simple Agent and Runner implementation for the multi-agents project
+# Import Agent from openai-agents-sdk and provide a simple Runner implementation
 
 from typing import Any, Optional
 from dataclasses import dataclass
+from openai_agents_sdk import Agent
 
 @dataclass
 class RunResult:
@@ -9,13 +10,6 @@ class RunResult:
     final_output: str
     input: str
     context: Optional[Any] = None
-
-class Agent:
-    """Simple Agent class for the multi-agents project."""
-    
-    def __init__(self, name: str, instructions: str):
-        self.name = name
-        self.instructions = instructions
 
 class Runner:
     """Simple Runner class for the multi-agents project."""
