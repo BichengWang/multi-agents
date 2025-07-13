@@ -15,11 +15,12 @@ dependencies = [
     "fsspec==2023.9.2",
     "huggingface-hub>=0.30.0",
     "tokenizers>=0.21.0",
-    "openai==0.28.0",
+    "openai>=1.66.0",
     "streamlit==1.45.1",
     "llama-index-core",
     "llama-index-readers-file",
     "langchain-community",
+    "openai-agents",
 ]
 
 [project.optional-dependencies]
