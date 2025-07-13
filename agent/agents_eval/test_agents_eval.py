@@ -1,8 +1,8 @@
 from typing import Any, Dict
-from agents.agents_eval.evaluation_framework import EvaluationFramework, EvaluationConfig
-from agents.agents_eval.base_evaluator import BaseEvaluator, EvaluationResult
-from agents.agents_eval.agent_generator import DynamicAgentGenerator
-from agents.agents_eval.evaluator_generator import DynamicEvaluatorGenerator
+from agent.agents_eval.evaluation_framework import EvaluationFramework, EvaluationConfig
+from agent.agents_eval.base_evaluator import BaseEvaluator, EvaluationResult
+from agent.agents_eval.agent_generator import DynamicAgentGenerator
+from agent.agents_eval.evaluator_generator import DynamicEvaluatorGenerator
 
 
 # Example agent class
