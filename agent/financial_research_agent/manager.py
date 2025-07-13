@@ -8,12 +8,12 @@ from rich.console import Console
 
 from agents import Runner, RunResult, custom_span, gen_trace_id, trace
 
-from .agents.financials_agent import financials_agent
-from .agents.planner_agent import FinancialSearchItem, FinancialSearchPlan, planner_agent
-from .agents.risk_agent import risk_agent
-from .agents.search_agent import search_agent
-from .agents.verifier_agent import VerificationResult, verifier_agent
-from .agents.writer_agent import FinancialReportData, writer_agent
+from .agent.financials_agent import financials_agent
+from .agent.planner_agent import FinancialSearchItem, FinancialSearchPlan, planner_agent
+from .agent.risk_agent import risk_agent
+from .agent.search_agent import search_agent
+from .agent.verifier_agent import VerificationResult, verifier_agent
+from .agent.writer_agent import FinancialReportData, writer_agent
 from .printer import Printer
 
 
