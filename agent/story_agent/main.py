@@ -1,5 +1,5 @@
 import asyncio
-from .manager import StoreAgentManager
+from agent.story_agent.manager import StoreAgentManager
 
 # Entrypoint for the store agent workflow.
 # Run this as `python -m agents.story_agent.main` and enter a store concept query.
