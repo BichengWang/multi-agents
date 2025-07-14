@@ -1,5 +1,7 @@
 # Agent Evaluation Framework
 
+Ref: [Agent Eval @AmazonLab](https://github.com/awslabs/agent-evaluation/tree/main)
+
 A flexible framework for evaluating multiple agents using multiple evaluators in a dynamic and configurable way.
 
 ## Features
