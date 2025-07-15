@@ -1,5 +1,6 @@
 from agents import Agent
 
+
 GENERATOR_PROMPT = (
     "You are a creative story generator agent. Your role is to: "
     "1. Generate innovative story concepts and creative ideas\n"
@@ -11,7 +12,8 @@ GENERATOR_PROMPT = (
     "Always provide comprehensive, well-thought-out story concepts with clear narrative structure."
 )
 
+
 generator_agent = Agent(
     name="StoryGeneratorAgent",
     instructions=GENERATOR_PROMPT,
-) 
+)

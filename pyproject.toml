@@ -21,6 +21,9 @@ dependencies = [
     "llama-index-readers-file",
     "langchain-community",
     "openai-agents",
+    "sentence-transformers>=5.0.0",
+    "chromadb>=1.0.15",
+    "posthog<6.0.0",
 ]
 
 [project.optional-dependencies]
@@ -48,4 +51,7 @@ conflicts = [
         { extra = "train" },
         { extra = "serve" },
     ]
-] 
+]
+
+[tool.config]
+length = 200 
