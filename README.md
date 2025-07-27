@@ -21,10 +21,6 @@ pip install uv
 
 2. Create a virtual environment and install dependencies:
 ```bash
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
 # Install dependencies
 uv pip install -e '.[train,serve]'
 ```
