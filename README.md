@@ -35,7 +35,7 @@ python train.py
 ```
 
 The training script will:
-- Load a pre-trained GPT-2 model
+- Load a pre-trained GPT-3 model
 - Fine-tune it on the Wikitext dataset
 - Save the model to the `output` directory
 
