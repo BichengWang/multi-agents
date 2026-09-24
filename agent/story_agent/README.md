@@ -15,7 +15,7 @@ This module implements a multi-agent workflow for generating, explaining, evalua
 Run the workflow interactively:
 
 ```bash
-python -m agents.story_agent.main
+python -m agent.story_agent.main
 ```
 
 You will be prompted to enter a store concept or business idea. The agents will process the idea in sequence, and you will see the generated concept, explanation, evaluation, and management plan.
