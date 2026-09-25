@@ -4,6 +4,7 @@ A monorepo for training and serving LLM models using `uv` for dependency managem
 ## Project Structure
 ```
 multi-agents/
+├── agent/             # Multi-agent systems (see agent/workflows for shared patterns)
 ├── trainer/           # Training scripts and configuration
 ├── eval/              # Evaluating scripts and configuration
 ├── server/            # FastAPI server for model serving
@@ -75,6 +76,18 @@ uv pip install -e .[dev]
 ```bash
 uv pip compile pyproject.toml -o requirements.txt
 ```
+
+## Multi-Agent Workflows
+
+Shared orchestration patterns (sequential, refine loop, best-of-n) live in
+[`agent/workflows`](agent/workflows/README.md); the story agent is the reference user:
+
+```bash
+python -m agent.story_agent_simple.main --mode refine "A heist on the moon"
+make test-workflows  # offline tests, no API keys
+```
+
+Planned next steps: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Tracing
 TBD, https://openai.github.io/openai-agents-python/ref/tracing/

@@ -9,21 +9,27 @@ This module implements a simplified multi-agent workflow for generating and eval
 
 ## Usage
 
-Run the workflow interactively:
-
 ```bash
-python -m agents.story_agent_simple.main
+python -m agent.story_agent_simple.main "A sci-fi story about time travel and redemption"
 ```
 
-You will be prompted to enter a story concept or idea. The agents will process the idea in sequence:
-1. The Story Generator will create a detailed story concept
-2. The Story Evaluator will provide a comprehensive evaluation
+Omit the query to be prompted for it. Choose an orchestration mode with `--mode`:
+
+| Mode | What happens |
+|---|---|
+| `single` | Generate once, evaluate once (the original two-step flow). |
+| `refine` (default) | Generate → evaluate → revise with the evaluator's feedback, until it passes or `--max-iterations` (default 3). `--threshold 8` accepts on score instead of the evaluator's `passed` flag. |
+| `best-of-n` | Generate `-n` (default 3) candidates in parallel, each from a different angle, and keep the highest-scoring one. |
+
+The evaluator returns a structured `StoryEvaluation` (overall `score`, `passed`, `feedback`, and
+per-dimension scores), which is what lets the loop decide when to stop. The modes are built on the
+shared patterns in [`agent/workflows`](../workflows/README.md).
 
 ## Architecture
 
 - **StoryGeneratorAgent**: Defined in `my_agents/generator_agent.py` - creates innovative story concepts
-- **StoryEvaluatorAgent**: Defined in `my_agents/evaluator_agent.py` - evaluates story quality and potential
-- **SimpleStoryManager**: Orchestrates the workflow in `manager.py`
+- **StoryEvaluatorAgent**: Defined in `my_agents/evaluator_agent.py` - scores story quality with structured `StoryEvaluation` output
+- **SimpleStoryManager**: Picks the workflow for the chosen mode in `manager.py`
 - **main.py**: Entry point for the application
 
 ## Example Query
