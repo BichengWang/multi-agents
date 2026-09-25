@@ -34,6 +34,7 @@ help:
 	@echo "  update-deps  - Update dependencies"
 	@echo "  bootstrap    - Bootstrap the environment"
 	@echo "  test         - Run tests"
+	@echo "  test-workflows - Run offline multi-agent workflow tests (no API keys)"
 	@echo "  clean        - Clean up generated files"
 
 .PHONY: setup
@@ -85,6 +86,10 @@ env:
 .PHONY: test
 test: clean lint
 	SIM_TEST_MODE=true $(pytest) -k "not personal_transport_e2e" tests/$(file_name) $(pytest_extra_args)
+
+.PHONY: test-workflows
+test-workflows:
+	python -m pytest tests/workflows -q
 
 .PHONY: all_test
 all_test: test
