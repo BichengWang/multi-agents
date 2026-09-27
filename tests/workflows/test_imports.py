@@ -10,7 +10,7 @@ pytest.importorskip("agents")
     [
         "agent.workflows",
         "agent.story_agent_simple.manager",
-        "agent.story_agent.manager",
+        "agent.store_agent.manager",
         "agent.financial_research_agent.manager",
     ],
 )

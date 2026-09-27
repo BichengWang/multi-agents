@@ -5,6 +5,11 @@ A monorepo for training and serving LLM models using `uv` for dependency managem
 ```
 multi-agents/
 ├── agent/             # Multi-agent systems (see agent/workflows for shared patterns)
+│   ├── workflows/     #   SequentialWorkflow, RefineLoop, BestOfN
+│   ├── story_agent_simple/  # story generator + evaluator (single / refine / best-of-n)
+│   ├── store_agent/   #   store concept pipeline: generate → explain → evaluate → plan
+│   ├── financial_research_agent/
+│   └── agents_eval/   #   eval harness: python -m agent.agents_eval.run
 ├── trainer/           # Training scripts and configuration
 ├── eval/              # Evaluating scripts and configuration
 ├── server/            # FastAPI server for model serving
@@ -22,8 +27,10 @@ pip install uv
 
 2. Create a virtual environment and install dependencies:
 ```bash
-# Install dependencies
-uv pip install -e '.[train,serve]'
+# Agents + dev tools (pytest, ruff)
+uv pip install -e '.[dev]'
+# The train and serve extras conflict in pyproject.toml, so install one at a time:
+uv pip install -e '.[train]'   # or '.[serve]'
 ```
 
 ## Training

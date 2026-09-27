@@ -1,8 +1,8 @@
 import asyncio
-from agent.story_agent.manager import StoreAgentManager
+from agent.store_agent.manager import StoreAgentManager
 
 # Entrypoint for the store agent workflow.
-# Run this as `python -m agent.story_agent.main` and enter a store concept query.
+# Run this as `python -m agent.store_agent.main` and enter a store concept query.
 async def main() -> None:
     query = input("Enter a store concept or business idea to analyze: ")
     mgr = StoreAgentManager()
