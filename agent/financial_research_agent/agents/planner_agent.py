@@ -2,6 +2,8 @@ from pydantic import BaseModel
 
 from agents import Agent
 
+from agent.config import model_for
+
 # Generate a plan of searches to ground the financial analysis.
 # For a given financial question or company, we want to search for
 # recent news, official filings, analyst commentary, and other
@@ -30,6 +32,6 @@ class FinancialSearchPlan(BaseModel):
 planner_agent = Agent(
     name="FinancialPlannerAgent",
     instructions=PROMPT,
-    model="o3-mini",
+    model=model_for("planner"),
     output_type=FinancialSearchPlan,
 )
