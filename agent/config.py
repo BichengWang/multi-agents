@@ -7,6 +7,7 @@ _DEFAULTS = {
     "planner": "gpt-5-mini",
     "writer": "gpt-5",
     "verifier": "gpt-5-mini",
+    "judge": "gpt-5",
 }
 
 
