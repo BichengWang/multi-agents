@@ -1,27 +1,35 @@
-from agents import Runner
+from agent.core import refine_loop
 
-from .my_agents.generator_agent import generator_agent
 from .my_agents.evaluator_agent import evaluator_agent
+from .my_agents.generator_agent import generator_agent
 
 
 class SimpleStoryManager:
     """
-    Orchestrates the simple story workflow: generation and evaluation of story concepts.
+    Orchestrates the simple story workflow: generate a story, evaluate it, and revise
+    with the evaluator's feedback until it passes or the round budget runs out.
     """
-    def __init__(self):
-        pass
+
+    def __init__(self, max_rounds: int = 3, threshold: int = 8):
+        self.max_rounds = max_rounds
+        self.threshold = threshold
 
     async def run(self, query: str):
         print("Starting simple story agent workflow...")
-        
-        # Step 1: Generate story concept
-        print("Generating story concept...")
-        gen_result = await Runner.run(generator_agent, query)
-        print(f"\nGenerated Story:\n{gen_result.final_output}")
+        result = await refine_loop(
+            generator_agent,
+            evaluator_agent,
+            query,
+            max_rounds=self.max_rounds,
+            threshold=self.threshold,
+        )
 
-        # Step 2: Evaluate story concept
-        print("\nEvaluating story concept...")
-        eval_result = await Runner.run(evaluator_agent, gen_result.final_output)
-        print(f"\nEvaluation:\n{eval_result.final_output}")
+        for i, round_ in enumerate(result.rounds, start=1):
+            evaluation = round_.evaluation
+            print(f"\nRound {i}: score {evaluation.score}/10, passed={evaluation.passed}")
+            for issue in evaluation.issues:
+                print(f"  - {issue}")
 
-        print("\nSimple story agent workflow complete.") 
+        print(f"\nFinal Story (score {result.evaluation.score}/10):\n{result.output}")
+        print("\nSimple story agent workflow complete.")
+        return result

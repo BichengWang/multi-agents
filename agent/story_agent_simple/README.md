@@ -12,12 +12,15 @@ This module implements a simplified multi-agent workflow for generating and eval
 Run the workflow interactively:
 
 ```bash
-python -m agents.story_agent_simple.main
+python -m agent.story_agent_simple.main
 ```
 
-You will be prompted to enter a story concept or idea. The agents will process the idea in sequence:
-1. The Story Generator will create a detailed story concept
-2. The Story Evaluator will provide a comprehensive evaluation
+You will be prompted to enter a story concept or idea. The agents then run a refine loop
+(`agent.core.refine_loop`):
+1. The Story Generator writes a draft
+2. The Story Evaluator returns a structured `Evaluation` (score 1-10, passed, strengths, issues, suggestions)
+3. If the draft did not pass with a score of at least 8, the generator revises it using the issues and suggestions
+4. Steps 2-3 repeat for up to 3 rounds; the best-scoring draft is returned
 
 ## Architecture
 

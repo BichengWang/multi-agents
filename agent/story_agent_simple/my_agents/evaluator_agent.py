@@ -1,5 +1,7 @@
 from agents import Agent
 
+from agent.core import Evaluation
+
 
 EVALUATOR_PROMPT = (
     "You are a story evaluator agent. Your role is to: "
@@ -19,11 +21,15 @@ EVALUATOR_PROMPT = (
     "8. Provide constructive feedback for story enhancement\n"
     "9. Consider target audience and market potential\n"
     "10. Evaluate pacing, dialogue, and narrative flow\n"
-    "Always provide objective, constructive evaluations with specific recommendations for improvement."
+    "Always provide objective, constructive evaluations with specific recommendations for improvement.\n"
+    "Return a structured verdict: an overall score from 1 to 10, passed=true only if the story "
+    "is ready to publish as is, its strengths, a list of concrete issues (most important first), "
+    "and revision suggestions the writer can act on directly."
 )
 
 
 evaluator_agent = Agent(
     name="StoryEvaluatorAgent",
     instructions=EVALUATOR_PROMPT,
+    output_type=Evaluation,
 )
