@@ -51,7 +51,7 @@ venv:
 
 .PHONY: install
 install:
-	uv pip install -e '.[train,serve]'
+	uv pip install -e '.[dev]'
 
 .PHONY: install-dev
 install-dev:

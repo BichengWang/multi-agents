@@ -15,15 +15,15 @@ This module implements a multi-agent workflow for generating, explaining, evalua
 Run the workflow interactively:
 
 ```bash
-python -m agents.story_agent.main
+python -m agent.store_agent.main
 ```
 
 You will be prompted to enter a store concept or business idea. The agents will process the idea in sequence, and you will see the generated concept, explanation, evaluation, and management plan.
 
 ## Architecture
 
-- Each agent is defined in `agents/` as an `Agent` with a specific prompt.
-- The workflow is orchestrated by `StoreAgentManager` in `manager.py`.
+- Each agent is defined in `my_agents/` as an `Agent` with a specific prompt.
+- The workflow is orchestrated by `StoreAgentManager` in `manager.py` using `agent.core.pipeline`.
 - The entrypoint is `main.py`.
 
 ## Example Query
@@ -32,4 +32,4 @@ You will be prompted to enter a store concept or business idea. The agents will 
 
 ## Customization
 
-You can modify the agent prompts or add new agents in the `agents/` directory to extend the workflow for other business domains. 
+You can modify the agent prompts or add new agents in the `my_agents/` directory to extend the workflow for other business domains. 
