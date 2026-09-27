@@ -9,17 +9,17 @@ permissions:
   contents: read
 
 jobs:
-  lint-and-test:
+  workflows-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      # Install only what the agent code needs; the full project pulls in the training stack.
-      - name: Install dependencies
-        run: python -m pip install openai-agents rich pytest ruff
+      # Light deps only; the full project pulls in the training stack.
+      - name: Install light test dependencies
+        run: pip install -r requirements-ci.txt
       - name: Lint
         run: ruff check agent tests
-      - name: Offline tests
-        run: python -m pytest -q tests
+      - name: Run offline tests
+        run: python -m pytest tests -q

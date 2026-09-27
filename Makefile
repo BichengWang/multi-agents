@@ -35,6 +35,7 @@ help:
 	@echo "  bootstrap    - Bootstrap the environment"
 	@echo "  lint         - Run ruff on agent code and tests"
 	@echo "  test         - Run lint and offline tests"
+	@echo "  test-workflows - Run offline multi-agent workflow tests (no API keys)"
 	@echo "  clean        - Clean up generated files"
 
 .PHONY: setup
@@ -90,6 +91,10 @@ lint:
 .PHONY: test
 test: clean lint
 	$(pytest) tests/$(file_name) $(pytest_extra_args)
+
+.PHONY: test-workflows
+test-workflows:
+	python -m pytest tests/workflows -q
 
 .PHONY: all_test
 all_test: test
