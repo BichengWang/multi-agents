@@ -10,8 +10,8 @@ from agents import Agent, Handoff
 
 AGENT_MODULES = [
     "agent.financial_research_agent.main",
-    "agent.story_agent.main",
-    "agent.story_agent.my_agents.coordinator_agent",
+    "agent.store_agent.main",
+    "agent.store_agent.my_agents.coordinator_agent",
     "agent.story_agent_simple.main",
     "agent.fix_agents.financial.financial_adviser",
 ]
@@ -28,7 +28,7 @@ def _assert_valid_handoffs(agent: Agent):
 
 
 def test_coordinator_handoffs_are_agents():
-    from agent.story_agent.my_agents.coordinator_agent import coordinator_agent
+    from agent.store_agent.my_agents.coordinator_agent import coordinator_agent
 
     assert len(coordinator_agent.handoffs) == 4
     _assert_valid_handoffs(coordinator_agent)
