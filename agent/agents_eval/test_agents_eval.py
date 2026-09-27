@@ -34,7 +34,7 @@ class ExampleEvaluator(BaseEvaluator):
 
 def main():
     """
-    python -m agents.agents_eval.test_agents_eval
+    python -m agent.agents_eval.test_agents_eval
     """
     # Create and configure generators
     agent_generator = DynamicAgentGenerator()
@@ -63,7 +63,7 @@ def main():
             }
         ],
         context={"task": "example_task", "parameters": {"param1": "value1"}},
-        output_dir="agents/agents_eval/results",
+        output_dir="agent/agents_eval/results",
         experiment_name="example_experiment"
     )
     
