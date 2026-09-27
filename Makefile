@@ -1,5 +1,5 @@
 project := python-notebook
-pytest_args := -rs --tb short --junitxml junit.xml --suppress-no-test-exit-code
+pytest_args := -rs --tb short --junitxml junit.xml
 pytest := py.test $(pytest_args)
 file_name := ''
 ifdef FILE_NAME
@@ -33,7 +33,8 @@ help:
 	@echo "  serve        - Start the FastAPI server"
 	@echo "  update-deps  - Update dependencies"
 	@echo "  bootstrap    - Bootstrap the environment"
-	@echo "  test         - Run tests"
+	@echo "  lint         - Run ruff on agent code and tests"
+	@echo "  test         - Run lint and offline tests"
 	@echo "  test-workflows - Run offline multi-agent workflow tests (no API keys)"
 	@echo "  clean        - Clean up generated files"
 
@@ -83,9 +84,13 @@ compile:
 env:
 	python3 -m venv venv
 
+.PHONY: lint
+lint:
+	ruff check agent tests
+
 .PHONY: test
 test: clean lint
-	SIM_TEST_MODE=true $(pytest) -k "not personal_transport_e2e" tests/$(file_name) $(pytest_extra_args)
+	$(pytest) tests/$(file_name) $(pytest_extra_args)
 
 .PHONY: test-workflows
 test-workflows:
