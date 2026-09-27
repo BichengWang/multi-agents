@@ -2,6 +2,8 @@ from pydantic import BaseModel
 
 from agents import Agent
 
+from agent.config import model_for
+
 # Agent to sanity‑check a synthesized report for consistency and recall.
 # This can be used to flag potential gaps or obvious mistakes.
 VERIFIER_PROMPT = (
@@ -22,6 +24,6 @@ class VerificationResult(BaseModel):
 verifier_agent = Agent(
     name="VerificationAgent",
     instructions=VERIFIER_PROMPT,
-    model="gpt-4o",
+    model=model_for("verifier"),
     output_type=VerificationResult,
 )

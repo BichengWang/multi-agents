@@ -1,5 +1,10 @@
 from agents import Agent
 
+from .evaluator_agent import evaluator_agent
+from .explainer_agent import explainer_agent
+from .generator_agent import generator_agent
+from .manager_agent import manager_agent
+
 COORDINATOR_PROMPT = (
     "You are a store coordinator agent. Your role is to: "
     "1. Orchestrate the entire store development process\n"
@@ -16,10 +21,5 @@ COORDINATOR_PROMPT = (
 coordinator_agent = Agent(
     name="StoreCoordinatorAgent",
     instructions=COORDINATOR_PROMPT,
-    handoffs=[
-        "store_generator_agent",
-        "store_explainer_agent",
-        "store_evaluator_agent",
-        "store_manager_agent",
-    ],
+    handoffs=[generator_agent, explainer_agent, evaluator_agent, manager_agent],
 ) 

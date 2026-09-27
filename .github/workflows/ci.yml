@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      # Install only what the agent code needs; the full project pulls in the training stack.
+      - name: Install dependencies
+        run: uv pip install --system openai-agents rich pytest ruff
+      - name: Lint
+        run: ruff check agent tests
+      - name: Offline tests
+        run: python -m pytest -q tests
