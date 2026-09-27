@@ -1,6 +1,6 @@
 from agents import Agent, Runner, RunConfig
 import asyncio
-from typing import List, Dict
+from typing import Dict
 
 
 def create_agents() -> Dict[str, Agent]:
@@ -25,14 +25,15 @@ def create_agents() -> Dict[str, Agent]:
         "triage": Agent(
             name="Triage agent",
             instructions="Handoff to the appropriate agent based on the scenario",
-            handoffs=["government", "scenario", "investor", "fed"],
         ),
         "investment": Agent(
             name="Investment agent",
             instructions="You are responsible the response to the investment strategy based on the scenario",
-            handoffs=["triage"],
         )
     }
+    # Handoffs must reference Agent objects, not names, so wire them after creation.
+    agents["triage"].handoffs = [agents[name] for name in ("government", "scenario", "investor", "fed")]
+    agents["investment"].handoffs = [agents["triage"]]
     return agents
 
 

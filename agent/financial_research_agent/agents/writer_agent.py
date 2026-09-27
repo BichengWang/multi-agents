@@ -2,6 +2,8 @@ from pydantic import BaseModel
 
 from agents import Agent
 
+from agent.config import model_for
+
 # Writer agent brings together the raw search results and optionally calls out
 # to sub‑analyst tools for specialized commentary, then returns a cohesive markdown report.
 WRITER_PROMPT = (
@@ -29,6 +31,6 @@ class FinancialReportData(BaseModel):
 writer_agent = Agent(
     name="FinancialWriterAgent",
     instructions=WRITER_PROMPT,
-    model="gpt-4.5-preview-2025-02-27",
+    model=model_for("writer"),
     output_type=FinancialReportData,
 )
