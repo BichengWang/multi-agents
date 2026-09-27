@@ -90,8 +90,8 @@ class EvaluationFramework:
                 }
                 
                 self.results.append(evaluation_record)
-                self._save_results()
-        
+
+        self._save_results()
         return self.results
     
     def _save_results(self) -> None:
