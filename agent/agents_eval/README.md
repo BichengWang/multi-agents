@@ -4,6 +4,28 @@ Ref: [Agent Eval @AmazonLab](https://github.com/awslabs/agent-evaluation/tree/ma
 
 A flexible framework for evaluating multiple agents using multiple evaluators in a dynamic and configurable way.
 
+## Async workflow evals (recommended)
+
+`harness.py` scores real agent workflows over a JSONL dataset, and `run.py` is its CLI.
+
+- **Workflow**: any `async (input: str) -> str`. Registered in `run.py` under `WORKFLOWS`.
+- **Dataset**: one `EvalCase` per line with `id`, `input`, and optional `rubric` and `expected_keywords`. See `datasets/story.jsonl`.
+- **Checks**: `LengthCheck` and `KeywordCheck` are deterministic and free. `LLMJudgeCheck` grades against the task and rubric with a `Verdict`-typed judge agent (model: `AGENT_MODEL_JUDGE`; runner injectable for offline tests).
+- **Report**: pass rate and mean score per check, saved as one JSON file per run. `--baseline` prints the deltas against an earlier report.
+
+```bash
+# Workflows: story_single, story_refine, story_best_of_n (the three SimpleStoryManager modes)
+# Baseline: single-shot generation
+python -m agent.agents_eval.run --workflow story_single --dataset agent/agents_eval/datasets/story.jsonl
+# Candidate: RefineLoop (generate -> evaluate -> revise), compared with the baseline
+python -m agent.agents_eval.run --workflow story_refine --dataset agent/agents_eval/datasets/story.jsonl \
+    --baseline agent/agents_eval/results/story_single_<timestamp>.json
+```
+
+## Legacy dynamic framework
+
+The sync registry-based framework below is kept for existing experiments.
+
 ## Features
 
 - Dynamic agent generation and registration
