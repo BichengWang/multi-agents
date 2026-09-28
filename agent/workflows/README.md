@@ -56,6 +56,23 @@ print(result.final_output, result.meta)  # {'iterations': 2, 'accepted': True, '
 `RefineLoop` returns the best-scoring draft, not the last one, so a regression in a late revision
 never replaces a better earlier draft.
 
+## Run artifacts
+
+Wrap the runner in a `RunTracker` to time every agent call. With no base runner it calls the SDK
+itself, adds a tracing span per call and records token usage. `run_record()` + `save_run()` then
+write the result, verdict, meta, step trace, per-call timings and token totals to `runs/`:
+
+```python
+from agent.workflows import RefineLoop, RunTracker, run_record, save_run
+
+tracker = RunTracker()                      # or RunTracker(base=fake_runner) in tests
+result = await RefineLoop(generator, evaluator, runner=tracker).run("idea")
+save_run(run_record(result, workflow="story/refine", query="idea",
+                    started_at=t0, duration_s=elapsed, tracker=tracker))
+```
+
+`python -m agent.main` does this for every request (`--runs-dir`, `--no-save`).
+
 ## Tests
 
 ```bash

@@ -177,3 +177,6 @@ cython_debug/
 
 # Eval harness run reports
 agent/agents_eval/results/*.json
+
+# Workflow run records (python -m agent.main)
+runs/
