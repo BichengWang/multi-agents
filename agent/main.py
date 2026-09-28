@@ -1,7 +1,10 @@
 import argparse
 import asyncio
+import time
+from datetime import datetime, timezone
 
 from agent.triage.manager import TriageManager, build_routes
+from agent.workflows import RunTracker, run_record, save_run
 
 
 # Single entrypoint for all multi-agent workflows.
@@ -19,11 +22,32 @@ async def main() -> None:
         "--min-confidence", type=float, default=0.5,
         help="Below this triage confidence, use --fallback (default: 0.5)",
     )
+    parser.add_argument("--runs-dir", default="runs", help="Where to save the run record (default: runs/)")
+    parser.add_argument("--no-save", action="store_true", help="Do not save a run record")
     args = parser.parse_args()
 
     query = args.query or input("What would you like to do? ")
-    mgr = TriageManager(fallback=args.fallback, min_confidence=args.min_confidence)
-    await mgr.run(query, route=args.route)
+    tracker = RunTracker()
+    mgr = TriageManager(runner=tracker, fallback=args.fallback, min_confidence=args.min_confidence)
+
+    from agents import trace
+
+    started_at = datetime.now(timezone.utc).isoformat()
+    start = time.perf_counter()
+    with trace("agent.main"):
+        result = await mgr.run(query, route=args.route)
+
+    if not args.no_save:
+        record = run_record(
+            result,
+            workflow=result.meta.get("route", "unknown"),
+            query=query,
+            started_at=started_at,
+            duration_s=time.perf_counter() - start,
+            tracker=tracker,
+        )
+        path = save_run(record, args.runs_dir)
+        print(f"\nRun saved to {path} ({record['totals']})")
 
 
 if __name__ == "__main__":
