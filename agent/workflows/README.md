@@ -9,6 +9,7 @@ OpenAI Agents SDK (`Runner.run`); tests pass a fake runner so everything runs of
 | `SequentialWorkflow` | A → B → C | Each stage transforms the previous output (plan → write → review). |
 | `RefineLoop` | generate ⇄ evaluate | Quality matters and the evaluator's feedback can drive revisions. |
 | `BestOfN` | N × (generate → evaluate) in parallel, keep max | You want diversity; revisions are less useful than fresh attempts. |
+| `Router` | classify → one of N workflows | One entrypoint serves requests that need different specialists. |
 
 Every run returns a `WorkflowResult` with `final_output`, the `verdict` that chose it (refine /
 best-of-n), `meta` (iterations, scores, chosen candidate), and `steps` — a full trace of every
@@ -27,6 +28,20 @@ class StoryEvaluation(Verdict):
     originality: float
 
 evaluator = Agent(name="Evaluator", instructions="...", output_type=StoryEvaluation)
+```
+
+## Router
+
+`Router` asks a classifier agent (`output_type=RouteDecision`: `route`, `confidence`, `reason`)
+to pick one `Route(name, description, handler)`; the handler is any `async (query) -> output`,
+usually another workflow's `run`. Unknown routes or confidence below `min_confidence` go to
+`fallback` (or raise if none is set), and `run(query, force="name")` skips classification. When
+the handler returns a `WorkflowResult`, its steps are appended after the `classify` step.
+
+```python
+router = Router(classifier, [Route("story", "creative writing", story_wf.run), ...], fallback="story")
+result = await router.run("Write a heist on the moon")
+result.meta  # {'route': 'story', 'confidence': 0.93, 'fallback_used': False, ...}
 ```
 
 ## Example

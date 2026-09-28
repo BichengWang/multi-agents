@@ -14,6 +14,8 @@ AGENT_MODULES = [
     "agent.store_agent.my_agents.coordinator_agent",
     "agent.story_agent_simple.main",
     "agent.fix_agents.financial.financial_adviser",
+    "agent.main",
+    "agent.triage.manager",
 ]
 
 
