@@ -19,13 +19,15 @@ Iterative plan: each item is one PR, built on the shared patterns in `agent/work
   plus an injectable runner and offline test. Next step for it: a structured evaluator so the
   evaluate stage can use `RefineLoop`.
 
+- **Router / triage** — `Router` pattern (classifier agent with structured `RouteDecision`,
+  confidence threshold, fallback, forced route) and `agent/triage`, which dispatches to the story,
+  store, and financial workflows; single entrypoint `python -m agent.main`.
+
 ## Next
 
-1. **Router / triage pattern** — a classifier agent picks which specialist workflow handles a
-   query (story vs. store concept vs. financial research); one entrypoint `python -m agent.main`.
-2. **Run artifacts** — persist each `WorkflowResult` (steps, scores, timings, token usage) as JSON
+1. **Run artifacts** — persist each `WorkflowResult` (steps, scores, timings, token usage) as JSON
    under `runs/`, and add SDK tracing spans per step.
-3. **Human-in-the-loop checkpoint** — optional approval step between iterations (CLI prompt), for
+2. **Human-in-the-loop checkpoint** — optional approval step between iterations (CLI prompt), for
    steering the refine loop.
-4. **Debate / panel pattern** — multiple evaluator personas score in parallel, aggregated verdict
+3. **Debate / panel pattern** — multiple evaluator personas score in parallel, aggregated verdict
    (mean / min / majority) to reduce single-judge bias.

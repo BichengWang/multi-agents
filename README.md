@@ -90,6 +90,7 @@ Shared orchestration patterns (sequential, refine loop, best-of-n) live in
 [`agent/workflows`](agent/workflows/README.md); the story agent is the reference user:
 
 ```bash
+python -m agent.main "A heist on the moon"   # triage agent picks story / store / financial
 python -m agent.story_agent_simple.main --mode refine "A heist on the moon"
 make test-workflows  # offline tests, no API keys
 ```

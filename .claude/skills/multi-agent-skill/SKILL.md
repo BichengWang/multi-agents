@@ -14,7 +14,8 @@ query ──► [pattern] ──► WorkflowResult(final_output, verdict, meta, 
              │
              ├─ SequentialWorkflow : A → B → C
              ├─ RefineLoop         : generate ⇄ evaluate (feedback) until accepted
-             └─ BestOfN            : N × (generate → evaluate) in parallel, keep best
+             ├─ BestOfN            : N × (generate → evaluate) in parallel, keep best
+             └─ Router             : classify → hand off to one specialist workflow
 ```
 
 Agents are plain OpenAI Agents SDK `Agent`s. Patterns live in `agent/workflows/` and never call
@@ -37,5 +38,8 @@ the SDK directly; they call an injected `runner(agent, input_text) -> final_outp
 5. Add offline tests under `tests/workflows/` using `tests/workflows/fakes.py`
    (`FakeAgent`, `fake_runner`, `scripted_evaluator`); run `make test-workflows`.
 6. Add the module to `tests/workflows/test_imports.py`.
+
+7. Register the workflow as a `Route` in `agent/triage/manager.py::build_routes` so
+   `python -m agent.main` can dispatch to it.
 
 Reference implementation: `agent/story_agent_simple/`.

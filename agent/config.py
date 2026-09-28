@@ -8,6 +8,7 @@ _DEFAULTS = {
     "writer": "gpt-5",
     "verifier": "gpt-5-mini",
     "judge": "gpt-5",
+    "router": "gpt-5-mini",
 }
 
 
