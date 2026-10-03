@@ -28,9 +28,11 @@ Iterative plan: each item is one PR, built on the shared patterns in `agent/work
   verdict, meta, step trace, timings and token totals as JSON under `runs/`; `python -m agent.main`
   saves every run (`--runs-dir`, `--no-save`) inside one SDK trace.
 
+- **Human-in-the-loop checkpoint** — optional async `RefineLoop` callback can continue, steer the
+  next revision, or stop with the best draft so far. Story CLI `--checkpoint` and shared CLI
+  `--story-checkpoint` prompt between iterations; decisions are preserved in run artifacts.
+
 ## Next
 
-1. **Human-in-the-loop checkpoint** — optional approval step between iterations (CLI prompt), for
-   steering the refine loop.
-2. **Debate / panel pattern** — multiple evaluator personas score in parallel, aggregated verdict
+1. **Debate / panel pattern** — multiple evaluator personas score in parallel, aggregated verdict
    (mean / min / majority) to reduce single-judge bias.

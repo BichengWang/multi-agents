@@ -92,8 +92,13 @@ Shared orchestration patterns (sequential, refine loop, best-of-n) live in
 ```bash
 python -m agent.main "A heist on the moon"   # triage agent picks story / store / financial
 python -m agent.story_agent_simple.main --mode refine "A heist on the moon"
+python -m agent.main --route story --story-checkpoint "A heist on the moon"
 make test-workflows  # offline tests, no API keys
 ```
+
+Use `--story-checkpoint` to inspect rejected story drafts before another revision: press Enter to
+continue, type feedback to steer the next draft, or enter `/stop` to finish with the best draft.
+The dedicated story entrypoint exposes the same option as `--checkpoint` in refine mode.
 
 Planned next steps: [docs/ROADMAP.md](docs/ROADMAP.md).
 

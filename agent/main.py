@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 
 from agent.triage.manager import TriageManager, build_routes
-from agent.workflows import RunTracker, run_record, save_run
+from agent.workflows import RunTracker, cli_checkpoint, run_record, save_run
 
 
 # Single entrypoint for all multi-agent workflows.
@@ -24,11 +24,18 @@ async def main() -> None:
     )
     parser.add_argument("--runs-dir", default="runs", help="Where to save the run record (default: runs/)")
     parser.add_argument("--no-save", action="store_true", help="Do not save a run record")
+    parser.add_argument(
+        "--story-checkpoint", action="store_true",
+        help="Story route: inspect rejected drafts and steer or stop before revising",
+    )
     args = parser.parse_args()
 
     query = args.query or input("What would you like to do? ")
     tracker = RunTracker()
-    mgr = TriageManager(runner=tracker, fallback=args.fallback, min_confidence=args.min_confidence)
+    mgr = TriageManager(
+        runner=tracker, fallback=args.fallback, min_confidence=args.min_confidence,
+        story_checkpoint=cli_checkpoint if args.story_checkpoint else None,
+    )
 
     from agents import trace
 

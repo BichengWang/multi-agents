@@ -25,6 +25,20 @@ The evaluator returns a structured `StoryEvaluation` (overall `score`, `passed`,
 per-dimension scores), which is what lets the loop decide when to stop. The modes are built on the
 shared patterns in [`agent/workflows`](../workflows/README.md).
 
+### Human checkpoints
+
+```bash
+python -m agent.story_agent_simple.main --mode refine --checkpoint "A heist on the moon"
+# Or through the shared entrypoint, which also saves checkpoint decisions in run artifacts:
+python -m agent.main --route story --story-checkpoint "A heist on the moon"
+```
+
+Before another refinement iteration, the checkpoint shows the current draft, its score, and the
+evaluator's feedback. Press Enter to continue, type steering feedback for the next revision, or
+enter `/stop` to finish with the best-scoring draft so far. Closed input also stops refinement.
+Accepted drafts and the last allowed iteration need no checkpoint. This option is off by default;
+the dedicated entrypoint requires `--mode refine` when `--checkpoint` is set.
+
 ## Architecture
 
 - **StoryGeneratorAgent**: Defined in `my_agents/generator_agent.py` - creates innovative story concepts
@@ -38,4 +52,4 @@ shared patterns in [`agent/workflows`](../workflows/README.md).
 
 ## Customization
 
-You can modify the agent prompts in the `my_agents/` directory to adjust the focus of story generation and evaluation. The simple two-agent structure makes it easy to understand and extend for different storytelling domains. 
+You can modify the agent prompts in the `my_agents/` directory to adjust the focus of story generation and evaluation. The simple two-agent structure makes it easy to understand and extend for different storytelling domains.
