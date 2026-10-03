@@ -2,18 +2,22 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from agent.workflows import AgentRunner, Route, Router, WorkflowResult, default_runner
+from agent.workflows import AgentRunner, CheckpointHandler, Route, Router, WorkflowResult, default_runner
 
 from .classifier_agent import classifier_agent
 
 
-def build_routes(runner: AgentRunner = default_runner) -> list[Route]:
+def build_routes(
+    runner: AgentRunner = default_runner,
+    *,
+    story_checkpoint: Optional[CheckpointHandler] = None,
+) -> list[Route]:
     """Specialist workflows the triage agent can dispatch to (imported lazily per route)."""
 
     async def story(query: str) -> Any:
         from agent.story_agent_simple.manager import SimpleStoryManager
 
-        return await SimpleStoryManager(runner=runner).run(query)
+        return await SimpleStoryManager(runner=runner, checkpoint=story_checkpoint).run(query)
 
     async def store(query: str) -> Any:
         from agent.store_agent.manager import StoreAgentManager
@@ -55,10 +59,11 @@ class TriageManager:
         classifier: Any = classifier_agent,
         fallback: Optional[str] = None,
         min_confidence: float = 0.5,
+        story_checkpoint: Optional[CheckpointHandler] = None,
     ):
         self.router = Router(
             classifier,
-            routes if routes is not None else build_routes(runner),
+            routes if routes is not None else build_routes(runner, story_checkpoint=story_checkpoint),
             runner=runner,
             fallback=fallback,
             min_confidence=min_confidence,

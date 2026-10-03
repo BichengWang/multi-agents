@@ -5,6 +5,7 @@ from typing import Any, Literal
 from agent.workflows import (
     AgentRunner,
     BestOfN,
+    CheckpointHandler,
     RefineLoop,
     SequentialWorkflow,
     Step,
@@ -50,6 +51,7 @@ class SimpleStoryManager:
         runner: AgentRunner = default_runner,
         generator: Any = generator_agent,
         evaluator: Any = evaluator_agent,
+        checkpoint: CheckpointHandler | None = None,
     ):
         self.mode = mode
         self.max_iterations = max_iterations
@@ -58,6 +60,7 @@ class SimpleStoryManager:
         self.runner = runner
         self.generator = generator
         self.evaluator = evaluator
+        self.checkpoint = checkpoint
 
     def build_workflow(self):
         if self.mode == "single":
@@ -72,6 +75,7 @@ class SimpleStoryManager:
                 max_iterations=self.max_iterations,
                 threshold=self.threshold,
                 runner=self.runner,
+                checkpoint=self.checkpoint,
                 on_iteration=lambda i, _draft, v: print(
                     f"  iteration {i}: score={v.score} passed={v.passed}"
                 ),
