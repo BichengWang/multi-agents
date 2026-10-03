@@ -56,6 +56,30 @@ print(result.final_output, result.meta)  # {'iterations': 2, 'accepted': True, '
 `RefineLoop` returns the best-scoring draft, not the last one, so a regression in a late revision
 never replaces a better earlier draft.
 
+## Refinement checkpoints
+
+Supply an async `checkpoint` callback to inspect an evaluated draft before another iteration.
+It receives a `RefineCheckpoint` containing the original query, iteration, draft and verdict, and
+returns a `CheckpointDecision`. Returning `continue_refining=False` stops with the best-scoring
+draft so far; otherwise optional feedback is appended to the revision prompt, alongside the
+evaluator's feedback. The callback is skipped once a draft is accepted or the iteration limit is
+reached. Leaving it unset preserves automatic refinement.
+
+```python
+from agent.workflows import CheckpointDecision, RefineLoop
+
+async def review(state):
+    return CheckpointDecision(feedback="Give the protagonist a stronger motive.")
+
+result = await RefineLoop(generator, evaluator, checkpoint=review).run("A moon heist")
+```
+
+`cli_checkpoint` is a ready-to-use callback: Enter continues, text steers, `/stop` or EOF stops.
+Each decision is recorded as a `checkpoint` step, and `meta["checkpoint_stopped"]` distinguishes
+a human stop from normal completion. Stopping does not mark a rejected draft as evaluator-accepted.
+The shared CLI enables it for the story route with `--story-checkpoint`; the dedicated story CLI
+uses `--checkpoint` in refine mode.
+
 ## Run artifacts
 
 Wrap the runner in a `RunTracker` to time every agent call. With no base runner it calls the SDK

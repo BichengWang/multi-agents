@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from .base import AgentRunner, StepRecord, VerdictLike, WorkflowResult, agent_name, default_runner
+from .checkpoint import CheckpointDecision, CheckpointHandler, RefineCheckpoint
 
 
 def default_revision_prompt(query: str, draft: Any, verdict: VerdictLike) -> str:
@@ -24,6 +25,9 @@ class RefineLoop:
     Stops when the verdict passes (``passed`` is true, or ``score >= threshold`` when a threshold
     is set) or after ``max_iterations`` drafts. The best-scoring draft is returned, so a late
     regression never replaces an earlier, better draft.
+
+    An optional async ``checkpoint`` inspects each rejected draft before another iteration.
+    It can stop the loop or add human feedback to the next revision prompt.
     """
 
     generator: Any
@@ -33,6 +37,7 @@ class RefineLoop:
     runner: AgentRunner = field(default=default_runner)
     revision_prompt: Callable[[str, Any, VerdictLike], str] = default_revision_prompt
     on_iteration: Optional[Callable[[int, Any, VerdictLike], None]] = None
+    checkpoint: Optional[CheckpointHandler] = None
 
     def __post_init__(self) -> None:
         if self.max_iterations < 1:
@@ -47,6 +52,7 @@ class RefineLoop:
         result = WorkflowResult(final_output=None)
         best: Optional[tuple[Any, VerdictLike]] = None
         gen_input = query
+        checkpoint_stopped = False
 
         for i in range(1, self.max_iterations + 1):
             draft = await self.runner(self.generator, gen_input)
@@ -68,9 +74,22 @@ class RefineLoop:
 
             if best is None or verdict.score > best[1].score:
                 best = (draft, verdict)
-            if self.is_accepted(verdict):
+            if self.is_accepted(verdict) or i == self.max_iterations:
                 break
+            decision = None
+            if self.checkpoint is not None:
+                decision = await self.checkpoint(RefineCheckpoint(query, i, draft, verdict))
+                if not isinstance(decision, CheckpointDecision):
+                    raise TypeError("checkpoint must return a CheckpointDecision")
+                result.steps.append(
+                    StepRecord("checkpoint", "human", str(draft), decision, iteration=i)
+                )
+                if not decision.continue_refining:
+                    checkpoint_stopped = True
+                    break
             gen_input = self.revision_prompt(query, draft, verdict)
+            if decision is not None and decision.feedback.strip():
+                gen_input += f"\n\nHuman steering feedback:\n{decision.feedback}"
 
         assert best is not None
         result.final_output, result.verdict = best
@@ -79,4 +98,6 @@ class RefineLoop:
             accepted=self.is_accepted(best[1]),
             scores=[s.output.score for s in result.steps if s.name == "evaluate"],
         )
+        if self.checkpoint is not None:
+            result.meta["checkpoint_stopped"] = checkpoint_stopped
         return result

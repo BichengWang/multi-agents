@@ -6,6 +6,7 @@ pytest.importorskip("agents")
 
 from agent.story_agent_simple.manager import SimpleStoryManager  # noqa: E402
 from agent.story_agent_simple.my_agents.evaluator_agent import StoryEvaluation  # noqa: E402
+from agent.workflows import CheckpointDecision  # noqa: E402
 
 from .fakes import FakeAgent, counting_generator, fake_runner  # noqa: E402
 
@@ -53,3 +54,22 @@ def test_real_agents_have_structured_evaluator():
 def test_unknown_mode():
     with pytest.raises(ValueError):
         SimpleStoryManager(mode="nope").build_workflow()
+
+
+def test_manager_forwards_checkpoint_to_refine_loop():
+    async def checkpoint(_state):
+        return CheckpointDecision(continue_refining=False)
+
+    result = asyncio.run(make_manager("refine", [6, 9], checkpoint=checkpoint).run("idea"))
+    assert result.final_output == "story-1"
+    assert result.meta["checkpoint_stopped"] is True
+
+
+def test_story_cli_rejects_checkpoint_outside_refine_mode(monkeypatch, capsys):
+    from agent.story_agent_simple.main import main
+
+    monkeypatch.setattr("sys.argv", ["story", "idea", "--mode", "single", "--checkpoint"])
+    with pytest.raises(SystemExit) as exc:
+        asyncio.run(main())
+    assert exc.value.code == 2
+    assert "--checkpoint requires --mode refine" in capsys.readouterr().err

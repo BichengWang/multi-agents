@@ -2,6 +2,7 @@ import argparse
 import asyncio
 
 from agent.story_agent_simple.manager import SimpleStoryManager
+from agent.workflows import cli_checkpoint
 
 
 # Entrypoint for the simple story agent workflow.
@@ -16,11 +17,18 @@ async def main() -> None:
         help="refine mode: accept once score >= threshold (default: evaluator's `passed`)",
     )
     parser.add_argument("-n", type=int, default=3, help="best-of-n mode: number of candidates")
+    parser.add_argument(
+        "--checkpoint", action="store_true",
+        help="refine mode: inspect each rejected draft and steer or stop before revising",
+    )
     args = parser.parse_args()
+    if args.checkpoint and args.mode != "refine":
+        parser.error("--checkpoint requires --mode refine")
 
     query = args.query or input("Enter a story concept or idea to analyze: ")
     mgr = SimpleStoryManager(
-        mode=args.mode, max_iterations=args.max_iterations, threshold=args.threshold, n=args.n
+        mode=args.mode, max_iterations=args.max_iterations, threshold=args.threshold, n=args.n,
+        checkpoint=cli_checkpoint if args.checkpoint else None,
     )
     await mgr.run(query)
 
