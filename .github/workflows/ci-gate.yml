@@ -1,0 +1,44 @@
+name: CI Gate
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    uses: ./.github/workflows/ci.yml
+
+  attribution-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Replay attribution rules
+        run: node --test .github/scripts/*.test.cjs
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [tests, attribution-replay]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          node <<'NODE'
+          const jobs = Object.entries(JSON.parse(process.env.NEEDS_JSON));
+          for (const [name, job] of jobs) console.log(`${name}: ${job.result}`);
+          if (!jobs.length || jobs.some(([, job]) => !['success', 'skipped'].includes(job.result))) {
+            process.exit(1);
+          }
+          NODE

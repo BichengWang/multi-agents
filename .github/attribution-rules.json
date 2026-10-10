@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "description": "Shared attribution rules. Compile every pattern with new RegExp(pattern, 'iu') after normalizing input to NFKC and removing zero-width and bidi control characters (U+200B-U+200F, U+202A-U+202E, U+2060-U+2064, U+2066-U+2069, U+FEFF).",
+  "branch": {
+    "deny": ["claude", "codex", "anthropic", "openai", "chatgpt", "copilot", "gemini", "cursor", "gpt-?\\d"]
+  },
+  "text": {
+    "deny": [
+      "co-authored-by:[^\\n]*(claude|codex|anthropic|openai|chatgpt|copilot|gemini|cursor)",
+      "co-authored-by:[^\\n]*@(anthropic\\.com|openai\\.com)",
+      "generated (with|by) \\[?(claude|codex|chatgpt|copilot|gemini|cursor|openai|anthropic)",
+      "claude\\.ai/code",
+      "claude-session:",
+      "\\u{1F916}"
+    ],
+    "warn": ["\\b(claude|codex|chatgpt|copilot|gemini|cursor)\\b"]
+  },
+  "identity": {
+    "deny_email": ["@anthropic\\.com$", "@openai\\.com$"],
+    "deny_name": ["^(claude|codex|chatgpt|copilot|gemini|cursor)\\b"],
+    "exempt_actors": ["dependabot[bot]"]
+  }
+}
