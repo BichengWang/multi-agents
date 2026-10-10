@@ -1,6 +1,0 @@
-# Minimal deps for the offline test suite (no model weights, no API keys).
-openai-agents
-pydantic>=2.0.0
-rich
-pytest
-ruff==0.15.8

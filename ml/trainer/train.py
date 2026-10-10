@@ -27,7 +27,7 @@ class TrainingConfig:
     per_device_train_batch_size: int = 4
     learning_rate: float = 5e-4
     max_steps: Optional[int] = 100
-    wandb_token: Optional[str] = "730d1f892f99dc720c240db8f320c39607bf6995"  # Add wandb token to config
+    wandb_token: Optional[str] = None
 
 
 def train(config: TrainingConfig):

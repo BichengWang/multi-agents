@@ -2,6 +2,9 @@
 
 A Streamlit-based chat application that interfaces with a Qwen language model deployed on Modal. The app supports both direct chat and document-enhanced conversations using RAG (Retrieval-Augmented Generation).
 
+Run the commands below from `ml/` (`cd ml` from the repository root). This project has its own
+dependencies, lockfile, and virtual environment, separate from the runtime package.
+
 ## Features
 
 - 🤖 **Direct Chat**: Chat directly with the Qwen model deployed on Modal
@@ -14,7 +17,7 @@ A Streamlit-based chat application that interfaces with a Qwen language model de
 
 ### Prerequisites
 
-1. Python 3.8+ with virtual environment
+1. Python 3.11 and `uv` (the interpreter is pinned in `.python-version`)
 2. Modal account and deployed Qwen model
 3. Required dependencies installed
 
@@ -22,7 +25,7 @@ A Streamlit-based chat application that interfaces with a Qwen language model de
 
 1. Install dependencies:
 ```bash
-pip install streamlit requests llama-index llama-index-embeddings-huggingface
+uv sync
 ```
 
 2. Configure Modal URL:
@@ -46,7 +49,7 @@ MODAL_CONFIG = {
 ### Running the Application
 
 ```bash
-streamlit run chat_app_qwen.py
+uv run streamlit run chat_app_qwen.py
 ```
 
 The app will be available at `http://localhost:8501`
@@ -60,7 +63,7 @@ The app will be available at `http://localhost:8501`
 ### Document-Enhanced Chat
 
 1. Check "Use document context" in the sidebar
-2. Specify the path to your documents directory (default: `./documents`)
+2. Specify the path to your documents directory (default: `./docs`)
 3. Click "Load Documents" to index your documents
 4. Ask questions that can be answered using the document context
 5. The app will retrieve relevant information and provide context-aware responses
@@ -82,8 +85,9 @@ The application supports various document formats through LlamaIndex:
 
 ## Sample Documents
 
-The `documents/` directory contains sample files for testing:
-- `sample_doc.txt`: Overview of multi-agent systems
+The `docs/` directory contains sample files for testing:
+- `mental_health_customer_service_manual.txt`: Customer service guidance
+- `psychology_fundamentals.txt`: Psychology reference
 - `modal_deployment.txt`: Guide to Modal deployment
 
 ## API Endpoints
