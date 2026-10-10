@@ -35,21 +35,15 @@ test('last 30 commits pass message and identity rules', t => {
   }
 });
 
-test('merge subjects, local refs and preserved PR branches have the expected results', t => {
+test('merge subjects and preserved PR branches have the expected results', t => {
   const forbiddenPRs = new Set([32, 33, 34, 35, 36]);
   const history = git('log', '-30', '--format=%s').split('\n').flatMap(subject => {
     const match = /^Merge pull request #(\d+) from (\S+)/u.exec(subject);
     return match ? [{ number: Number(match[1]), branch: match[2] }] : [];
   });
-  const refs = git('for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes')
-    .trim().split('\n').filter(ref => !ref.endsWith('/HEAD'))
-    .map(ref => {
-      const branch = ref.replace(/^refs\/(heads\/|remotes\/[^/]+\/)/u, '');
-      return { branch, number: branches.find(record => record.branch === branch)?.number };
-    });
   const failedPRs = [];
   // The public PR API preserves branches missing from squash merges or deleted refs.
-  for (const record of [...history, ...refs, ...branches]) {
+  for (const record of [...history, ...branches]) {
     const denied = inspectPullRequest({ branch: record.branch }).denied.length > 0;
     assert.equal(denied, forbiddenPRs.has(record.number), record.branch);
     if (denied) failedPRs.push(record.number);

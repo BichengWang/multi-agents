@@ -3,13 +3,13 @@
 KW should enable an active branch ruleset for `main` after these workflows land
 and both check names have appeared. Require `ci-gate` and `attribution-guard`,
 each pinned to the GitHub Actions integration (ID `15368`), with an empty bypass
-list. Require pull requests and an up-to-date branch; prohibit force pushes and
+list. Require pull requests; prohibit force pushes and
 branch deletion. No approval count is needed for this slice.
 
 `ci-gate` runs on every PR and merge group, calls the reusable test workflow,
 and includes the offline attribution replay. The final job runs even after
 failures and accepts only successful or skipped dependencies.
-`attribution-guard` reads code and rules from the PR's base commit and checks
+`attribution-guard` reads code and rules from the base branch and checks
 PR metadata and all commit messages and identities through the API. Denied
 patterns fail; warning patterns annotate the run. Dependency update PRs from
 the exempt actor pass. Branch names follow `<area>/<topic>`; generic area
@@ -48,7 +48,7 @@ gh api --method POST repos/BichengWang/multi-agents/rulesets \
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": true,
+        "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           {"context": "ci-gate", "integration_id": 15368},

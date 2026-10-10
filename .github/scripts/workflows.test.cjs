@@ -52,10 +52,10 @@ test('auto-merge retries pending mergeability and stops on conflicts or closed P
   }
 });
 
-test('the target workflow checks out only the base commit without persisted credentials', () => {
+test('the target workflow checks out only the base branch without persisted credentials', () => {
   const guard = workflow('attribution-guard.yml');
   assert.match(guard, /pull_request_target:/u);
-  assert.match(guard, /ref: \$\{\{ github.event.pull_request.base.sha \}\}/u);
+  assert.doesNotMatch(guard, /ref: \$\{\{ github.event.pull_request.(head|base).sha \}\}/u);
   assert.match(guard, /persist-credentials: false/u);
   assert.doesNotMatch(guard, /pull_request.head|pull_request.body|pull_request.title/u);
 });
