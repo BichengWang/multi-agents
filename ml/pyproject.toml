@@ -1,0 +1,60 @@
+[project]
+name = "multi-agents-ml"
+version = "0.1.0"
+description = "LLM training and serving environment"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "accelerate>=0.20.0",
+    "datasets>=2.12.0",
+    "uvicorn>=0.23.0",
+    "fastapi>=0.100.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "fsspec==2023.9.2",
+    "huggingface-hub>=0.30.0",
+    "tokenizers>=0.21.0",
+    "openai>=1.66.0",
+    "streamlit==1.45.1",
+    "llama-index-core",
+    "llama-index-readers-file",
+    "llama-index-embeddings-huggingface",
+    "llama-index-embeddings-openai",
+    "llama-index-llms-openai",
+    "langchain-community",
+    "sentence-transformers>=5.0.0",
+    "chromadb>=1.0.15",
+    "posthog<6.0.0",
+    "requests",
+    "flask",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+train = [
+    "wandb>=0.15.0",
+    "tensorboard>=2.13.0",
+    "evaluate>=0.4.0",
+]
+serve = [
+    "sentencepiece>=0.1.99",
+    "protobuf>=4.23.0",
+    "modal>=0.50.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+]
+
+[tool.uv]
+package = false
+conflicts = [
+    [
+        { extra = "train" },
+        { extra = "serve" },
+    ]
+]
+
+[tool.config]
+length = 200

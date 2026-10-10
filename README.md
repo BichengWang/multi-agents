@@ -1,6 +1,7 @@
-# Online Chatbot Monorepo
+# Multi-Agent Workspace
 
-A monorepo for training and serving LLM models using `uv` for dependency management.
+Multi-agent workflows using `uv` for dependency management. The runtime package contains only
+`agent/`; the legacy model training, serving, and chat apps have their own project in `ml/`.
 ## Project Structure
 ```
 multi-agents/
@@ -10,11 +11,16 @@ multi-agents/
 │   ├── store_agent/   #   store concept pipeline: generate → explain → evaluate → plan
 │   ├── financial_research_agent/
 │   └── agents_eval/   #   eval harness: python -m agent.agents_eval.run
-├── trainer/           # Training scripts and configuration
-├── eval/              # Evaluating scripts and configuration
-├── server/            # FastAPI server for model serving
-├── client/            # Client applications
-├── pyproject.toml     # Project dependencies and configuration
+├── ml/                # Independent legacy ML project (own pyproject.toml and uv.lock)
+│   ├── trainer/       #   Training scripts and configuration
+│   ├── eval/          #   Legacy evaluation scripts
+│   ├── server/        #   FastAPI server for model serving
+│   ├── serve/         #   Modal model serving
+│   ├── web/           #   Chat applications
+│   ├── config/        #   Legacy configuration
+│   └── docs/          #   Chat app reference documents
+├── docs/ROADMAP.md    # Workflow roadmap
+├── pyproject.toml     # Runtime dependencies and configuration
 └── README.md          # Documentation
 ```
 
@@ -27,39 +33,46 @@ pip install uv
 
 2. Create a virtual environment and install dependencies:
 ```bash
-# Agents + dev tools (pytest, ruff)
+uv venv --python 3.11  # Python 3.10+ required
+source .venv/bin/activate
+# Runtime + dev tools (pytest, ruff); no model training dependencies
 uv pip install -e '.[dev]'
-# The train and serve extras conflict in pyproject.toml, so install one at a time:
-uv pip install -e '.[train]'   # or '.[serve]'
 ```
+
+The root wheel ships only `agent`. Install legacy ML dependencies separately from `ml/`;
+its `train` and `serve` extras conflict, so select one at a time. `uv run` creates `ml/.venv`
+without adding these dependencies to the runtime environment.
 
 ## Training
 
 To train the model:
 
 ```bash
-cd trainer
-python train.py
+cd ml
+uv run --extra train python trainer/train.py
 ```
 
 The training script will:
-- Load a pre-trained GPT-3 model
+- Load a pre-trained GPT-2 model
 - Fine-tune it on the Wikitext dataset
-- Save the model to the `output` directory
+- Save the model to the `ml/trainer/output` directory
 
 ## Serving
 
 To serve the trained model:
 
 ```bash
-cd server
-python serve.py
+cd ml
+uv run --extra serve python server/serve.py
 ```
 
 The server will:
-- Load the trained model from the `output` directory
+- Load the trained model from the `ml/trainer/output` directory
 - Start a FastAPI server on port 8000
 - Provide a `/chat` endpoint for generating responses
+
+For the legacy chat apps, see [ml/README_chat_app.md](ml/README_chat_app.md) and
+[ml/MODAL_DEPLOYMENT_GUIDE.md](ml/MODAL_DEPLOYMENT_GUIDE.md). Run their commands from `ml/`.
 
 ## API Usage
 
@@ -76,12 +89,17 @@ Send a POST request to `http://localhost:8000/chat` with the following JSON body
 
 - To install development dependencies:
 ```bash
-uv pip install -e .[dev]
+uv pip install -e '.[dev]'
 ```
 
 - To update dependencies:
 ```bash
-uv pip compile pyproject.toml -o requirements.txt
+uv lock --upgrade
+```
+
+- To run the full offline suite:
+```bash
+make test
 ```
 
 ## Multi-Agent Workflows
@@ -112,12 +130,12 @@ brew install direnv
 direnv allow
 ```
 
-Create a `.env` file in the root directory with the following variables:
+Set the API key in your environment before running a workflow:
+```bash
+export OPENAI_API_KEY=your_openai_api_key_here
 ```
-MODEL_PATH=./output
-MAX_LENGTH=100
-TEMPERATURE=0.7
-```
+
+Legacy chat and training settings are documented under `ml/`.
 
 ## Git Aliases (Optional)
 
