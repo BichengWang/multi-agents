@@ -25,10 +25,9 @@ def build_routes(
         return await StoreAgentManager(runner=runner).run(query)
 
     async def financial(query: str) -> Any:
-        # Uses the SDK directly (streaming + tools), so it ignores the injected runner.
         from agent.financial_research_agent.manager import FinancialResearchManager
 
-        return await FinancialResearchManager().run(query)
+        return await FinancialResearchManager(runner=runner).run(query)
 
     return [
         Route(
