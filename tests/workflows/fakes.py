@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -18,6 +19,21 @@ class FakeAgent:
 async def fake_runner(agent: FakeAgent, input_text: str) -> Any:
     agent.calls.append(input_text)
     return agent.respond(input_text)
+
+
+@dataclass
+class ConcurrentFakeRunner:
+    in_flight: int = 0
+    max_in_flight: int = 0
+
+    async def __call__(self, agent: FakeAgent, input_text: str) -> Any:
+        self.in_flight += 1
+        self.max_in_flight = max(self.max_in_flight, self.in_flight)
+        try:
+            await asyncio.sleep(0)
+            return await fake_runner(agent, input_text)
+        finally:
+            self.in_flight -= 1
 
 
 def scripted_evaluator(scores: list[float], pass_at: float = 8.0) -> FakeAgent:
