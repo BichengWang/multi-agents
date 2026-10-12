@@ -32,6 +32,12 @@ Iterative plan: each item is one PR, built on the shared patterns in `agent/work
   next revision, or stop with the best draft so far. Story CLI `--checkpoint` and shared CLI
   `--story-checkpoint` prompt between iterations; decisions are preserved in run artifacts.
 
+- **Unified financial execution + owned fan-out** — financial research now uses the injected
+  runner for every stage and optional analyst tool, returns a structured `WorkflowResult`, and
+  preserves reports, verification, nested calls and usage in shared CLI run artifacts. Searches
+  and `BestOfN` share bounded workers (default three), stable result ordering, and cancellation
+  cleanup. Failed research propagates instead of silently synthesizing from incomplete searches.
+
 ## Next
 
 1. **Debate / panel pattern** — multiple evaluator personas score in parallel, aggregated verdict

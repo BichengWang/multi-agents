@@ -1,5 +1,7 @@
 import asyncio
 
+from agents import trace
+
 from .manager import FinancialResearchManager
 
 
@@ -10,7 +12,8 @@ from .manager import FinancialResearchManager
 async def main() -> None:
     query = input("Enter a financial research query: ")
     mgr = FinancialResearchManager()
-    await mgr.run(query)
+    with trace("Financial research"):
+        await mgr.run(query)
 
 
 if __name__ == "__main__":

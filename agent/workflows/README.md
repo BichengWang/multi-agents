@@ -15,6 +15,36 @@ Every run returns a `WorkflowResult` with `final_output`, the `verdict` that cho
 best-of-n), `meta` (iterations, scores, chosen candidate), and `steps` — a full trace of every
 agent call with its input and output.
 
+## Execution boundaries
+
+All built-in specialist routes use the supplied `AgentRunner`, including financial searches,
+writing, verification, and analyst tools invoked by the financial writer. `RunTracker` therefore
+captures those nested calls as well as top-level stages. The shared CLI owns the enclosing SDK
+trace; workflows do not start a separate trace or bypass the runner with streamed SDK calls.
+
+`BestOfN` and financial searches share `map_concurrently(items, worker, max_concurrency=...)`.
+It uses a fixed-size worker pool, returns results in input order, and cancels and awaits all
+workers on failure or caller cancellation. Queued work does not start after a worker fails.
+Both workflows default to three concurrent workers; configure `BestOfN(max_concurrency=...)`
+or `FinancialResearchManager(max_concurrency=...)` to change the limit. For `BestOfN`, a worker
+owns a complete generate → evaluate candidate, and equal scores select the earliest candidate.
+
+## Financial research
+
+`FinancialResearchManager(runner=...)` returns a `WorkflowResult` like the other managers:
+
+- `final_output`: `FinancialReportData` (`short_summary`, `markdown_report`, `follow_up_questions`).
+- `steps`: planning, searches in plan order, any optional fundamentals/risk tool calls, writing,
+  and verification, with each call's input and structured output.
+- `meta["searches"]`: number of completed searches.
+- `meta["verification"]`: `VerificationResult` (`verified`, `issues`). This is an audit result,
+  not a quality-score `Verdict`; a rejected audit remains visible in the result and run artifact.
+
+The writer still decides whether to invoke specialist analysts. Their tools use the same runner
+and per-run trace as the rest of the workflow. Search or analyst failures propagate: research
+does not silently omit failed evidence and synthesize an apparently complete report. Status
+display cleanup runs on success, error, and cancellation.
+
 ## Evaluators
 
 `RefineLoop` and `BestOfN` need an evaluator with structured output exposing `score`, `passed`,

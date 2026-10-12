@@ -3,6 +3,7 @@
 from .artifacts import run_record, save_run, to_jsonable
 from .base import AgentRunner, StepRecord, Verdict, VerdictLike, WorkflowResult, default_runner
 from .checkpoint import CheckpointDecision, CheckpointHandler, RefineCheckpoint, cli_checkpoint
+from .concurrency import map_concurrently
 from .parallel import BestOfN
 from .refine import RefineLoop, default_revision_prompt
 from .router import Route, RouteDecision, RouteHandler, Router, default_classifier_prompt
@@ -32,6 +33,7 @@ __all__ = [
     "default_classifier_prompt",
     "default_revision_prompt",
     "default_runner",
+    "map_concurrently",
     "run_record",
     "save_run",
     "to_jsonable",

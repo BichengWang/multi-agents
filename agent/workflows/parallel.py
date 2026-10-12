@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from .base import AgentRunner, StepRecord, VerdictLike, WorkflowResult, agent_name, default_runner
+from .concurrency import map_concurrently
 
 
 @dataclass
@@ -20,10 +20,13 @@ class BestOfN:
     n: int = 3
     runner: AgentRunner = field(default=default_runner)
     variant_prompt: Optional[Callable[[str, int], str]] = None
+    max_concurrency: int = 3
 
     def __post_init__(self) -> None:
         if self.n < 1:
             raise ValueError("n must be >= 1")
+        if self.max_concurrency < 1:
+            raise ValueError("max_concurrency must be >= 1")
 
     async def _candidate(self, query: str, idx: int) -> tuple[list[StepRecord], Any, VerdictLike]:
         gen_input = self.variant_prompt(query, idx) if self.variant_prompt else query
@@ -36,7 +39,12 @@ class BestOfN:
         return steps, draft, verdict
 
     async def run(self, query: str) -> WorkflowResult:
-        candidates = await asyncio.gather(*(self._candidate(query, i) for i in range(1, self.n + 1)))
+        async def candidate(idx: int) -> tuple[list[StepRecord], Any, VerdictLike]:
+            return await self._candidate(query, idx)
+
+        candidates = await map_concurrently(
+            range(1, self.n + 1), candidate, max_concurrency=self.max_concurrency
+        )
         result = WorkflowResult(final_output=None)
         for steps, _, _ in candidates:
             result.steps.extend(steps)

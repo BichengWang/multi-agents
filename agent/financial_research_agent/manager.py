@@ -1,135 +1,105 @@
 from __future__ import annotations
 
-import asyncio
-import time
-from collections.abc import Sequence
+from typing import Any
 
 from rich.console import Console
 
-from agents import Runner, RunResult, custom_span, gen_trace_id, trace
+from agents import function_tool
+
+from agent.workflows import AgentRunner, StepRecord, WorkflowResult, default_runner, map_concurrently
+from agent.workflows.base import agent_name
 
 from .agents.financials_agent import financials_agent
-from .agents.planner_agent import FinancialSearchItem, FinancialSearchPlan, planner_agent
+from .agents.planner_agent import FinancialSearchItem, planner_agent
 from .agents.risk_agent import risk_agent
 from .agents.search_agent import search_agent
-from .agents.verifier_agent import VerificationResult, verifier_agent
-from .agents.writer_agent import FinancialReportData, writer_agent
+from .agents.verifier_agent import verifier_agent
+from .agents.writer_agent import writer_agent
 from .printer import Printer
 
 
-async def _summary_extractor(run_result: RunResult) -> str:
-    """Custom output extractor for sub‑agents that return an AnalysisSummary."""
-    # The financial/risk analyst agents emit an AnalysisSummary with a `summary` field.
-    # We want the tool call to return just that summary text so the writer can drop it inline.
-    return str(run_result.final_output.summary)
-
-
 class FinancialResearchManager:
-    """
-    Orchestrates the full flow: planning, searching, sub‑analysis, writing, and verification.
-    """
+    """Plan, search, write with optional analyst tools, and verify through one runner."""
 
-    def __init__(self) -> None:
-        self.console = Console()
-        self.printer = Printer(self.console)
+    def __init__(
+        self,
+        runner: AgentRunner = default_runner,
+        *,
+        max_concurrency: int = 3,
+    ) -> None:
+        if max_concurrency < 1:
+            raise ValueError("max_concurrency must be >= 1")
+        self.runner = runner
+        self.max_concurrency = max_concurrency
 
-    async def run(self, query: str) -> None:
-        trace_id = gen_trace_id()
-        with trace("Financial research trace", trace_id=trace_id):
-            self.printer.update_item(
-                "trace_id",
-                f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
-                is_done=True,
-                hide_checkmark=True,
-            )
-            self.printer.update_item("start", "Starting financial research...", is_done=True)
-            search_plan = await self._plan_searches(query)
-            search_results = await self._perform_searches(search_plan)
-            report = await self._write_report(query, search_results)
-            verification = await self._verify_report(report)
+    async def _call(
+        self, result: WorkflowResult, name: str, agent: Any, input_text: str
+    ) -> Any:
+        output = await self.runner(agent, input_text)
+        result.steps.append(StepRecord(name, agent_name(agent), input_text, output))
+        return output
 
-            final_report = f"Report summary\n\n{report.short_summary}"
-            self.printer.update_item("final_report", final_report, is_done=True)
-
-            self.printer.end()
-
-        # Print to stdout
-        print("\n\n=====REPORT=====\n\n")
-        print(f"Report:\n{report.markdown_report}")
-        print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
-        print("\n".join(report.follow_up_questions))
-        print("\n\n=====VERIFICATION=====\n\n")
-        print(verification)
-
-    async def _plan_searches(self, query: str) -> FinancialSearchPlan:
-        self.printer.update_item("planning", "Planning searches...")
-        result = await Runner.run(planner_agent, f"Query: {query}")
-        self.printer.update_item(
-            "planning",
-            f"Will perform {len(result.final_output.searches)} searches",
-            is_done=True,
-        )
-        return result.final_output_as(FinancialSearchPlan)
-
-    async def _perform_searches(self, search_plan: FinancialSearchPlan) -> Sequence[str]:
-        with custom_span("Search the web"):
-            self.printer.update_item("searching", "Searching...")
-            tasks = [asyncio.create_task(self._search(item)) for item in search_plan.searches]
-            results: list[str] = []
-            num_completed = 0
-            for task in asyncio.as_completed(tasks):
-                result = await task
-                if result is not None:
-                    results.append(result)
-                num_completed += 1
-                self.printer.update_item(
-                    "searching", f"Searching... {num_completed}/{len(tasks)} completed"
-                )
-            self.printer.mark_item_done("searching")
-            return results
-
-    async def _search(self, item: FinancialSearchItem) -> str | None:
-        input_data = f"Search term: {item.query}\nReason: {item.reason}"
+    async def run(self, query: str) -> WorkflowResult:
+        # State is per run: a reusable manager must not mix traces or tools between requests.
+        result = WorkflowResult(final_output=None)
+        printer = Printer(Console())
         try:
-            result = await Runner.run(search_agent, input_data)
-            return str(result.final_output)
-        except Exception:
-            return None
+            printer.update_item("planning", "Planning searches...")
+            plan = await self._call(result, "plan", planner_agent, f"Query: {query}")
+            printer.update_item(
+                "planning", f"Will perform {len(plan.searches)} searches", is_done=True
+            )
+            printer.update_item("searching", "Searching...")
+            completed = 0
 
-    async def _write_report(self, query: str, search_results: Sequence[str]) -> FinancialReportData:
-        # Expose the specialist analysts as tools so the writer can invoke them inline
-        # and still produce the final FinancialReportData output.
-        fundamentals_tool = financials_agent.as_tool(
-            tool_name="fundamentals_analysis",
-            tool_description="Use to get a short write‑up of key financial metrics",
-            custom_output_extractor=_summary_extractor,
-        )
-        risk_tool = risk_agent.as_tool(
-            tool_name="risk_analysis",
-            tool_description="Use to get a short write‑up of potential red flags",
-            custom_output_extractor=_summary_extractor,
-        )
-        writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
-        self.printer.update_item("writing", "Thinking about report...")
-        input_data = f"Original query: {query}\nSummarized search results: {search_results}"
-        result = Runner.run_streamed(writer_with_tools, input_data)
-        update_messages = [
-            "Planning report structure...",
-            "Writing sections...",
-            "Finalizing report...",
-        ]
-        last_update = time.time()
-        next_message = 0
-        async for _ in result.stream_events():
-            if time.time() - last_update > 5 and next_message < len(update_messages):
-                self.printer.update_item("writing", update_messages[next_message])
-                next_message += 1
-                last_update = time.time()
-        self.printer.mark_item_done("writing")
-        return result.final_output_as(FinancialReportData)
+            async def search(item: FinancialSearchItem) -> StepRecord:
+                nonlocal completed
+                input_text = f"Search term: {item.query}\nReason: {item.reason}"
+                output = await self.runner(search_agent, input_text)
+                completed += 1
+                printer.update_item(
+                    "searching", f"Searching... {completed}/{len(plan.searches)} completed"
+                )
+                return StepRecord("search", agent_name(search_agent), input_text, output)
 
-    async def _verify_report(self, report: FinancialReportData) -> VerificationResult:
-        self.printer.update_item("verifying", "Verifying report...")
-        result = await Runner.run(verifier_agent, report.markdown_report)
-        self.printer.mark_item_done("verifying")
-        return result.final_output_as(VerificationResult)
+            searches = await map_concurrently(
+                plan.searches, search, max_concurrency=self.max_concurrency
+            )
+            result.steps.extend(searches)
+            printer.mark_item_done("searching")
+
+            @function_tool(failure_error_function=None)
+            async def fundamentals_analysis(input: str) -> str:
+                """Get a short write-up of key financial metrics from research evidence."""
+                analysis = await self._call(result, "fundamentals", financials_agent, input)
+                return str(analysis.summary)
+
+            @function_tool(failure_error_function=None)
+            async def risk_analysis(input: str) -> str:
+                """Get a short write-up of potential red flags from research evidence."""
+                analysis = await self._call(result, "risk", risk_agent, input)
+                return str(analysis.summary)
+
+            writer = writer_agent.clone(tools=[fundamentals_analysis, risk_analysis])
+            printer.update_item("writing", "Writing report...")
+            input_text = (
+                f"Original query: {query}\n"
+                f"Summarized search results: {[str(step.output) for step in searches]}"
+            )
+            report = await self._call(result, "write", writer, input_text)
+            printer.mark_item_done("writing")
+            printer.update_item("verifying", "Verifying report...")
+            verification = await self._call(
+                result, "verify", verifier_agent, report.markdown_report
+            )
+            printer.mark_item_done("verifying")
+            result.final_output = report
+            result.meta.update(searches=len(searches), verification=verification)
+        finally:
+            printer.end()
+
+        print(f"\n\n=====REPORT SUMMARY=====\n\n{report.short_summary}")
+        print(f"\n\n=====REPORT=====\n\n{report.markdown_report}")
+        print("\n\n=====FOLLOW UP QUESTIONS=====\n\n" + "\n".join(report.follow_up_questions))
+        print(f"\n\n=====VERIFICATION=====\n\n{verification}")
+        return result
