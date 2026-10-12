@@ -1,0 +1,13 @@
+[
+  {"number": 32, "branch": "claude/sweet-lamport-fsvkpy", "merged": true},
+  {"number": 33, "branch": "claude/sweet-edison-0l0rl3", "merged": false},
+  {"number": 34, "branch": "claude/sweet-edison-0l0rl3-core", "merged": false},
+  {"number": 35, "branch": "claude/sweet-edison-0l0rl3-eval", "merged": false},
+  {"number": 36, "branch": "claude/sweet-edison-0l0rl3-docs", "merged": false},
+  {"number": 37, "branch": "agents/handoffs-model-config", "merged": true},
+  {"number": 38, "branch": "agents/eval-harness", "merged": true},
+  {"number": 39, "branch": "agents/store-sequential", "merged": true},
+  {"number": 40, "branch": "feature/router-workflow", "merged": true},
+  {"number": 41, "branch": "agents/run-artifacts", "merged": true},
+  {"number": 43, "branch": "agents/refine-checkpoint", "merged": true}
+]
