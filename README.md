@@ -104,8 +104,9 @@ make test
 
 ## Multi-Agent Workflows
 
-Shared orchestration patterns (sequential, refine loop, best-of-n) live in
-[`agent/workflows`](agent/workflows/README.md); the story agent is the reference user:
+Shared orchestration patterns (sequential, refine loop, best-of-n, routing) live in
+[`agent/workflows`](agent/workflows/README.md). Story, store, and financial routes share an injectable
+runner and return `WorkflowResult`, so the shared CLI saves outputs and agent calls for every route:
 
 ```bash
 python -m agent.main "A heist on the moon"   # triage agent picks story / store / financial
@@ -117,6 +118,12 @@ make test-workflows  # offline tests, no API keys
 Use `--story-checkpoint` to inspect rejected story drafts before another revision: press Enter to
 continue, type feedback to steer the next draft, or enter `/stop` to finish with the best draft.
 The dedicated story entrypoint exposes the same option as `--checkpoint` in refine mode.
+
+Financial artifacts include the structured report, verification findings, search evidence, and
+any analyst tool calls. Financial searches and best-of-n candidates use bounded concurrency
+(default three); failed or cancelled fan-out cancels and awaits sibling workers. Research failures
+stop synthesis rather than silently dropping evidence. See the workflow guide for configuration
+and result contracts.
 
 Planned next steps: [docs/ROADMAP.md](docs/ROADMAP.md).
 
