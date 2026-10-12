@@ -26,8 +26,7 @@ class FinancialReportData(BaseModel):
     """Suggested follow‑up questions for further research."""
 
 
-# Note: We will attach handoffs to specialist analyst agents at runtime in the manager.
-# This shows how an agent can use handoffs to delegate to specialized subagents.
+# The manager attaches analyst tools that share its runner and step trace.
 writer_agent = Agent(
     name="FinancialWriterAgent",
     instructions=WRITER_PROMPT,
