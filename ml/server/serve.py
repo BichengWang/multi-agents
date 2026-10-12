@@ -22,7 +22,7 @@ class ChatResponse(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     global model, tokenizer
-    model_path = "./output"  # Path to your trained model
+    model_path = "./trainer/output"  # Path to your trained model
     model = AutoModelForCausalLM.from_pretrained(model_path)
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     if torch.cuda.is_available():

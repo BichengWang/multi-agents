@@ -2,11 +2,14 @@
 
 This guide will help you deploy your LLM to Modal and connect it to your chat application.
 
+Run the commands below from `ml/` (`cd ml` from the repository root), using its separate
+virtual environment and `serve` extra.
+
 ## Current Status ✅
 
 Your chat application is **working with mock responses**! You can test the interface at:
-- **Main app**: http://localhost:8501 (run: `streamlit run chat_app_qwen.py`)
-- **Web app**: http://localhost:8501 (run: `streamlit run web/chat_app_qwen.py`)
+- **Main app**: http://localhost:8501 (run: `uv run --extra serve streamlit run chat_app_qwen.py`)
+- **Web app**: http://localhost:8501 (run: `uv run --extra serve streamlit run web/chat_app_qwen.py`)
 
 ## Step 1: Set Up Modal Authentication
 
@@ -14,21 +17,18 @@ Your chat application is **working with mock responses**! You can test the inter
 
 2. **Install and authenticate Modal**:
    ```bash
-   # Modal is already installed, now authenticate
-   modal setup
+   uv sync --extra serve
+   uv run --extra serve modal setup
    ```
    This will open a browser window for authentication.
 
 ## Step 2: Deploy Your LLM
 
-1. **Navigate to the serve directory**:
-   ```bash
-   cd serve
-   ```
+1. **Ensure `ml/` is your current directory**.
 
 2. **Deploy the LLM service**:
    ```bash
-   modal deploy serve_llm.py
+   uv run --extra serve modal deploy serve/serve_llm.py
    ```
 
 3. **Copy the deployment URL** from the output. It will look like:
@@ -81,7 +81,7 @@ Your chat application is **working with mock responses**! You can test the inter
    - Verify the URL format: `https://username--app-name-function-name.modal.run`
 
 2. **Authentication Errors**:
-   - Run `modal setup` again
+   - Run `uv run --extra serve modal setup` again
    - Check your Modal account status
 
 3. **Deployment Fails**:
@@ -103,7 +103,7 @@ The current deployment uses `facebook/opt-125m` for testing. To use a different 
 
 2. **Redeploy**:
    ```bash
-   modal deploy serve_llm.py
+   uv run --extra serve modal deploy serve/serve_llm.py
    ```
 
 ## Advanced Configuration
