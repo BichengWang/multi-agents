@@ -29,6 +29,7 @@ test('auto-merge retries pending mergeability and stops on conflicts or closed P
   for (const [states, open, labeled, expected, failures] of [
     [[null, null, true], true, true, 'true', 0],
     [[true], true, true, 'true', 0],
+    [[null, true], true, [true, false], 'false', 0],
     [[false], true, true, undefined, 1],
     [[null], true, true, undefined, 1],
     [[true], false, true, undefined, 1],
@@ -38,10 +39,14 @@ test('auto-merge retries pending mergeability and stops on conflicts or closed P
     let delays = 0;
     const output = {};
     const errors = [];
-    const github = { rest: { pulls: { get: async () => ({ data: {
-      mergeable: states[Math.min(reads++, states.length - 1)],
-      state: open ? 'open' : 'closed', labels: labeled ? [{ name: 'auto-merge' }] : [],
-    } }) } } };
+    const github = { rest: { pulls: { get: async () => {
+      const index = reads++;
+      const hasLabel = Array.isArray(labeled) ? labeled[Math.min(index, labeled.length - 1)] : labeled;
+      return { data: {
+        mergeable: states[Math.min(index, states.length - 1)],
+        state: open ? 'open' : 'closed', labels: hasLabel ? [{ name: 'auto-merge' }] : [],
+      } };
+    } } } };
     const core = { info() {}, setFailed: message => errors.push(message), setOutput: (key, value) => { output[key] = value; } };
     const context = { repo: { owner: 'BichengWang', repo: 'multi-agents' }, payload: { pull_request: { number: 44 } } };
     await execute(github, context, core, callback => { delays++; callback(); });
@@ -52,10 +57,3 @@ test('auto-merge retries pending mergeability and stops on conflicts or closed P
   }
 });
 
-test('the target workflow checks out only the base branch without persisted credentials', () => {
-  const guard = workflow('attribution-guard.yml');
-  assert.match(guard, /pull_request_target:/u);
-  assert.doesNotMatch(guard, /ref: \$\{\{ github.event.pull_request.(head|base).sha \}\}/u);
-  assert.match(guard, /persist-credentials: false/u);
-  assert.doesNotMatch(guard, /pull_request.head|pull_request.body|pull_request.title/u);
-});

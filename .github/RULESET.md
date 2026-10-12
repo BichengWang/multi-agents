@@ -65,3 +65,13 @@ Run the replay locally with `node --test .github/scripts/*.test.cjs` in a full
 checkout. It checks the last 30 commits, merge-subject branches and local refs.
 The branch fixture preserves PR metadata read from the public API for deleted
 or squashed branches (#32 merged; #33–#36 were closed and replaced).
+
+## Pull request format
+
+Use `type(scope): short summary` titles, for example `feat(workspace): add workspace switching`.
+The repository template asks for Summary, Verification, and Risks; record only checks actually
+run and call out compatibility or rollout changes. Conventional title syntax is guidance, not
+an additional attribution-guard rule.
+
+Automatic merging remains opt-in through the `auto-merge` label. The mergeability polling step
+rechecks the latest labels before enabling it, so removing the label during polling stops opt-in.

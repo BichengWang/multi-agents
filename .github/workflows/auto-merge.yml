@@ -43,6 +43,11 @@ jobs:
               await new Promise(resolve => setTimeout(resolve, 3000));
               pr = await github.rest.pulls.get(params);
             }
+            if (!pr.data.labels.some(label => label.name === 'auto-merge')) {
+              core.info('The "auto-merge" label was removed. Skipping automerge.');
+              core.setOutput('should_automerge', 'false');
+              return;
+            }
             if (pr.data.mergeable === null) {
               core.setFailed('Mergeability is still pending after retries. Rerun this workflow.');
               return;
