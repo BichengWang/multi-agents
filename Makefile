@@ -47,7 +47,7 @@ install-uv:
 
 .PHONY: venv
 venv:
-	python -m venv .venv
+	uv venv
 	@echo "Virtual environment created. Please run: source .venv/bin/activate"
 
 .PHONY: install
@@ -60,25 +60,23 @@ install-dev:
 
 .PHONY: train
 train:
-	cd trainer && python train.py
+	cd ml && uv run --extra train python trainer/train.py
 
 .PHONY: serve
 serve:
-	cd server && python serve.py
+	cd ml && uv run --extra serve python server/serve.py
 
 .PHONY: update-deps
 update-deps:
-	uv pip compile pyproject.toml -o requirements.txt
+	uv lock --upgrade
 
 .PHONY: bootstrap
 bootstrap:
-	pip3 install -U pip>=25.0.1 setuptools>=75.8.0 wheel pip-tools>=44.0.0
-	pip3 install --no-deps -r requirements.txt --no-cache-dir
-	pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu123
+	uv sync --extra dev
 
 .PHONY: compile
 compile:
-	pip-compile requirements.in
+	uv lock
 
 .PHONY: env
 env:
