@@ -11,14 +11,16 @@ class Printer:
     manager as it orchestrates planning, search and writing.
     """
 
-    def __init__(self, console: Console) -> None:
-        self.live = Live(console=console)
+    def __init__(self, console: Console, *, enabled: bool = True) -> None:
+        self.live = Live(console=console) if enabled else None
         self.items: dict[str, tuple[str, bool]] = {}
         self.hide_done_ids: set[str] = set()
-        self.live.start()
+        if self.live is not None:
+            self.live.start()
 
     def end(self) -> None:
-        self.live.stop()
+        if self.live is not None:
+            self.live.stop()
 
     def hide_done_checkmark(self, item_id: str) -> None:
         self.hide_done_ids.add(item_id)
@@ -36,6 +38,8 @@ class Printer:
         self.flush()
 
     def flush(self) -> None:
+        if self.live is None:
+            return
         renderables: list[Any] = []
         for item_id, (content, is_done) in self.items.items():
             if is_done:

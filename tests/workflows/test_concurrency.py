@@ -125,3 +125,33 @@ def test_best_of_n_bounds_calls_and_breaks_score_ties_in_candidate_order():
         assert peak == 2 and active == 0
 
     asyncio.run(scenario())
+
+
+def test_best_of_n_candidate_cancellation_is_not_a_recoverable_failure():
+    async def scenario():
+        sibling_started = asyncio.Event()
+        cleaned = asyncio.Event()
+        started = []
+
+        async def runner(agent, text):
+            started.append(text)
+            if text == "q#1":
+                await sibling_started.wait()
+                raise asyncio.CancelledError()
+            sibling_started.set()
+            try:
+                await asyncio.Future()
+            finally:
+                await asyncio.sleep(0)
+                cleaned.set()
+
+        workflow = BestOfN(
+            object(), object(), n=10, runner=runner, max_concurrency=2,
+            variant_prompt=lambda q, i: f"{q}#{i}",
+        )
+        with pytest.raises(asyncio.CancelledError):
+            await workflow.run("q")
+        assert cleaned.is_set()
+        assert started == ["q#1", "q#2"]
+
+    asyncio.run(scenario())

@@ -1,5 +1,6 @@
 import asyncio
 import json
+
 from contextlib import nullcontext
 
 import pytest
@@ -17,7 +18,8 @@ from agent.financial_research_agent.agents.risk_agent import AnalysisSummary as 
 from agent.financial_research_agent.agents.verifier_agent import VerificationResult  # noqa: E402
 from agent.financial_research_agent.agents.writer_agent import FinancialReportData  # noqa: E402
 from agent.financial_research_agent.manager import FinancialResearchManager  # noqa: E402
-from agent.workflows import RunTracker  # noqa: E402
+from agent.triage.classifier_agent import classifier_agent  # noqa: E402
+from agent.workflows import RouteDecision, RunTracker  # noqa: E402
 
 
 PLAN = FinancialSearchPlan(searches=[
@@ -42,6 +44,8 @@ async def invoke_analysis(tool):
 
 
 async def financial_runner(agent, input_text):
+    if agent is classifier_agent:
+        return RouteDecision(route="financial", confidence=0.9, reason="company analysis")
     if agent.name == "FinancialPlannerAgent":
         return PLAN
     if agent.name == "FinancialSearchAgent":
@@ -58,15 +62,17 @@ async def financial_runner(agent, input_text):
     raise AssertionError(f"Unexpected agent: {agent.name}")
 
 
-def test_shared_cli_saves_financial_report_verification_and_nested_analysis(monkeypatch, tmp_path):
+@pytest.mark.parametrize("forced", [False, True])
+def test_shared_cli_saves_financial_report_verification_and_nested_analysis(monkeypatch, tmp_path, forced):
     import agent.main as entrypoint
 
     tracker = RunTracker(base=financial_runner)
     monkeypatch.setattr(entrypoint, "RunTracker", lambda: tracker)
     monkeypatch.setattr("agents.trace", lambda _: nullcontext())
-    monkeypatch.setattr(
-        "sys.argv", ["agent", "company", "--route", "financial", "--runs-dir", str(tmp_path)]
-    )
+    args = ["agent", "company", "--runs-dir", str(tmp_path)]
+    if forced:
+        args += ["--route", "financial"]
+    monkeypatch.setattr("sys.argv", args)
     asyncio.run(entrypoint.main())
 
     record = json.loads(next(tmp_path.glob("*.json")).read_text())
@@ -79,7 +85,7 @@ def test_shared_cli_saves_financial_report_verification_and_nested_analysis(monk
         "fundamentals": {"summary": "Revenue growth: 12%."},
         "risk": {"summary": "Customer concentration needs quantification."},
     }
-    assert record["totals"]["calls"] == 7
+    assert record["totals"]["calls"] == (7 if forced else 8)
     assert record["totals"]["errors"] == 0
 
 

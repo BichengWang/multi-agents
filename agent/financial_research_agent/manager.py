@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from typing import Any
 
 from rich.console import Console
@@ -26,11 +27,13 @@ class FinancialResearchManager:
         runner: AgentRunner = default_runner,
         *,
         max_concurrency: int = 3,
+        show_progress: bool | None = None,
     ) -> None:
         if max_concurrency < 1:
             raise ValueError("max_concurrency must be >= 1")
         self.runner = runner
         self.max_concurrency = max_concurrency
+        self.show_progress = show_progress
 
     async def _call(
         self, result: WorkflowResult, name: str, agent: Any, input_text: str
@@ -42,7 +45,11 @@ class FinancialResearchManager:
     async def run(self, query: str) -> WorkflowResult:
         # State is per run: a reusable manager must not mix traces or tools between requests.
         result = WorkflowResult(final_output=None)
-        printer = Printer(Console())
+        console = Console()
+        printer = Printer(
+            console,
+            enabled=console.is_terminal if self.show_progress is None else self.show_progress,
+        )
         try:
             printer.update_item("planning", "Planning searches...")
             plan = await self._call(result, "plan", planner_agent, f"Query: {query}")

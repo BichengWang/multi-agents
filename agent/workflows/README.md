@@ -28,6 +28,9 @@ workers on failure or caller cancellation. Queued work does not start after a wo
 Both workflows default to three concurrent workers; configure `BestOfN(max_concurrency=...)`
 or `FinancialResearchManager(max_concurrency=...)` to change the limit. For `BestOfN`, a worker
 owns a complete generate → evaluate candidate, and equal scores select the earliest candidate.
+Ordinary `BestOfN` candidate failures are collected rather than propagated: failed candidates have
+`None` in `meta["scores"]` and an entry in `meta["failures"]`; successful candidates remain eligible.
+The run raises if all candidates fail. Cancellation is never treated as a candidate score.
 
 ## Financial research
 
@@ -44,6 +47,7 @@ The writer still decides whether to invoke specialist analysts. Their tools use 
 and per-run trace as the rest of the workflow. Search or analyst failures propagate: research
 does not silently omit failed evidence and synthesize an apparently complete report. Status
 display cleanup runs on success, error, and cancellation.
+Progress is enabled automatically on a terminal; `show_progress=True|False` explicitly overrides it.
 
 ## Evaluators
 
