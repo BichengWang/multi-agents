@@ -7,7 +7,6 @@ JSON file per run and can be compared to see whether a prompt or model change he
 
 from __future__ import annotations
 
-import asyncio
 import json
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import asdict, dataclass, field
@@ -17,7 +16,7 @@ from typing import Any, Protocol
 
 from agents import Agent
 
-from agent.workflows import AgentRunner, Verdict, default_runner
+from agent.workflows import AgentRunner, Verdict, default_runner, map_concurrently
 
 Workflow = Callable[[str], Awaitable[str]]
 
@@ -183,24 +182,27 @@ async def run_eval(
     *,
     concurrency: int = 4,
 ) -> EvalReport:
-    semaphore = asyncio.Semaphore(concurrency)
+    """Evaluate cases in input order using a bounded pool of owned workers.
+
+    Workflow and check errors are recorded per case. Cancellation cancels and awaits
+    all active workers before returning, without starting the remaining cases.
+    """
 
     async def _one(case: EvalCase) -> CaseResult:
-        async with semaphore:
+        try:
+            output = await workflow(case.input)
+        except Exception as exc:
+            return CaseResult(case.id, "", [], error=f"{type(exc).__name__}: {exc}")
+        check_results = []
+        for check in checks:
             try:
-                output = await workflow(case.input)
+                check_results.append(await check(case, output))
             except Exception as exc:
-                return CaseResult(case.id, "", [], error=f"{type(exc).__name__}: {exc}")
-            check_results = []
-            for check in checks:
-                try:
-                    check_results.append(await check(case, output))
-                except Exception as exc:
-                    check_results.append(CheckResult(check.name, 0.0, False, f"check error: {exc}"))
-            return CaseResult(case.id, output, check_results)
+                check_results.append(CheckResult(check.name, 0.0, False, f"check error: {exc}"))
+        return CaseResult(case.id, output, check_results)
 
-    results = await asyncio.gather(*(_one(case) for case in cases))
-    return EvalReport(name, datetime.now(timezone.utc).isoformat(), list(results))
+    results = await map_concurrently(cases, _one, max_concurrency=concurrency)
+    return EvalReport(name, datetime.now(timezone.utc).isoformat(), results)
 
 
 def compare(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:

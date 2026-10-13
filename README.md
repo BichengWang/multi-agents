@@ -17,13 +17,15 @@ required by [`pyproject.toml`](pyproject.toml); the example below uses Python 3.
 ```bash
 python3 -m pip install uv
 uv venv --python 3.11
-uv sync --extra dev
+uv sync --locked --extra dev
 source .venv/bin/activate
 ```
 
 The root runtime depends on `openai-agents`, Pydantic, and Rich. The `dev` extra
 adds pytest and Ruff; it does not install PyTorch, Transformers, Streamlit, or other
-ML dependencies. `make bootstrap` also runs `uv sync --extra dev`.
+ML dependencies. `make bootstrap` also runs `uv sync --locked --extra dev`, using
+the checked-in lockfile. Run `make lock` after editing dependencies, or
+`make update-deps` to upgrade them intentionally.
 
 ### Credentials and model configuration
 
@@ -118,9 +120,12 @@ python -m agent.agents_eval.run --workflow story_refine \
   --dataset agent/agents_eval/datasets/story.jsonl
 
 # Offline checks: no API keys needed.
+make check
+
+# Focused checks.
 make test-workflows
 make lint
-python -m pytest tests -q
+make test FILE_NAME=test_eval_harness.py TEST_NAME=concurrency
 ```
 
 The evaluation CLI registers `story_single`, `story_refine`, and `story_best_of_n`.
@@ -128,8 +133,12 @@ It writes reports under `agent/agents_eval/results/`; `--baseline` compares agai
 an existing report. `--no-judge` skips only the LLM judge, not story generation.
 See the [async evaluation guide](agent/agents_eval/README.md#async-workflow-evals-recommended).
 
-`make test` runs cleanup, lint, and the root offline test suite. It does not run the
-legacy ML tests. See the [Makefile](Makefile) for targets and
+`make test` runs lint and the root offline test suite using the locked project
+environment; shell activation is optional. `make check` also runs the offline
+GitHub workflow and attribution tests and requires Node.js 22+. CI runs the same
+Python checks on Python 3.10 and 3.11. `make clean` explicitly removes project
+caches and reports without traversing virtual environments. These checks do not
+run the legacy ML tests. See the [Makefile](Makefile) for targets and
 [docs/ROADMAP.md](docs/ROADMAP.md) for workflow plans.
 
 ## Legacy ML experiments

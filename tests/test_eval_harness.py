@@ -2,6 +2,9 @@
 
 import asyncio
 import json
+import sys
+
+import pytest
 
 from agent.agents_eval.harness import (
     EvalCase,
@@ -12,7 +15,7 @@ from agent.agents_eval.harness import (
     load_cases,
     run_eval,
 )
-from agent.agents_eval.run import WORKFLOWS, story_workflow
+from agent.agents_eval.run import WORKFLOWS, main, story_workflow
 from agent.workflows import Verdict
 from tests.workflows.fakes import FakeAgent, counting_generator, fake_runner, scripted_evaluator
 
@@ -44,6 +47,105 @@ def test_run_eval_scores_cases_and_isolates_errors():
         "pass_rate": 0.5,
         "mean_scores": {"length": 1.0, "keywords": 1.0},
     }
+
+
+@pytest.mark.parametrize("concurrency", [0, -1])
+def test_run_eval_rejects_nonpositive_concurrency(concurrency):
+    async def scenario():
+        with pytest.raises(ValueError, match="concurrency must be >= 1"):
+            await asyncio.wait_for(
+                run_eval("demo", _workflow, CASES, [], concurrency=concurrency), timeout=1
+            )
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("concurrency", [0, -1])
+def test_cli_rejects_nonpositive_concurrency_before_loading_dataset(monkeypatch, capsys, concurrency):
+    monkeypatch.setattr(sys, "argv", [
+        "eval", "--workflow", "story_single", "--dataset", "missing.jsonl",
+        "--concurrency", str(concurrency),
+    ])
+
+    with pytest.raises(SystemExit) as exc:
+        main()
+
+    assert exc.value.code == 2
+    assert "--concurrency must be >= 1" in capsys.readouterr().err
+
+
+def test_run_eval_bounds_work_and_preserves_dataset_order():
+    async def scenario():
+        active = peak = 0
+        second_finished = asyncio.Event()
+
+        async def workflow(query):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            try:
+                if query == "0":
+                    await second_finished.wait()
+                else:
+                    await asyncio.sleep(0)
+                if query == "1":
+                    second_finished.set()
+                return query
+            finally:
+                active -= 1
+
+        cases = [EvalCase(id=str(i), input=str(i)) for i in range(10)]
+        report = await run_eval("demo", workflow, cases, [LengthCheck()], concurrency=2)
+
+        assert [result.case_id for result in report.results] == [case.id for case in cases]
+        assert [result.output for result in report.results] == [case.input for case in cases]
+        assert all(result.passed for result in report.results)
+        assert peak == 2 and active == 0
+
+    asyncio.run(asyncio.wait_for(scenario(), timeout=1))
+
+
+def test_run_eval_case_cancellation_drains_siblings_and_stops_queued_work():
+    async def scenario():
+        sibling_started = asyncio.Event()
+        cleaned = asyncio.Event()
+        started = []
+
+        async def workflow(query):
+            started.append(query)
+            if query == "0":
+                await sibling_started.wait()
+                raise asyncio.CancelledError()
+            sibling_started.set()
+            try:
+                await asyncio.Future()
+            finally:
+                await asyncio.sleep(0)
+                cleaned.set()
+
+        cases = [EvalCase(id=str(i), input=str(i)) for i in range(10)]
+        with pytest.raises(asyncio.CancelledError):
+            await run_eval("demo", workflow, cases, [], concurrency=2)
+
+        assert cleaned.is_set()
+        assert started == ["0", "1"]
+
+    asyncio.run(asyncio.wait_for(scenario(), timeout=1))
+
+
+def test_run_eval_isolates_check_errors():
+    class BrokenCheck:
+        name = "broken"
+
+        async def __call__(self, case, output):
+            raise RuntimeError("check failed")
+
+    report = asyncio.run(run_eval("demo", _workflow, CASES[:1], [BrokenCheck(), LengthCheck()]))
+
+    assert not report.results[0].passed
+    assert report.results[0].checks[0].score == 0
+    assert report.results[0].checks[0].detail == "check error: check failed"
+    assert report.results[0].checks[1].passed
 
 
 def test_keyword_check_partial_match():
