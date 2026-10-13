@@ -11,16 +11,20 @@ permissions:
 jobs:
   workflows-tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install uv
-          uv pip install --system -e '.[dev]'
-      - name: Lint
-        run: ruff check agent tests
-      - name: Run offline tests
-        run: python -m pytest tests -q
+          python -m pip install uv
+          uv sync --locked --extra dev
+      - name: Run lint and offline tests
+        run: make test

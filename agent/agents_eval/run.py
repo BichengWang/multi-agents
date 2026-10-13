@@ -46,9 +46,11 @@ def main() -> None:
     parser.add_argument("--dataset", required=True, help="JSONL file of EvalCase records")
     parser.add_argument("--output-dir", default="agent/agents_eval/results")
     parser.add_argument("--baseline", help="Saved report JSON to compare against")
-    parser.add_argument("--concurrency", type=int, default=4)
+    parser.add_argument("--concurrency", type=int, default=4, help="Maximum active cases (must be >= 1; default: 4)")
     parser.add_argument("--no-judge", action="store_true", help="Skip the LLM judge (deterministic checks only)")
     args = parser.parse_args()
+    if args.concurrency < 1:
+        parser.error("--concurrency must be >= 1")
 
     checks = [LengthCheck(min_chars=200), KeywordCheck(min_ratio=0.5)]
     if not args.no_judge:

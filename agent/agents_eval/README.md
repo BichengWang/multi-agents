@@ -13,6 +13,11 @@ A flexible framework for evaluating multiple agents using multiple evaluators in
 - **Checks**: `LengthCheck` and `KeywordCheck` are deterministic and free. `LLMJudgeCheck` grades against the task and rubric with a `Verdict`-typed judge agent (model: `AGENT_MODEL_JUDGE`; runner injectable for offline tests).
 - **Report**: pass rate and mean score per check, saved as one JSON file per run. `--baseline` prints the deltas against an earlier report.
 
+`--concurrency` limits active cases to a positive number (default: 4). Evaluation
+uses a bounded worker pool and keeps results in dataset order. Workflow and check
+errors remain isolated to their case; cancellation cancels and awaits all active
+workers before returning and leaves queued cases unstarted.
+
 ```bash
 # Workflows: story_single, story_refine, story_best_of_n (the three SimpleStoryManager modes)
 # Baseline: single-shot generation
@@ -163,4 +168,4 @@ See `example_usage.py` for a complete working example of the framework.
 4. **Results Analysis**:
    - Review both individual results and summaries
    - Look for patterns in agent performance
-   - Consider evaluator consistency 
+   - Consider evaluator consistency
