@@ -1,44 +1,54 @@
-# Multi-Agent Roadmap
+# Roadmap
 
-Iterative plan: each item is one PR, built on the shared patterns in `agent/workflows`.
+## Thesis
 
-## Done
+Dozens of tools run several coding agents in parallel; none of them tells you whether the team
+beat a single agent, or what the extra agents cost. Published evidence points both ways: a
+coordinator plus a reviewer has gained 4–8 points over solo agents on SWE-bench, while loosely
+coupled teams lost 2–15 points in a 260-configuration study. This project is a headless runner
+for teams of coding agents that ships with the measurement: every team topology is benchmarked
+against solo agents on fresh, uncontaminated tasks, with resolve rate, cost and wall time.
 
-- **Workflow patterns + iterative story agent** — `SequentialWorkflow`, `RefineLoop`
-  (evaluator-optimizer), `BestOfN` (parallel candidates); `story_agent_simple` gets structured
-  `StoryEvaluation` output and `--mode single|refine|best-of-n`; offline tests + CI; fixed broken
-  imports in `financial_research_agent`.
+It runs on its own or inside terminal/desktop orchestrators; it does not compete with them on UI.
 
-- **Eval harness** — `agent/agents_eval/harness.py` + `run.py` score any `async (query) -> str`
-  workflow over a JSONL dataset with length/keyword checks and a `Verdict`-typed LLM judge; one
-  JSON report per run, `--baseline` prints deltas. Story modes (single / refine / best-of-n) are
-  registered, so their score trade-offs are measurable.
+## Architecture
 
-- **Store agent on `SequentialWorkflow`** — `agent/story_agent` renamed to `agent/store_agent`
-  (it builds store concepts) and its hand-written 4-step chain replaced with `SequentialWorkflow`
-  plus an injectable runner and offline test. Next step for it: a structured evaluator so the
-  evaluate stage can use `RefineLoop`.
+```mermaid
+flowchart LR
+  CLI["CLI / Python API"] --> Team
+  Bench["Benchmark runner"] --> Team
+  Team["Team topology\nsolo | review | best"] --> H["Harness\nexternal CLI or SDK agent"]
+  Team --> W["Workspace"]
+  H --> W
+  W --> WT["Local git worktree"]
+  W --> SB["Remote sandbox (benchmark)"]
+  Team --> R["TeamResult\npatch + runs + usage"]
+```
 
-- **Router / triage** — `Router` pattern (classifier agent with structured `RouteDecision`,
-  confidence threshold, fallback, forced route) and `agent/triage`, which dispatches to the story,
-  store, and financial workflows; single entrypoint `python -m agent.main`.
+Contracts live in [`agent/teams/types.py`](../agent/teams/types.py). Harnesses and teams reach the
+repository only through `Workspace.exec`, so the same team code runs locally and in benchmark
+sandboxes. Teams reuse the patterns in `agent/workflows` (`RefineLoop`, `BestOfN`).
 
-- **Run artifacts** — `RunTracker` wraps any runner to time each agent call; in SDK mode it adds a
-  tracing span per call and records token usage. `run_record()` / `save_run()` persist output,
-  verdict, meta, step trace, timings and token totals as JSON under `runs/`; `python -m agent.main`
-  saves every run (`--runs-dir`, `--no-save`) inside one SDK trace.
+### Team specs
 
-- **Human-in-the-loop checkpoint** — optional async `RefineLoop` callback can continue, steer the
-  next revision, or stop with the best draft so far. Story CLI `--checkpoint` and shared CLI
-  `--story-checkpoint` prompt between iterations; decisions are preserved in run artifacts.
+Teams are selected with a compact spec string; the canonical form is the team's `name`.
 
-- **Unified financial execution + owned fan-out** — financial research now uses the injected
-  runner for every stage and optional analyst tool, returns a structured `WorkflowResult`, and
-  preserves reports, verification, nested calls and usage in shared CLI run artifacts. Searches
-  and `BestOfN` share bounded workers (default three), stable result ordering, and cancellation
-  cleanup. Failed research propagates instead of silently synthesizing from incomplete searches.
+```text
+solo:worker=H
+review:coder=H,reviewer=H[,rounds=N]          # rounds defaults to 3
+best:workers=H+H[+H...][,judge=H]             # judge defaults to the first worker's harness
+H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@litellm/<provider>/<model>
+```
 
-## Next
+## Milestones
 
-1. **Debate / panel pattern** — multiple evaluator personas score in parallel, aggregated verdict
-   (mean / min / majority) to reduce single-judge bias.
+1. **Pivot** — contracts; non-coding workflows and `ml/` moved to an archived legacy repository.
+2. **Team runner** — harness adapters for external coding CLIs and a built-in any-model SDK agent;
+   local worktree workspaces; `solo`, `review` and `best` teams; CLI; run records with cost.
+3. **Benchmark** — fresh-task dataset filtered by creation date; remote sandboxes; hidden-test
+   evaluation; report with resolve rate, cost, wall time and confidence intervals.
+4. **Pilot results** — 50 fresh tasks × solo and team configurations; publish the table and raw
+   trajectories.
+5. **Launch** — README led by the results, terminal demo, launch posts.
+6. **Growth loop** — monthly refresh on newly created tasks, more harnesses, community-submitted
+   team topologies.
