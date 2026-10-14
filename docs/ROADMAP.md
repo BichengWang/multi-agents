@@ -57,10 +57,10 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 6. **Growth loop** — monthly refresh on newly created tasks, more harnesses, community-submitted
    team topologies.
 
-## Current stage: teams that finish real work
+## Current stage: teams that finish real work (done)
 
-The pilot (milestone 4) waits on Modal and API credentials. Meanwhile, the runner should finish
-real work end to end, inside the tools people already use:
+While the pilot (milestone 4) waits on Modal and API credentials, the runner gained end-to-end
+work features, all merged and smoke-tested with real CLIs:
 
 1. **Objective checks** — `--check CMD` runs a command (tests, build, lint) against the final
    patch in a fork and records pass/fail. `check` can be the reviewer (a test-driven loop with no
