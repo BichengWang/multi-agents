@@ -29,7 +29,7 @@ import weakref
 from pathlib import Path
 from typing import Optional
 
-from .types import ExecResult
+from .types import ExecResult, Workspace
 
 _GIT_ENV = {"GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0"}
 
@@ -311,4 +311,36 @@ class LocalWorktree:
         self._closed = True
 
 
-__all__ = ["ExecTimeout", "GitError", "LocalWorktree", "repo_key", "run_process", "user_cache_dir"]
+async def close_to_completion(workspace: Workspace) -> None:
+    """Close ``workspace`` fully even if this task is cancelled (again) meanwhile.
+
+    Cancelling a team cancels its workers, and ``map_concurrently`` cancels them a second time while
+    they are in their ``finally`` blocks; a plain ``await workspace.close()`` there would be
+    interrupted half-way and leave the fork behind. Close errors are swallowed (cleanup is best
+    effort); the cancellation is re-raised once the close has finished.
+    """
+
+    async def close() -> None:
+        with contextlib.suppress(Exception):
+            await workspace.close()
+
+    closing = asyncio.ensure_future(close())
+    cancelled = False
+    while not closing.done():
+        try:
+            await asyncio.shield(closing)
+        except asyncio.CancelledError:
+            cancelled = True
+    if cancelled:
+        raise asyncio.CancelledError
+
+
+__all__ = [
+    "ExecTimeout",
+    "GitError",
+    "LocalWorktree",
+    "close_to_completion",
+    "repo_key",
+    "run_process",
+    "user_cache_dir",
+]

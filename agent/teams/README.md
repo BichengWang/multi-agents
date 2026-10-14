@@ -21,6 +21,7 @@ solo:worker=H
 review:coder=H,reviewer=H[,rounds=N]        # rounds defaults to 3
 best:workers=H+H[+H...][,judge=H]           # judge defaults to the first worker's harness
 H := harness[@model]                        # claude, codex, sdk
+                                            # reviewer= and judge= also accept `check`, see Checks
 ```
 
 The kind is split off at the first `:`; model ids may contain `/`, `:`, `.` and `-`
@@ -45,6 +46,48 @@ otherwise the last JSON object in the reply.
 `accepted`, `best_round`, `round_log`; `best` → `scores` (`null` for dropped workers), `chosen`
 (1-based), `candidates` (harness, score and indices into `runs`). Failures go to `failures`.
 
+## Checks
+
+`--check CMD` (`build_team(spec, check=CMD)`) is an objective verdict from a shell command: tests, a
+build, a linter. After the team finishes, `sh -c CMD` runs in a **fresh fork with the final patch
+applied**. It gets your environment (including `PATH`) but not your working tree: the fork starts at
+the base commit, so untracked dependencies (`node_modules`, a virtualenv) are missing, and **a
+virtualenv on your `PATH` still points at your original checkout**: an editable install
+(`pip install -e .`) imports *that* tree, not the patched fork, and the check would silently judge the
+wrong code. Make the command self-contained and install into the fork, e.g.
+`--check 'python -m venv .venv && .venv/bin/pip install -q -e . pytest && .venv/bin/pytest -q'`.
+
+The command is bounded by the team's `--timeout` (a timeout is a failed check); **without
+`--timeout` it is unbounded**. The result is recorded in `TeamResult.meta["check"]` and as `check`
+in `record.json`: `{command, passed, exit_code, output_tail, duration_s}` (`exit_code` is `null` if
+the command did not finish or there was no patch to check; `output_tail` is the end of stdout then
+stderr). The CLI summary prints pass/fail; the check does not change the exit code of
+`multi-agents run`. (It can change which patch a team returns, see below.)
+
+**The check runs on what the agents left behind, including edits to the tests.** An agent that
+rewrites or deletes the failing test, `conftest.py` or the `Makefile` makes the check pass, and the
+prompts only ask it not to. The fork's `HEAD` is the base commit, so restore the files the agents
+must not touch before running: `--check 'git checkout HEAD -- tests && python3 -m unittest -q'`
+(this does not restore files the agents *added*, e.g. a new `conftest.py`; add `git clean -fdq tests`).
+Read the patch before you apply it either way.
+
+It also changes how teams decide:
+
+| Use | Behaviour |
+|---|---|
+| `reviewer=check` | A test-driven `review` loop with no LLM reviewer: exit 0 scores 10 and passes (the loop stops), anything else scores 0 and the coder gets the tail of the output as feedback. |
+| `judge=check` | `best` keeps the worker whose patch passes the check (ties go to the earliest worker). |
+| LLM `reviewer` + `--check` | The reviewer's prompt includes the check result for the patch under review. |
+| LLM `judge` + `--check` | Every candidate is checked as well. Candidates that fail rank below every candidate that passes; the judge's scores order within each group. `meta["candidates"][i]["check"]` has each result; `meta["scores"]` stays the judge's raw scores. |
+
+`check` as `reviewer=`/`judge=` implies `--check` with the same command and raises `SpecError`
+without one; as `worker`, `coder`, `planner` or in `workers` it is rejected. The check reviewer/judge
+and the final recorded check share one memoized run per patch (the command is not run twice on the
+same patch). A check is not a harness run: it consumes no tokens. As `reviewer=check` or
+`judge=check` it appears in `runs` with role `reviewer`/`judge`, harness `check` and cost exactly $0.00.
+With `reviewer=check` all failing attempts score 0, so the team returns the **last** attempt (the one
+with the most feedback) rather than the first.
+
 ## CLI
 
 ```bash
@@ -63,6 +106,7 @@ multi-agents run --team review:coder=codex,reviewer=claude@haiku,rounds=2 \
 | `--runs-dir DIR` | where records go (default `$XDG_CACHE_HOME/multi-agents/runs/<repo>-<hash>/`, i.e. never inside your repository; the path is printed) |
 | `--keep-worktrees` | keep the main worktree for inspection (forks made by teams are always removed) |
 | `--apply` | apply the patch to your tree; refused up front (before any agent runs) if the tree is not clean |
+| `--check CMD` | shell command run against the final patch in a fork; see Checks |
 
 The run creates `<runs-dir>/<utc-timestamp>_<team>/record.json` (team, task, repo, base commit,
 patch, every run with harness/role/model/tokens/cost/seconds/session/log, usage, total cost, duration,
@@ -74,8 +118,10 @@ git -C <repo> apply <runs-dir>/<run>/final.patch
 
 Your working tree is never modified unless you pass `--apply` (and then only if `git status` is
 clean). The base is a commit: uncommitted changes in your tree are not visible to the workers.
-Ctrl-C cancels all workers (their whole process groups are killed) and removes the worktrees.
-Exit code: 0 patch produced, 1 empty patch, 2 usage error, 3 `--apply` refused or failed (or `--pr` delivery failed), 4 the team crashed, 130 interrupted.
+Exit code: 0 patch produced, 1 empty patch, 2 usage error, 3 `--apply` refused or failed (or `--pr` delivery failed), 4 the team crashed, 130/143/129 cancelled by SIGINT/SIGTERM/SIGHUP.
+SIGINT, SIGTERM and SIGHUP all take the same path: the team is cancelled, every worker's process
+group is killed and the worktrees are removed (so a caller's tool timeout, which sends SIGTERM, does
+not leave agents running and billing); a second signal force-quits.
 
 ### Where worktrees live
 

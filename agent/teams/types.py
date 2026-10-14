@@ -96,7 +96,8 @@ class Harness(Protocol):
     """Runs a coding agent to completion in a workspace.
 
     ``session_id`` resumes a previous session of the same harness in the same workspace when the
-    harness supports it. ``role`` labels the run in results (``worker``, ``reviewer``, ``judge``).
+    harness supports it. ``role`` labels the run in results (``worker``, ``coder``, ``reviewer``,
+    ``judge``, ``planner``, ``integrator``).
     """
 
     name: str
