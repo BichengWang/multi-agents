@@ -5,6 +5,9 @@
     solo:worker=H
     review:coder=H,reviewer=H[,rounds=N]        # rounds defaults to 3
     best:workers=H+H[+H...][,judge=H]           # judge defaults to the first worker's harness
+    plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]
+                                                # integrator defaults to the first worker's harness,
+                                                # max_tasks to 4
     H := harness[@model]                        # harness in {claude, codex, sdk}
     reviewer= and judge= (only) may also be ``check``: the --check command as reviewer/judge
 
@@ -23,6 +26,7 @@ from .harnesses.check import Check
 from .harnesses.sdk import LITELLM_PREFIX
 from .harnesses.base import Permissions
 from .pricing import lookup_price
+from .plan import DEFAULT_MAX_TASKS, PlanTeam
 from .topologies import BestTeam, ReviewTeam, SoloTeam
 from .types import Harness, Team
 
@@ -35,6 +39,7 @@ _KEYS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "solo": (("worker",), ()),
     "review": (("coder", "reviewer"), ("rounds",)),
     "best": (("workers",), ("judge",)),
+    "plan": (("planner", "workers"), ("integrator", "max_tasks")),
 }
 
 
@@ -86,10 +91,13 @@ class TeamSpec:
     rounds: int = DEFAULT_ROUNDS
     workers: tuple[HarnessSpec, ...] = ()
     judge: Optional[HarnessSpec] = None
+    planner: Optional[HarnessSpec] = None
+    integrator: Optional[HarnessSpec] = None
+    max_tasks: int = DEFAULT_MAX_TASKS
 
     @property
     def harness_specs(self) -> tuple[HarnessSpec, ...]:
-        singles = (self.worker, self.coder, self.reviewer, self.judge)
+        singles = (self.worker, self.coder, self.reviewer, self.judge, self.planner, self.integrator)
         return (*(h for h in singles if h is not None), *self.workers)
 
     @property
@@ -98,6 +106,11 @@ class TeamSpec:
             return f"solo:worker={self.worker}"
         if self.kind == "review":
             return f"review:coder={self.coder},reviewer={self.reviewer},rounds={self.rounds}"
+        if self.kind == "plan":
+            return (
+                f"plan:planner={self.planner},workers={'+'.join(map(str, self.workers))},"
+                f"integrator={self.integrator},max_tasks={self.max_tasks}"
+            )
         return f"best:workers={'+'.join(map(str, self.workers))},judge={self.judge}"
 
 
@@ -151,6 +164,25 @@ def parse_team_spec(spec: str) -> TeamSpec:
             coder=_coding_harness(fields["coder"], "coder", text),
             reviewer=parse_harness_spec(fields["reviewer"]),
             rounds=rounds,
+        )
+    if kind == "plan":
+        planner = _coding_harness(fields["planner"], "planner", text)
+        workers = tuple(_coding_harness(w, "worker", text) for w in fields["workers"].split("+"))
+        integrator = (
+            _coding_harness(fields["integrator"], "integrator", text) if "integrator" in fields else workers[0]
+        )
+        max_tasks = DEFAULT_MAX_TASKS
+        if "max_tasks" in fields:
+            try:
+                max_tasks = int(fields["max_tasks"])
+            except ValueError:
+                max_tasks = 0
+            if max_tasks < 1:
+                raise SpecError(
+                    f"max_tasks must be a positive integer, got {fields['max_tasks']!r} in {spec!r}"
+                )
+        return TeamSpec(
+            "plan", workers=workers, planner=planner, integrator=integrator, max_tasks=max_tasks
         )
     workers = tuple(_coding_harness(w, "worker", text) for w in fields["workers"].split("+"))
     if len(workers) < 2:
@@ -247,6 +279,17 @@ def build_team(
             make(parsed.coder),
             make(parsed.reviewer),
             rounds=parsed.rounds,
+            name=parsed.canonical,
+            timeout=timeout,
+            check=checker,
+        )
+    if parsed.kind == "plan":
+        assert parsed.planner is not None and parsed.integrator is not None
+        return PlanTeam(
+            make(parsed.planner),
+            [make(w) for w in parsed.workers],
+            make(parsed.integrator),
+            max_tasks=parsed.max_tasks,
             name=parsed.canonical,
             timeout=timeout,
             check=checker,
