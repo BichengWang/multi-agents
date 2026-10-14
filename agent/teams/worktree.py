@@ -76,15 +76,28 @@ async def run_process(
     stdin: Optional[bytes] = None,
 ) -> tuple[int, bytes, bytes]:
     """Run ``argv`` in its own process group; timeout or cancellation kills the whole group."""
-    proc = await asyncio.create_subprocess_exec(
-        *argv,
-        cwd=cwd,
-        env={**os.environ, **(env or {})},
-        stdin=asyncio.subprocess.PIPE if stdin is not None else asyncio.subprocess.DEVNULL,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        start_new_session=True,
+    create = asyncio.ensure_future(
+        asyncio.create_subprocess_exec(
+            *argv,
+            cwd=cwd,
+            env={**os.environ, **(env or {})},
+            stdin=asyncio.subprocess.PIPE if stdin is not None else asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
+        )
     )
+    try:
+        proc = await asyncio.shield(create)
+    except asyncio.CancelledError:
+        # The child can already be running (and spawning) before creation returns. Cancelling
+        # creation would kill only the leader and orphan its descendants, so finish creating it
+        # and kill the whole group.
+        with contextlib.suppress(BaseException):
+            proc = await create
+            _kill_group(proc)
+            await proc.wait()
+        raise
     comm = asyncio.ensure_future(proc.communicate(stdin))
     try:
         done, _ = await asyncio.wait({comm}, timeout=timeout)

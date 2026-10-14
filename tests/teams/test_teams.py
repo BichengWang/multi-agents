@@ -220,8 +220,15 @@ def test_cancelling_a_best_team_removes_its_forks_and_kills_the_agents_processes
             return [int(p) for p in pids], [r for h in workers for r in h.roots]
 
     pids, roots = run(go())
-    time.sleep(0.2)
     assert not any(os.path.exists(r) for r in roots)
-    for pid in pids:
-        with pytest.raises(ProcessLookupError):
-            os.kill(pid, 0)
+    # SIGKILLed grandchildren linger as zombies until the OS reaps them; wait for that.
+    alive = set(pids)
+    deadline = time.monotonic() + 10
+    while alive and time.monotonic() < deadline:
+        for pid in list(alive):
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                alive.discard(pid)
+        time.sleep(0.05)
+    assert not alive
