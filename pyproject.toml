@@ -10,9 +10,21 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Fresh-task benchmark (agent.bench): Modal sandboxes plus the public parquet dataset download.
+bench = [
+    "modal>=1.6,<2",
+    "huggingface-hub>=0.30,<2",
+    "pyarrow>=17",
+]
+# Any-model SDK agent: route the OpenAI Agents SDK through LiteLLM to other providers.
+litellm = [
+    "openai-agents[litellm]==0.23.1",
+]
 dev = [
     "pytest>=8.0.0",
     "ruff==0.15.8",
+    # Parquet loader tests; the Modal and Hugging Face clients are faked offline.
+    "pyarrow>=17",
 ]
 
 [build-system]
