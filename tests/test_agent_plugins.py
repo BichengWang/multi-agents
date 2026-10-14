@@ -59,7 +59,8 @@ def test_codex_marketplace_entry_declares_install_policy_and_category():
 def test_both_manifests_name_and_version_the_same_plugin():
     claude, codex = load(CLAUDE_MANIFEST), load(CODEX_MANIFEST)
     assert claude["name"] == codex["name"] == "multi-agents"
-    assert claude["version"] == codex["version"]
+    (claude_entry,) = load(CLAUDE_MARKETPLACE)["plugins"]
+    assert claude["version"] == codex["version"] == claude_entry["version"]
     assert claude["description"] and codex["description"]
 
 

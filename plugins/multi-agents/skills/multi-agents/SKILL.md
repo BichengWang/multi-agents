@@ -45,12 +45,12 @@ or the task justifies the cost. If the user gives a spec, use it as written.
 ### Add an objective check
 
 If the project has a test, build or lint command, use its real invocation (from the README, CI
-config or Makefile; check that it runs here, do not guess) and pass it with `--check "<command>"`.
+config or Makefile; check that it runs here, do not guess) and pass it with `--check '<command>'`.
 The final patch is run through it in a fork and the record says whether it passed. The `check`
 harness can replace an LLM reviewer or judge, which makes the loop test-driven and cheaper:
 
 ```text
-review:coder=codex@gpt-6-luna,reviewer=check,rounds=2   --check "pytest -q"
+review:coder=codex@gpt-6-luna,reviewer=check,rounds=2   --check 'pytest -q'
 ```
 
 `--check` is newer than the first release of the CLI. If the CLI answers that it does not know
@@ -63,11 +63,15 @@ task in it, since the workers do not see this conversation:
 
 ```bash
 uvx --from git+https://github.com/BichengWang/multi-agents multi-agents run \
-  --repo . --team '<spec>' "<task>"
+  --repo . --timeout 600 --team '<spec>' '<task>'
 ```
 
-Add `--check "<command>"` when you have one. Requirements: `uv`, `git`, and a logged-in `claude`
-and/or `codex`, with no API keys. The repository needs at least one commit; workers start from
+Single-quote the task, and replace every `'` inside it with `'\''`. Task text often contains
+backticks or `$`, which a double-quoted shell argument would execute or expand.
+`--timeout 600` bounds each agent call to ten minutes.
+
+Add `--check '<command>'` when you have one. Requirements: `uv`, `git`, and a logged-in `claude`
+and/or `codex` (the CLIs use their own login; no API keys are needed). The repository needs at least one commit; workers start from
 `HEAD`, so **uncommitted changes are not visible to them**. Tell the user if the tree is dirty.
 
 The run needs network access (to fetch the CLI and for the worker CLIs), write access to
@@ -76,14 +80,15 @@ shell is sandboxed or asks for approval, request that this one command run outsi
 it cannot run (no network, approval denied, a CLI is not logged in), **stop and tell the user why**.
 Never fall back to doing the task yourself under this skill: the user asked for a team.
 
-A run takes one to several minutes. Raise the shell tool's timeout to its maximum (or run it in the
-background and wait for it) so it is not cut off. Do not start a second run while one is going.
+A run takes one to several minutes. Run it in the background (or with the shell tool's longest
+timeout) and wait for it. Do not kill it early: the worker CLIs run in their own process groups and
+would keep running and billing. Do not start a second run while one is going.
 
 ## Read the summary
 
 The command prints:
 
-- one row per agent call: role (`worker`, `coder`, `reviewer`, `judge`), `harness@model`, tokens
+- one row per agent call: role (`worker`, `coder`, `reviewer`, `judge`, and for `plan` `planner`, `integrator`), `harness@model`, tokens
   in/cached/out, cost, seconds; a red `x` marks a call that exited non-zero;
 - `Total` tokens, cost and seconds;
 - `scores` (0-10, one per attempt or candidate), `chosen`, `best_round`, `accepted`; low scores or
@@ -91,7 +96,10 @@ The command prints:
 - `failure:` lines for calls that crashed or returned something unusable;
 - the files changed with `+`/`-` counts, the `Record:` and `Patch:` paths, and the `Apply:` command.
 
-`No changes were produced.` (exit code 1) means the team found nothing to change. When a check ran,
+`No changes were produced.` is exit code 1 and has two causes. With `failure:` lines or red `x`
+rows, the workers failed (missing or logged-out CLI, sandbox, timeout): report the error, do not
+say the team found nothing to change. Without them, the team found nothing to change.
+When a check ran,
 the summary and the `check` entry of `record.json` say whether it passed; treat a failing check as a
 failed run.
 
