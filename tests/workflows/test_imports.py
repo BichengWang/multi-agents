@@ -5,14 +5,6 @@ import pytest
 pytest.importorskip("agents")
 
 
-@pytest.mark.parametrize(
-    "module",
-    [
-        "agent.workflows",
-        "agent.story_agent_simple.manager",
-        "agent.store_agent.manager",
-        "agent.financial_research_agent.manager",
-    ],
-)
+@pytest.mark.parametrize("module", ["agent.workflows", "agent.teams"])
 def test_agent_packages_import(module):
     importlib.import_module(module)

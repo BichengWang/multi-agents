@@ -17,37 +17,18 @@ agent call with its input and output.
 
 ## Execution boundaries
 
-All built-in specialist routes use the supplied `AgentRunner`, including financial searches,
-writing, verification, and analyst tools invoked by the financial writer. `RunTracker` therefore
-captures those nested calls as well as top-level stages. The shared CLI owns the enclosing SDK
-trace; workflows do not start a separate trace or bypass the runner with streamed SDK calls.
+Every agent call goes through the supplied `AgentRunner`, so `RunTracker` captures nested calls
+as well as top-level stages. Workflows do not start their own SDK trace or bypass the runner
+with streamed SDK calls; the caller owns any enclosing trace.
 
-`BestOfN` and financial searches share `map_concurrently(items, worker, max_concurrency=...)`.
-It uses a fixed-size worker pool, returns results in input order, and cancels and awaits all
-workers on failure or caller cancellation. Queued work does not start after a worker fails.
-Both workflows default to three concurrent workers; configure `BestOfN(max_concurrency=...)`
-or `FinancialResearchManager(max_concurrency=...)` to change the limit. For `BestOfN`, a worker
+`BestOfN` uses `map_concurrently(items, worker, max_concurrency=...)`. It uses a fixed-size
+worker pool, returns results in input order, and cancels and awaits all workers on failure or
+caller cancellation. Queued work does not start after a worker fails. `BestOfN` defaults to
+three concurrent workers; configure `BestOfN(max_concurrency=...)` to change the limit. A worker
 owns a complete generate → evaluate candidate, and equal scores select the earliest candidate.
 Ordinary `BestOfN` candidate failures are collected rather than propagated: failed candidates have
 `None` in `meta["scores"]` and an entry in `meta["failures"]`; successful candidates remain eligible.
 The run raises if all candidates fail. Cancellation is never treated as a candidate score.
-
-## Financial research
-
-`FinancialResearchManager(runner=...)` returns a `WorkflowResult` like the other managers:
-
-- `final_output`: `FinancialReportData` (`short_summary`, `markdown_report`, `follow_up_questions`).
-- `steps`: planning, searches in plan order, any optional fundamentals/risk tool calls, writing,
-  and verification, with each call's input and structured output.
-- `meta["searches"]`: number of completed searches.
-- `meta["verification"]`: `VerificationResult` (`verified`, `issues`). This is an audit result,
-  not a quality-score `Verdict`; a rejected audit remains visible in the result and run artifact.
-
-The writer still decides whether to invoke specialist analysts. Their tools use the same runner
-and per-run trace as the rest of the workflow. Search or analyst failures propagate: research
-does not silently omit failed evidence and synthesize an apparently complete report. Status
-display cleanup runs on success, error, and cancellation.
-Progress is enabled automatically on a terminal; `show_progress=True|False` explicitly overrides it.
 
 ## Evaluators
 
@@ -111,8 +92,6 @@ result = await RefineLoop(generator, evaluator, checkpoint=review).run("A moon h
 `cli_checkpoint` is a ready-to-use callback: Enter continues, text steers, `/stop` or EOF stops.
 Each decision is recorded as a `checkpoint` step, and `meta["checkpoint_stopped"]` distinguishes
 a human stop from normal completion. Stopping does not mark a rejected draft as evaluator-accepted.
-The shared CLI enables it for the story route with `--story-checkpoint`; the dedicated story CLI
-uses `--checkpoint` in refine mode.
 
 ## Run artifacts
 
@@ -128,8 +107,6 @@ result = await RefineLoop(generator, evaluator, runner=tracker).run("idea")
 save_run(run_record(result, workflow="story/refine", query="idea",
                     started_at=t0, duration_s=elapsed, tracker=tracker))
 ```
-
-`python -m agent.main` does this for every request (`--runs-dir`, `--no-save`).
 
 ## Tests
 
