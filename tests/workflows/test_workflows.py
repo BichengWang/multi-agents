@@ -75,6 +75,18 @@ def test_best_of_n_picks_highest_score_with_variants():
     assert len(result.steps) == 6
 
 
+def test_best_of_n_runs_a_different_generator_per_candidate():
+    gens = [FakeAgent(name, lambda text, name=name: f"{name}:{text}") for name in ("A", "B", "C")]
+    scores = {"A:q": 1.0, "B:q": 9.0, "C:q": 5.0}
+    ev = FakeAgent("Eval", lambda draft: Verdict(score=scores[draft], passed=False, feedback=""))
+    result = run(BestOfN(gens, ev, runner=fake_runner).run("q"))  # n defaults to len(gens)
+    assert result.final_output == "B:q" and result.meta["chosen"] == 2
+    assert [s.agent for s in result.steps if s.name == "generate"] == ["A", "B", "C"]
+    assert all(g.calls == ["q"] for g in gens)
+    with pytest.raises(ValueError, match="does not match"):
+        BestOfN(gens, ev, n=2)
+
+
 @pytest.mark.parametrize("kwargs,expected", [({}, 3), ({"max_concurrency": 2}, 2), ({"max_concurrency": 9}, 6)])
 def test_best_of_n_bounds_concurrent_calls(kwargs, expected):
     runner = ConcurrentFakeRunner()
