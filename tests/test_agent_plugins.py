@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from agent.teams import parse_team_spec
+from agent.teams import build_team
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "multi-agents"
@@ -90,14 +90,13 @@ def test_command_passes_the_user_text_through():
 
 def test_specs_shown_in_the_skill_are_valid():
     text = SKILL.read_text(encoding="utf-8")
-    specs = {
-        span
-        for span in re.findall(r"`([a-z]+:[^`]+)`", text)
-        if span.split(":")[0] in {"solo", "review", "best"} and not re.search(r"[<\[]|\bH\b", span)
-    }
-    assert specs, "the skill should show at least one concrete spec"
+    found = re.findall(r"(?<![\w-])[a-z]+:[a-z_]+=[^\s`'\"]+", text)
+    # Templates such as `solo:worker=H` or `...<spec>` document the grammar, not a usable spec.
+    specs = {spec.rstrip(".,;:)") for spec in found if not re.search(r"[<\[]|=H\b|[,+]H\b", spec)}
+    assert {"review:coder=codex@gpt-6-luna,reviewer=claude@haiku,rounds=2"} <= specs
+    assert any("reviewer=check" in spec for spec in specs)
     for spec in specs:
-        parse_team_spec(spec)
+        build_team(spec, check="true")
 
 
 def test_skill_names_the_published_cli_command():
