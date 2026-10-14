@@ -19,12 +19,14 @@ from rich.table import Table
 
 from agent.workflows import to_jsonable
 
+from . import github
 from .harnesses.base import PERMISSIONS
 from .spec import SpecError, build_team, parse_team_spec
 from .types import CodingTask, TeamResult
 from .worktree import GitError, LocalWorktree, repo_key, run_process, user_cache_dir
 
 EXIT_OK, EXIT_NO_PATCH, EXIT_USAGE, EXIT_APPLY, EXIT_FAILED, EXIT_CANCELLED = 0, 1, 2, 3, 4, 130
+EXIT_PUBLISH = 3  # branch/push/PR failed; the patch is safe locally
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,7 +38,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Solve a task with a team of coding agents. The result is a patch; your "
         "working tree is never modified unless --apply is given.",
     )
-    run.add_argument("instruction", help="the task, in plain language")
+    run.add_argument(
+        "instruction",
+        nargs="?",
+        default=None,
+        help="the task, in plain language (optional with --issue, where it is extra guidance)",
+    )
     run.add_argument("--team", required=True, help="e.g. solo:worker=claude@haiku, "
                      "review:coder=codex,reviewer=claude,rounds=2, best:workers=claude+codex[,judge=H]")
     run.add_argument("--repo", default=".", help="git repository to work on (default: current directory)")
@@ -57,6 +64,14 @@ def build_parser() -> argparse.ArgumentParser:
         "only for externally sandboxed machines",
     )
     run.add_argument("--apply", action="store_true", help="apply the patch if the working tree is clean")
+    run.add_argument("--issue", metavar="N|URL", help="take the task from this GitHub issue (needs gh)")
+    run.add_argument(
+        "--pr",
+        action="store_true",
+        help="commit the patch to a new branch (your checkout is untouched), push it to origin and "
+        "open a draft pull request (needs gh)",
+    )
+    run.add_argument("--ready", action="store_true", help="with --pr: open a regular instead of a draft PR")
     return parser
 
 
@@ -182,6 +197,52 @@ async def _apply_to_tree(repo: str, patch_path: Path, console: Console) -> int:
     return EXIT_OK
 
 
+async def _open_pull_request(
+    args: argparse.Namespace,
+    console: Console,
+    *,
+    repo: str,
+    base_commit: str,
+    instruction: str,
+    team: str,
+    result: TeamResult,
+    issue: Optional[github.Issue],
+    info: github.RepoInfo,
+    record: dict,
+    record_path: Path,
+) -> int:
+    try:
+        pub = await github.publish(
+            repo,
+            base_commit=base_commit,
+            base_ref=args.base,
+            patch=result.patch,
+            instruction=instruction,
+            team=team,
+            result=result,
+            issue=issue,
+            info=info,
+            check=record.get("check"),
+            draft=not args.ready,
+            body_path=record_path.with_name("pr-body.md"),
+        )
+    except github.PublishError as exc:
+        console.print(f"[red]Pull request not opened:[/red] {exc}", soft_wrap=True, highlight=False)
+        if exc.branch:
+            record["pull_request"] = {"url": None, "branch": exc.branch}
+            record_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+            console.print(f"The commit is kept on local branch {exc.branch}. To finish by hand:")
+        else:
+            console.print("To finish by hand:")
+        for command in exc.commands:
+            console.print(f"  {command}", soft_wrap=True, highlight=False, markup=False)
+        return EXIT_PUBLISH
+    record["pull_request"] = pub.record()
+    record_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+    console.print(f"Pull request: {pub.url} (branch {pub.branch})", soft_wrap=True, highlight=False)
+    return EXIT_OK
+
+
 async def run_command(args: argparse.Namespace, console: Console) -> int:
     try:
         spec = parse_team_spec(args.team)
@@ -194,6 +255,22 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
             "[yellow]The sdk harness has no sandbox: its shell commands run with your "
             "privileges in the worktree.[/yellow]"
         )
+    if args.ready and not args.pr:
+        console.print("[red]--ready only applies together with --pr.[/red]")
+        return EXIT_USAGE
+    if not args.instruction and not args.issue:
+        console.print("[red]Give an instruction, --issue, or both.[/red]")
+        return EXIT_USAGE
+    issue = repo_info = None
+    try:
+        if args.pr:
+            repo_info = await github.preflight(args.repo)
+        if args.issue:
+            issue = await github.read_issue(args.issue, args.repo)
+    except github.GitHubError as exc:
+        console.print(f"[red]GitHub:[/red] {exc}", soft_wrap=True)
+        return EXIT_USAGE
+    instruction = github.issue_instruction(issue, args.instruction) if issue else args.instruction
     try:
         workspace = await LocalWorktree.create(args.repo, args.base)
     except (GitError, OSError) as exc:
@@ -205,7 +282,7 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         await workspace.close()
         return EXIT_APPLY
     runs_dir = args.runs_dir or default_runs_dir(workspace)
-    task = CodingTask(task_id=datetime.now(timezone.utc).strftime("task-%Y%m%dT%H%M%S"), instruction=args.instruction)
+    task = CodingTask(task_id=datetime.now(timezone.utc).strftime("task-%Y%m%dT%H%M%S"), instruction=instruction)
     started_at = datetime.now(timezone.utc).isoformat()
     console.print(
         f"Team {team.name} on {repo} @ {workspace.base_commit[:12]} (worktree {workspace.root})",
@@ -252,13 +329,32 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         "cost_usd": usage.cost_usd,
         "meta": to_jsonable(result.meta),
     }
+    if issue:
+        record["issue"] = issue.record()
     record_path, patch_path = save_record(runs_dir, record, result.patch)
     render_summary(console, team.name, result, repo=repo, patch_path=patch_path, record_path=record_path)
+    if issue:
+        console.print(f"Issue: #{issue.number} {issue.title} ({issue.url})", soft_wrap=True, highlight=False)
     if not result.patch.strip():
         return EXIT_NO_PATCH
+    code = EXIT_OK
+    if args.pr:
+        code = await _open_pull_request(
+            args,
+            console,
+            repo=repo,
+            base_commit=workspace.base_commit,
+            instruction=instruction,
+            team=team.name,
+            result=result,
+            issue=issue,
+            info=repo_info,
+            record=record,
+            record_path=record_path,
+        )
     if args.apply:
-        return await _apply_to_tree(repo, patch_path, console)
-    return EXIT_OK
+        return await _apply_to_tree(repo, patch_path, console) or code
+    return code
 
 
 def main(argv: Optional[list[str]] = None) -> int:

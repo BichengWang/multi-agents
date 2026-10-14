@@ -133,3 +133,35 @@ async with await LocalWorktree.create("path/to/repo") as ws:
     result = await team.solve(CodingTask("t1", "Fix the failing test"), ws)
 print(result.patch, result.usage.cost_usd, [(r.role, r.harness) for r in result.runs])
 ```
+
+## Issue to pull request
+
+```bash
+multi-agents run --repo . --team "solo:worker=claude@haiku" --issue 42 --pr
+multi-agents run --team "review:coder=codex,reviewer=claude" --issue https://github.com/OWNER/REPO/issues/42 \
+    --pr --ready "keep the public API unchanged"
+```
+
+Both need the [GitHub CLI](https://cli.github.com) (`gh`), logged in.
+
+* `--issue N|URL` reads the issue (`gh issue view`, run in the target repo, so a bare number resolves
+  against its default remote) and uses its title and body (capped at 8000 characters) as the task. A
+  positional instruction is added as extra guidance. The issue is stored in `record.json` as
+  `issue: {number, title, url}`. A missing `gh`, no login, or an unknown issue stops the run with exit
+  code 2 before any agent starts.
+* `--pr` publishes a non-empty patch: a branch `multi-agents/<issue-number-or-slug>-<run-id>` is
+  committed at the base commit with a temporary index (your checkout, index and current branch are never
+  touched), as your configured git identity, pushed to `origin` (never forced; if the name exists locally
+  or on `origin`, a `-2`, `-3`... suffix is used), and opened with `gh pr create --draft` against the
+  branch the base commit came from if `origin` has it, else the repository's default branch. `--ready`
+  opens a regular PR instead. Before the team runs, `--pr` checks that `gh` is logged in and that `origin`
+  is a repository `gh` can use (exit code 2 otherwise).
+* The PR body has `Closes #N` (`Closes OWNER/REPO#N` for an issue in another repository), the team spec,
+  the check result when `--check` was used, a per-role cost/tokens/time table with the total, and the
+  files changed. It is also saved as `pr-body.md` next to `record.json`. The PR URL and branch are stored
+  as `pull_request: {url, branch}` and printed.
+* An empty patch opens nothing (exit code 1). If committing, pushing or `gh pr create` fails (exit code
+  3), the local branch is kept and the exact commands to finish by hand are printed.
+
+`gh` picks the repository for `pr create` from your remotes (`gh repo set-default` to change it). Fork
+workflows where `origin` is not that repository are not handled specially.
