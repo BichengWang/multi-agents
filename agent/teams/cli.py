@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from agent.workflows import to_jsonable
@@ -26,6 +27,9 @@ from .types import CodingTask, TeamResult
 from .worktree import GitError, LocalWorktree, repo_key, run_process, user_cache_dir
 
 EXIT_OK, EXIT_NO_PATCH, EXIT_USAGE, EXIT_APPLY, EXIT_FAILED, EXIT_CANCELLED = 0, 1, 2, 3, 4, 130
+# Signals that cancel a run and clean up like Ctrl-C does; the exit code is 128 + the signal number
+# (SIGINT 130, SIGTERM 143, SIGHUP 129).
+CANCEL_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 EXIT_PUBLISH = 3  # branch/push/PR failed; the patch is safe locally
 
 
@@ -49,6 +53,13 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--repo", default=".", help="git repository to work on (default: current directory)")
     run.add_argument("--base", default="HEAD", help="base ref the workers start from (default: HEAD)")
     run.add_argument("--timeout", type=float, default=None, help="seconds allowed per harness run")
+    run.add_argument(
+        "--check",
+        default=None,
+        metavar="CMD",
+        help="shell command (tests, build, lint) run in a fork with the final patch applied; "
+        "its pass/fail is recorded. It is also what reviewer=check / judge=check run",
+    )
     run.add_argument("--keep-worktrees", action="store_true", help="do not delete the main worktree")
     run.add_argument(
         "--runs-dir",
@@ -147,6 +158,17 @@ def render_summary(
             console.print(f"{key}: {result.meta[key]}", soft_wrap=True)
     for failure in result.meta.get("failures", []):
         console.print(f"[yellow]failure:[/yellow] {failure}", highlight=False, soft_wrap=True)
+    check = result.meta.get("check")
+    if check:
+        status = "[green]passed[/green]" if check["passed"] else "[red]failed[/red]"
+        code = f"exit {check['exit_code']}" if check["exit_code"] is not None else "did not finish"
+        console.print(
+            f"check: {status} ({code}, {check['duration_s']:.1f}s) {escape(check['command'])}",
+            highlight=False,
+            soft_wrap=True,
+        )
+        if not check["passed"] and check["output_tail"].strip():
+            console.print(check["output_tail"].strip()[-600:], highlight=False, soft_wrap=True, markup=False)
     files = _files_changed(result.patch)
     if not files:
         console.print("[red]No changes were produced.[/red]")
@@ -243,9 +265,12 @@ async def _open_pull_request(
 
 
 async def run_command(args: argparse.Namespace, console: Console) -> int:
+    if args.check is not None and not args.check.strip():
+        console.print("[red]Invalid --check:[/red] the command is empty")
+        return EXIT_USAGE
     try:
         spec = parse_team_spec(args.team)
-        team = build_team(args.team, permissions=args.permissions, timeout=args.timeout)
+        team = build_team(args.team, permissions=args.permissions, timeout=args.timeout, check=args.check)
     except SpecError as exc:
         console.print(f"[red]Invalid --team:[/red] {exc}")
         return EXIT_USAGE
@@ -292,22 +317,29 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
     main_task = asyncio.current_task()
     assert main_task is not None
 
-    def on_interrupt() -> None:
-        console.print("\n[yellow]Interrupted: cancelling workers and cleaning up...[/yellow]")
-        loop.remove_signal_handler(signal.SIGINT)  # a second Ctrl-C force-quits
+    received: list[int] = []
+
+    def on_signal(signum: int) -> None:
+        name = signal.Signals(signum).name
+        console.print(f"\n[yellow]{name}: cancelling workers and cleaning up...[/yellow]")
+        for sig in CANCEL_SIGNALS:  # a second signal force-quits
+            loop.remove_signal_handler(sig)
+        received.append(signum)
         main_task.cancel()
 
-    loop.add_signal_handler(signal.SIGINT, on_interrupt)
+    for sig in CANCEL_SIGNALS:
+        loop.add_signal_handler(sig, on_signal, sig)
     start = time.perf_counter()
     try:
         result = await team.solve(task, workspace)
     except asyncio.CancelledError:
-        return EXIT_CANCELLED
+        return 128 + received[0] if received else EXIT_CANCELLED
     except Exception as exc:
         console.print(f"[red]The team failed:[/red] {type(exc).__name__}: {exc}", soft_wrap=True)
         return EXIT_FAILED
     finally:
-        loop.remove_signal_handler(signal.SIGINT)
+        for sig in CANCEL_SIGNALS:
+            loop.remove_signal_handler(sig)
         if args.keep_worktrees:
             console.print(f"Worktree kept at {workspace.root}")
         else:
@@ -330,6 +362,8 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
     }
     if issue:
         record["issue"] = issue.record()
+    if "check" in result.meta:
+        record["check"] = to_jsonable(result.meta["check"])
     record_path, patch_path = save_record(runs_dir, record, result.patch)
     render_summary(console, team.name, result, repo=repo, patch_path=patch_path, record_path=record_path)
     if issue:

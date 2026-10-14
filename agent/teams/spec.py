@@ -6,6 +6,7 @@
     review:coder=H,reviewer=H[,rounds=N]        # rounds defaults to 3
     best:workers=H+H[+H...][,judge=H]           # judge defaults to the first worker's harness
     H := harness[@model]                        # harness in {claude, codex, sdk}
+    reviewer= and judge= (only) may also be ``check``: the --check command as reviewer/judge
 
 The kind is split off at the first ``:`` only; model ids may contain ``/``, ``:``, ``.`` and ``-``
 (but not ``,`` or ``+``). ``Team.name`` is the canonical form, which spells out every default, so
@@ -17,7 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
-from .harnesses import ClaudeHarness, CodexHarness, SdkHarness
+from .harnesses import CheckHarness, ClaudeHarness, CodexHarness, SdkHarness
+from .harnesses.check import Check
 from .harnesses.sdk import LITELLM_PREFIX
 from .harnesses.base import Permissions
 from .pricing import lookup_price
@@ -25,6 +27,7 @@ from .topologies import BestTeam, ReviewTeam, SoloTeam
 from .types import Harness, Team
 
 HARNESSES = ("claude", "codex", "sdk")
+CHECK = "check"  # pseudo-harness: the --check command acting as reviewer or judge
 DEFAULT_ROUNDS = 3
 
 _KEYS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
@@ -52,15 +55,26 @@ def parse_harness_spec(spec: str) -> HarnessSpec:
     text = spec.strip()
     name, sep, model = text.partition("@")
     name = name.strip().lower()
+    if name == CHECK:
+        if sep:
+            raise SpecError(f"{CHECK!r} takes no model, got {spec!r}")
+        return HarnessSpec(CHECK)
     if name not in HARNESSES:
         raise SpecError(
             f"unknown harness {name!r} in {spec!r}; expected one of {', '.join(HARNESSES)} "
-            "(optionally followed by @model)"
+            f"(optionally followed by @model), or {CHECK!r} as reviewer/judge"
         )
     model = model.strip()
     if sep and not model:
         raise SpecError(f"empty model after '@' in harness spec {spec!r}")
     return HarnessSpec(name, model or None)
+
+
+def _coding_harness(value: str, key: str, spec: str) -> HarnessSpec:
+    parsed = parse_harness_spec(value)
+    if parsed.harness == CHECK:
+        raise SpecError(f"{CHECK!r} cannot be the {key} in {spec!r}; it is valid only as reviewer= or judge=")
+    return parsed
 
 
 @dataclass(frozen=True)
@@ -122,7 +136,7 @@ def parse_team_spec(spec: str) -> TeamSpec:
         raise SpecError(f"unknown team kind {kind!r} in {spec!r}; expected one of {', '.join(_KEYS)}")
     fields = _parse_fields(kind, body, text)
     if kind == "solo":
-        return TeamSpec("solo", worker=parse_harness_spec(fields["worker"]))
+        return TeamSpec("solo", worker=_coding_harness(fields["worker"], "worker", text))
     if kind == "review":
         rounds = DEFAULT_ROUNDS
         if "rounds" in fields:
@@ -134,11 +148,11 @@ def parse_team_spec(spec: str) -> TeamSpec:
                 raise SpecError(f"rounds must be a positive integer, got {fields['rounds']!r} in {spec!r}")
         return TeamSpec(
             "review",
-            coder=parse_harness_spec(fields["coder"]),
+            coder=_coding_harness(fields["coder"], "coder", text),
             reviewer=parse_harness_spec(fields["reviewer"]),
             rounds=rounds,
         )
-    workers = tuple(parse_harness_spec(w) for w in fields["workers"].split("+"))
+    workers = tuple(_coding_harness(w, "worker", text) for w in fields["workers"].split("+"))
     if len(workers) < 2:
         raise SpecError(f"best needs at least two workers joined with '+' (H+H), got {fields['workers']!r}")
     judge = parse_harness_spec(fields["judge"]) if "judge" in fields else workers[0]
@@ -155,6 +169,8 @@ def is_priced(spec: str) -> bool:
     ``usage.cost_usd`` is authoritative.
     """
     parsed = parse_harness_spec(spec)
+    if parsed.harness == CHECK:
+        return True  # a shell command: no tokens, cost is exactly 0
     if parsed.harness == "claude":
         return True
     if parsed.model is None:
@@ -172,16 +188,25 @@ def is_priced(spec: str) -> bool:
 
 
 def build_harness(
-    spec: str, *, permissions: Permissions = "safe", env: Optional[Mapping[str, str]] = None
+    spec: str,
+    *,
+    permissions: Permissions = "safe",
+    env: Optional[Mapping[str, str]] = None,
+    check: Optional[str] = None,
 ) -> Harness:
     """Harness from ``harness[@model]``.
 
     ``permissions="bypass"`` removes the CLI's own permission checks and sandbox; use it only on
     workspaces that are themselves sandboxed. ``env`` is merged into every command the harness
-    runs through ``Workspace.exec`` (e.g. ``IS_SANDBOX=1`` for Claude Code as root).
+    runs through ``Workspace.exec`` (e.g. ``IS_SANDBOX=1`` for Claude Code as root). ``check`` is
+    the shell command the ``check`` pseudo-harness runs; it is required for that harness.
     """
     parsed = parse_harness_spec(spec)
     env_dict = dict(env or {})
+    if parsed.harness == CHECK:
+        if check is None:
+            raise SpecError(f"{spec!r} needs a check command (--check CMD)")
+        return CheckHarness(check)
     if parsed.harness == "claude":
         return ClaudeHarness(model=parsed.model, permissions=permissions, env=env_dict)
     if parsed.harness == "codex":
@@ -195,20 +220,27 @@ def build_team(
     permissions: Permissions = "safe",
     env: Optional[Mapping[str, str]] = None,
     timeout: Optional[float] = None,
+    check: Optional[str] = None,
 ) -> Team:
     """Team from a spec string.
 
     ``permissions``/``env`` apply to every harness (see ``build_harness``); ``timeout`` bounds
-    each individual harness run in seconds.
+    each individual harness run (and the check command) in seconds. ``check`` is a shell command
+    run in a fork of the workspace with the team's final patch applied; its result is recorded in
+    ``TeamResult.meta["check"]``. It is also what the ``check`` harness runs as ``reviewer=check``
+    or ``judge=check``, which is an error without it.
     """
     parsed = parse_team_spec(spec)
+    if check is not None and not check.strip():
+        raise SpecError("the check command is empty")
+    checker = Check(check, timeout) if check is not None else None
 
     def make(h: HarnessSpec) -> Harness:
-        return build_harness(str(h), permissions=permissions, env=env)
+        return build_harness(str(h), permissions=permissions, env=env, check=check)
 
     if parsed.kind == "solo":
         assert parsed.worker is not None
-        return SoloTeam(make(parsed.worker), name=parsed.canonical, timeout=timeout)
+        return SoloTeam(make(parsed.worker), name=parsed.canonical, timeout=timeout, check=checker)
     if parsed.kind == "review":
         assert parsed.coder is not None and parsed.reviewer is not None
         return ReviewTeam(
@@ -217,8 +249,13 @@ def build_team(
             rounds=parsed.rounds,
             name=parsed.canonical,
             timeout=timeout,
+            check=checker,
         )
     assert parsed.judge is not None
     return BestTeam(
-        [make(w) for w in parsed.workers], make(parsed.judge), name=parsed.canonical, timeout=timeout
+        [make(w) for w in parsed.workers],
+        make(parsed.judge),
+        name=parsed.canonical,
+        timeout=timeout,
+        check=checker,
     )

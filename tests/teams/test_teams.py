@@ -217,7 +217,10 @@ def test_cancelling_a_best_team_removes_its_forks_and_kills_the_agents_processes
             task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await task
-            return [int(p) for p in pids], [r for h in workers for r in h.roots]
+            roots = [r for h in workers for r in h.roots]
+            # Gone while the origin worktree is still open: the team's own cleanup, not its sweep.
+            assert not any(os.path.exists(r) for r in roots)
+            return [int(p) for p in pids], roots
 
     pids, roots = run(go())
     assert not any(os.path.exists(r) for r in roots)
