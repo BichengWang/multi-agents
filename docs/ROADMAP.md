@@ -42,11 +42,13 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 
 ## Milestones
 
-1. **Pivot** — contracts; non-coding workflows and `ml/` moved to an archived legacy repository.
-2. **Team runner** — harness adapters for external coding CLIs and a built-in any-model SDK agent;
-   local worktree workspaces; `solo`, `review` and `best` teams; CLI; run records with cost.
-3. **Benchmark** — fresh-task dataset filtered by creation date; remote sandboxes; hidden-test
-   evaluation; report with resolve rate, cost, wall time and confidence intervals.
+1. **Pivot** (done) — contracts; non-coding workflows and `ml/` moved to an archived legacy
+   repository.
+2. **Team runner** (done) — harness adapters for external coding CLIs and a built-in any-model SDK
+   agent; local worktree workspaces; `solo`, `review` and `best` teams; CLI; run records with cost.
+3. **Benchmark** (built; first live run pending) — fresh-task dataset filtered by creation date;
+   remote sandboxes; hidden-test evaluation; report with resolve rate, cost, wall time and
+   confidence intervals.
 4. **Pilot results** — 50 fresh tasks × solo and team configurations; publish the table and raw
    trajectories.
 5. **Launch** — README led by the results, terminal demo, launch posts.

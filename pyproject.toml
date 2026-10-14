@@ -1,13 +1,16 @@
 [project]
 name = "multi-agents"
 version = "0.1.0"
-description = "Multi-agent workflows and evaluation"
+description = "Multi-agent teams for real work: run teams of coding agents and measure them against solo agents"
 requires-python = ">=3.10"
 dependencies = [
     "openai-agents==0.23.1",
     "pydantic>=2.0.0",
     "rich>=13.0.0",
 ]
+
+[project.scripts]
+multi-agents = "agent.teams.cli:main"
 
 [project.optional-dependencies]
 # Fresh-task benchmark (agent.bench): Modal sandboxes plus the public parquet dataset download.

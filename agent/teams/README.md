@@ -48,9 +48,11 @@ otherwise the last JSON object in the reply.
 ## CLI
 
 ```bash
-python -m agent run --team review:coder=codex,reviewer=claude@haiku,rounds=2 \
+multi-agents run --team review:coder=codex,reviewer=claude@haiku,rounds=2 \
     --repo path/to/repo "Fix the failing test in tests/test_ops.py"
 ```
+
+`multi-agents` is the installed console script; from a checkout, `python -m agent` is the same.
 
 | Flag | Meaning |
 |---|---|
