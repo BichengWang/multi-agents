@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 from agent.workflows import Verdict
 
@@ -49,22 +49,29 @@ class VerdictParseError(ValueError):
     pass
 
 
-def parse_verdict(text: str) -> Verdict:
-    """Last JSON object in ``text`` with ``score``/``passed``/``feedback``; score clamped to 0-10."""
+def json_objects(text: str) -> Iterator[dict[str, Any]]:
+    """Every top-level JSON object in ``text``; prose and code fences around them are skipped."""
     decoder = json.JSONDecoder()
-    found: Optional[Verdict] = None
     idx = 0
     while True:
         start = text.find("{", idx)
         if start < 0:
-            break
+            return
         try:
             obj, end = decoder.raw_decode(text, start)
         except ValueError:
             idx = start + 1
             continue
         idx = end
-        if isinstance(obj, dict) and {"score", "passed", "feedback"} <= obj.keys():
+        if isinstance(obj, dict):
+            yield obj
+
+
+def parse_verdict(text: str) -> Verdict:
+    """Last JSON object in ``text`` with ``score``/``passed``/``feedback``; score clamped to 0-10."""
+    found: Optional[Verdict] = None
+    for obj in json_objects(text):
+        if {"score", "passed", "feedback"} <= obj.keys():
             try:
                 verdict = Verdict.model_validate(obj)
             except ValueError:

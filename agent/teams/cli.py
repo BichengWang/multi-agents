@@ -49,7 +49,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="the task, in plain language (optional with --issue, where it is extra guidance)",
     )
     run.add_argument("--team", required=True, help="e.g. solo:worker=claude@haiku, "
-                     "review:coder=codex,reviewer=claude,rounds=2, best:workers=claude+codex[,judge=H]")
+                     "review:coder=codex,reviewer=claude,rounds=2, best:workers=claude+codex[,judge=H], "
+                     "plan:planner=claude,workers=claude+codex[,integrator=H][,max_tasks=N]")
     run.add_argument("--repo", default=".", help="git repository to work on (default: current directory)")
     run.add_argument("--base", default="HEAD", help="base ref the workers start from (default: HEAD)")
     run.add_argument("--timeout", type=float, default=None, help="seconds allowed per harness run")
@@ -156,6 +157,13 @@ def render_summary(
     for key in ("scores", "chosen", "best_round", "accepted"):
         if key in result.meta:
             console.print(f"{key}: {result.meta[key]}", soft_wrap=True)
+    fallback = result.meta.get("fallback")
+    if fallback:
+        console.print(f"fallback: {fallback['to']} ({fallback['reason']})", markup=False, soft_wrap=True)
+    for number, sub in enumerate(result.meta.get("subtasks", []), 1):
+        status = f" [{sub['status']}]" if "status" in sub else ""
+        who = f" ({sub['worker']})" if "worker" in sub else ""
+        console.print(f"subtask {number}{status}: {sub['title']}{who}", markup=False, highlight=False, soft_wrap=True)
     for failure in result.meta.get("failures", []):
         console.print(f"[yellow]failure:[/yellow] {failure}", highlight=False, soft_wrap=True)
     check = result.meta.get("check")

@@ -26,6 +26,10 @@ class Workspace(Protocol):
     ``root`` is the repository root as seen by processes started with ``exec``. ``exec`` merges
     ``env`` over the workspace's own environment, runs with ``root`` as the working directory,
     and kills the process on timeout or cancellation.
+
+    ``root`` is a git checkout at the base commit with the base objects present: teams run ``git``
+    through ``exec`` (the ``plan`` team merges patches with ``git apply --3way``, which needs the
+    base blobs), so an implementation must provide that, not just a directory of files.
     """
 
     root: str

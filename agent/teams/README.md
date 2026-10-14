@@ -9,7 +9,7 @@ worker in its own isolated git worktree, and get back a patch plus a full accoun
 |---|---|
 | `Workspace` | An isolated checkout at a base commit: `exec`, `diff`, `apply`, `fork`, `close`. `LocalWorktree` is the local implementation; the benchmark provides remote sandboxes. |
 | `Harness` | One non-interactive coding-agent invocation: `claude` (Claude Code CLI), `codex` (Codex CLI) or `sdk` (built-in agent on the OpenAI Agents SDK, any model via LiteLLM). Harnesses reach the repository only through `Workspace.exec`. |
-| `Team` | A topology that drives harnesses over a workspace and returns a `TeamResult`: the patch, every `HarnessRun` (roles `worker`, `coder`, `reviewer`, `judge`), duration and `meta`. |
+| `Team` | A topology that drives harnesses over a workspace and returns a `TeamResult`: the patch, every `HarnessRun` (roles `worker`, `coder`, `reviewer`, `judge`, `planner`, `integrator`), duration and `meta`. |
 
 Contracts are in [`types.py`](types.py). The loops are the [`agent.workflows`](../workflows/README.md)
 patterns: `review` is a `RefineLoop`, `best` is a `BestOfN` with one generator per worker.
@@ -20,6 +20,8 @@ patterns: `review` is a `RefineLoop`, `best` is a `BestOfN` with one generator p
 solo:worker=H
 review:coder=H,reviewer=H[,rounds=N]        # rounds defaults to 3
 best:workers=H+H[+H...][,judge=H]           # judge defaults to the first worker's harness
+plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]
+                                            # integrator defaults to the first worker's harness; max_tasks to 4
 H := harness[@model]                        # claude, codex, sdk
                                             # reviewer= and judge= also accept `check`, see Checks
 ```
@@ -36,6 +38,7 @@ bad part and the allowed values.
 | `solo` | The worker edits the given workspace. |
 | `review` | The coder edits the workspace. After each attempt the reviewer judges the patch in a **fork with the patch applied** (it cannot touch the coder's workspace) and returns a verdict (`score` 0-10, `passed`, `feedback`). The coder resumes its session (where the harness supports it) with the feedback. Stops on `passed`, after `rounds` attempts, or when the coder stops changing anything. Returns the **best-scoring** patch (earliest on ties), not the last. |
 | `best` | Every worker runs concurrently in its own fork, possibly with different harnesses. The judge scores each candidate patch independently (0-10) in another fork. The highest score wins, ties go to the earliest worker. A worker that crashes without producing a change is dropped; the run fails (empty patch) only if all do. |
+| `plan` | A **planner** (it runs in a fork that is discarded, so anything it writes is thrown away) splits the task into 1..`max_tasks` independent subtasks `{title, instruction, paths?}`, returned as JSON (native schema flag where the CLI has one, else the last JSON object in the reply). Workers solve the subtasks concurrently, each in its own fork (subtask *i* goes to `workers[i % len(workers)]`; all at once unless `PlanTeam(max_concurrency=N)` bounds it; the prompt has the whole task, the subtask and the titles of the others, and tells the worker to stay out of their scope). The patches are merged into the team's workspace in subtask order with `git apply --3way` and left as uncommitted, unstaged changes like any other team's; a patch that conflicts or does not apply is rolled back (the clean ones stay) and the **integrator** runs in the workspace with the task, all patches and the failure to produce the combined change. A subtask whose worker failed (or changed nothing) is recorded in `failures` and the integrator is told which subtask is missing and asked to complete it. With a `--check` that fails on the integrated patch, the integrator gets one fix pass with the check output and the check runs again. If the planner fails or returns an invalid plan (recorded in `failures`), or the plan has one subtask, the team behaves like `solo` with the first worker (`meta["fallback"]`). |
 
 A reviewer/judge that fails or answers with something that is not a verdict is recorded
 (`meta["failures"]`, the run is kept) and scores 0; it never crashes the team. Verdicts use the CLI's
@@ -45,6 +48,11 @@ otherwise the last JSON object in the reply.
 `TeamResult.meta` holds the canonical `team`, and per topology: `review` → `scores`, `rounds`,
 `accepted`, `best_round`, `round_log`; `best` → `scores` (`null` for dropped workers), `chosen`
 (1-based), `candidates` (harness, score and indices into `runs`). Failures go to `failures`.
+
+`plan` → `subtasks` (title, instruction, paths, `worker`, `status` of `applied`/`conflict`/`failed`/`empty`, indices into `runs`),
+`integration` (`applied`/`conflicts`/`missing` subtask numbers, `integrator_runs`), `check_before_fix`
+(the failing check result, when a fix pass ran) and `fallback`. Its `runs` have roles `planner`,
+`worker` and `integrator`, in that order.
 
 ## Checks
 
