@@ -1,43 +1,135 @@
 # multi-agents
 
-Multi-agent teams for real work. This project is becoming a headless runner for teams of coding
-agents, benchmarked against solo agents on fresh GitHub-issue tasks (resolve rate, cost, wall
-time). The direction, architecture, team-spec grammar and milestones are in
-[docs/ROADMAP.md](docs/ROADMAP.md); the contracts the runner is built on are in
-[`agent/teams/types.py`](agent/teams/types.py). The runner and benchmark are still under
-construction.
+**Multi-agent teams for real work: measured, not assumed.**
 
-## Setup
+Run a team of coding agents on a task in your repository: a single agent, a coder ⇄ reviewer
+loop, or several agents with a judge. Workers are the coding CLIs you already use (Claude Code,
+Codex) or a built-in agent that can use any model through the OpenAI Agents SDK. Each worker
+gets its own git worktree. You get one patch back, plus an itemized record of every agent call:
+tokens, cost and seconds. Your working tree is untouched unless you pass `--apply`.
 
-Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required.
+The benchmark then answers the question most agent orchestrators skip: **did the team beat a
+single agent on the same task, and what did the extra agents cost?**
+
+## Why measure
+
+The evidence on teams of coding agents points both ways:
+
+- A 260-configuration study found multi-agent setups 2–15% *worse* than single agents on
+  SWE-bench Verified ([Towards a Science of Scaling Agent Systems](https://arxiv.org/abs/2512.08296)).
+- Teams with a central coordinator and a reviewer reported 4–8 points *better*
+  ([icat-agent](https://arxiv.org/abs/2606.25514), Agyn).
+- The best-known coding benchmark is contaminated: OpenAI stopped reporting SWE-bench Verified
+  in February 2026.
+
+So the answer depends on the topology, the models and the task, and published numbers may be
+contaminated. This project measures it on tasks created after the models' training cutoffs, with
+paired comparisons and cost.
+
+## Quickstart
+
+Requirements: Python 3.10+, [uv](https://docs.astral.sh/uv/), git, and at least one logged-in
+coding CLI (`claude` or `codex`). CLI harnesses use your existing login; no API keys needed.
 
 ```bash
-python3 -m pip install uv
-uv sync --locked --extra dev
+uvx --from git+https://github.com/BichengWang/multi-agents multi-agents run \
+  --repo ~/code/myproject \
+  --team 'best:workers=claude@haiku+codex@gpt-6-luna' \
+  "Make the tests in test_slug.py pass without editing the tests."
 ```
 
-## Workflow patterns
+Real output from that command on a small repository:
 
-[`agent/workflows`](agent/workflows/README.md) holds the reusable orchestration patterns built
-on the OpenAI Agents SDK that the team runner reuses: `SequentialWorkflow`, `RefineLoop`,
-`BestOfN` and `Router`, plus refinement checkpoints and run artifacts. Each takes an injectable
-runner, so they can be tested offline. See the [workflow guide](agent/workflows/README.md) for
-usage.
+```text
+Team: best:workers=claude@haiku+codex@gpt-6-luna,judge=claude@haiku
+role   ┃ harness@model           ┃ tokens in/cached/out ┃    cost ┃ secs
+━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━
+worker │ claude@claude-haiku-5-5 │       236k/201k/1.5k │ $0.0096 │ 34.8
+judge  │ claude@claude-haiku-5-5 │       194k/157k/2.6k │ $0.0102 │ 42.8
+worker │ codex@gpt-6-luna        │         107k/94k/667 │ $0.0025 │ 31.6
+judge  │ claude@claude-haiku-5-5 │       192k/149k/3.8k │ $0.0119 │ 52.3
+Total: 729k/604k/8.5k tokens, cost $0.0342, 85.0s
+scores: [8.0, 8.0]
+chosen: 1
+Files changed: 1
+  slug.py  +6 -3
+```
+
+The run prints the exact `git apply` command for the final patch and saves a JSON record
+outside your repository (`~/.cache/multi-agents/runs/`).
+
+## Teams
+
+| Spec | What happens |
+|---|---|
+| `solo:worker=H` | One agent works on the task. This is the baseline. |
+| `review:coder=H,reviewer=H[,rounds=N]` | The coder works; the reviewer scores the patch in a separate copy and sends feedback; the coder resumes its session and revises. Returns the best-scoring patch, not the last one. |
+| `best:workers=H+H[+H...][,judge=H]` | Workers run in parallel, each in its own worktree, possibly different CLIs and models. The judge scores each patch and the best one wins. |
+
+`H` is `claude`, `codex` or `sdk`, optionally with `@model`, for example `claude@haiku`,
+`codex@gpt-6-luna` or `sdk@litellm/openrouter/<model>`. Details:
+[team runner guide](agent/teams/README.md).
+
+```mermaid
+flowchart LR
+  T["Task"] --> Team["Team: solo / review / best"]
+  Team --> H1["Claude Code"]
+  Team --> H2["Codex"]
+  Team --> H3["SDK agent (any model)"]
+  H1 --> W1["Worktree 1"]
+  H2 --> W2["Worktree 2"]
+  H3 --> W3["Worktree 3"]
+  Team --> R["Patch + record: runs, tokens, cost, time"]
+```
+
+## Safety and cost
+
+- **Permissions.** By default (`--permissions safe`) each CLI runs inside its own sandbox: edits
+  and test commands are confined to the worktree. `--permissions bypass` turns those checks off and
+  is meant for disposable machines and containers only. The `sdk` harness has no permission system.
+- **Cost.** Costs come from the CLI's own report or from list prices with a cited source. A run
+  that cannot be priced shows as unpriced and makes the total unpriced; nothing is guessed.
+
+## Benchmark
+
+The benchmark runs team specs against solo agents on GitHub issues opened after the models'
+training cutoffs ([SWE-bench-Live MultiLang](https://huggingface.co/datasets/SWE-bench-Live/MultiLang):
+Rust, Java, Go, C/C++, C#, JS/TS), each in a fresh Modal sandbox with git history stripped. Patches
+are graded with the dataset's official hidden tests. The report gives resolve rate with 95%
+confidence intervals, paired wins and losses against the solo baseline on the same tasks (exact
+McNemar test), cost per task and per resolved task, and wall time. Timeouts are graded rather than
+dropped, so slow teams cannot shrink the comparison to the easy tasks.
+
+```bash
+uv sync --locked --extra bench
+python -m agent.bench tasks --since 2026-07-01 --limit 5 --seed 7    # no credentials needed
+```
+
+Setup, methodology, cost estimates and limitations: [benchmark guide](agent/bench/README.md).
+First results will be published here.
+
+## Status
+
+| Area | State |
+|---|---|
+| Team runner (`solo`, `review`, `best`), Claude Code and Codex harnesses | Working; smoke-tested with real CLIs |
+| SDK harness (any model) | Implemented and tested offline; not yet run against a live model |
+| Benchmark | Built and tested offline; the Modal path has not run live yet |
+| Results | Pending the first pilot run |
+
+Plans are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Development
 
 ```bash
-make test         # ruff + offline Python tests
-make check        # also runs the GitHub workflow and attribution tests (Node.js 22+)
-make help         # list all targets
+uv sync --locked --extra dev
+make test     # ruff + offline tests, no API keys needed
+make check    # also the GitHub workflow and attribution tests (Node.js 22+)
 ```
 
-None of the checks need API keys.
-
-## Archived work
-
-Pre-pivot experiments live in the archived repository
-[BichengWang/multi-agents-legacy](https://github.com/BichengWang/multi-agents-legacy).
+Reusable orchestration patterns (`RefineLoop`, `BestOfN`, `SequentialWorkflow`, `Router`) are in
+[`agent/workflows`](agent/workflows/README.md). Pre-pivot experiments live in the archived
+[multi-agents-legacy](https://github.com/BichengWang/multi-agents-legacy) repository.
 
 ## License
 

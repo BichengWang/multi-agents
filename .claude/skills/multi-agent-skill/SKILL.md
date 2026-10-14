@@ -36,6 +36,21 @@ repository only through `Workspace.exec`, so one team runs locally and in benchm
    never guess prices. Every harness call made by a team appears in `TeamResult.runs`.
 5. Reviewers and judges must not mutate a worker's workspace; give them a fork.
 
+## adding a harness
+
+1. `agent/teams/harnesses/<name>.py`: implement `Harness.run` with `workspace.exec` only; parse
+   the CLI's machine-readable output into `HarnessRun` (final message, session id, usage, cost).
+   If the CLI reports cumulative usage on resume, subtract the session's previous total.
+2. Register it in `agent/teams/spec.py` (`HARNESSES`, `build_harness`, `is_priced`).
+3. Map `--permissions safe|bypass` to the CLI's own sandbox / bypass flags.
+4. Capture real CLI output as sanitized fixtures in `tests/teams/fixtures/` and test parsing.
+
+## adding a team topology
+
+1. Implement it in `agent/teams/topologies.py` on top of an `agent/workflows` pattern.
+2. Add its spec kind and keys to `agent/teams/spec.py`; `Team.name` must be the canonical spec.
+3. Test with fake harnesses on a temp git repo (`tests/teams/`): selection, failures, cleanup.
+
 ## tests
 
 Offline and deterministic: `tests/workflows/fakes.py` (`FakeAgent`, `fake_runner`,

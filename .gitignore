@@ -177,5 +177,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Run records (python -m agent run)
+# Benchmark outputs (python -m agent.bench ... --out runs/...)
 runs/

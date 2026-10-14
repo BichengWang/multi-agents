@@ -28,7 +28,7 @@ EXIT_OK, EXIT_NO_PATCH, EXIT_USAGE, EXIT_APPLY, EXIT_FAILED, EXIT_CANCELLED = 0,
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m agent", description="Run teams of coding agents.")
+    parser = argparse.ArgumentParser(prog="multi-agents", description="Run teams of coding agents.")
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser(
         "run",
