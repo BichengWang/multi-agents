@@ -176,11 +176,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-**/wandb/
-**/output/
 
-# Eval harness run reports
-agent/agents_eval/results/
-
-# Workflow run records (python -m agent.main)
+# Run records (python -m agent run)
 runs/

@@ -55,10 +55,10 @@ def test_save_run_writes_a_json_record(tmp_path):
     tracker = RunTracker(base=fake_runner)
     result = asyncio.run(RefineLoop(counting_generator(), scripted_evaluator([9]), runner=tracker).run("idea"))
 
-    record = run_record(result, workflow="story/refine", query="idea", started_at="t0", duration_s=1.23456, tracker=tracker)
+    record = run_record(result, workflow="plan/refine", query="idea", started_at="t0", duration_s=1.23456, tracker=tracker)
     path = save_run(record, tmp_path / "runs")
 
-    assert path.name.endswith("_story-refine.json")
+    assert path.name.endswith("_plan-refine.json")
     saved = json.loads(path.read_text())
     assert saved["final_output"] == "draft-1"
     assert saved["verdict"] == {"score": 9.0, "passed": True, "feedback": "feedback for 9"}

@@ -19,28 +19,28 @@ def test_checkpoint_steers_revision_and_records_decision():
 
     async def checkpoint(state):
         states.append(state)
-        return CheckpointDecision(feedback="Give the protagonist a clear motive.")
+        return CheckpointDecision(feedback="Keep the public API unchanged.")
 
     generator = counting_generator()
     result = asyncio.run(
         RefineLoop(
             generator, scripted_evaluator([5, 9]), runner=fake_runner, checkpoint=checkpoint,
-        ).run("a moon heist")
+        ).run("fix the flaky export test")
     )
 
     assert len(states) == 1
-    assert states[0].query == "a moon heist"
+    assert states[0].query == "fix the flaky export test"
     assert states[0].iteration == 1
     assert states[0].draft == "draft-1"
     assert states[0].verdict.score == 5
     assert "feedback for 5" in generator.calls[1]
-    assert "Human steering feedback:\nGive the protagonist a clear motive." in generator.calls[1]
+    assert "Human steering feedback:\nKeep the public API unchanged." in generator.calls[1]
     assert result.final_output == "draft-2"
     assert result.meta["checkpoint_stopped"] is False
     checkpoint_step = next(step for step in result.steps if step.name == "checkpoint")
     assert checkpoint_step.iteration == 1
     assert to_jsonable(checkpoint_step.output) == {
-        "continue_refining": True, "feedback": "Give the protagonist a clear motive.",
+        "continue_refining": True, "feedback": "Keep the public API unchanged.",
     }
 
 

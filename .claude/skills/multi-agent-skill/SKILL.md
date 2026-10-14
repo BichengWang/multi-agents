@@ -1,45 +1,43 @@
 ---
 name: multi-agent-skill
-description: create multi agent framework, include the method, script, reference. Use when adding a new multi-agent workflow under agent/ or extending the shared patterns in agent/workflows.
+description: Build multi-agent teams for real work in this repo. Use when adding a team topology, a harness, or a workspace under agent/teams, or when extending the shared patterns in agent/workflows.
 ---
 
 # multi-agent-skill
 
-help create a multi-agent framework.
+This repo runs teams of coding agents and measures whether a team beats a solo agent.
 
 ## core logic view
 
 ```
-query ──► [pattern] ──► WorkflowResult(final_output, verdict, meta, steps)
-             │
-             ├─ SequentialWorkflow : A → B → C
-             ├─ RefineLoop         : generate ⇄ evaluate (feedback) until accepted
-             ├─ BestOfN            : N × (generate → evaluate) in parallel, keep best
-             └─ Router             : classify → hand off to one specialist workflow
+CodingTask ──► Team (topology) ──► TeamResult(patch, runs, usage, duration_s, meta)
+                 │
+                 ├─ drives Harness   : one coding agent run to completion (external CLI or SDK agent)
+                 └─ in a Workspace   : isolated checkout at the base commit (local worktree or sandbox)
+
+Topologies reuse agent/workflows:
+  SequentialWorkflow : A → B → C
+  RefineLoop         : generate ⇄ evaluate (feedback) until accepted; returns the best draft
+  BestOfN            : N × (generate → evaluate) concurrently, keep the best
+  Router             : classify → hand off to one specialist workflow
 ```
 
-Agents are plain OpenAI Agents SDK `Agent`s. Patterns live in `agent/workflows/` and never call
-the SDK directly; they call an injected `runner(agent, input_text) -> final_output`.
+Contracts: `agent/teams/types.py` (see `reference/protocol.md`). Harnesses and teams touch the
+repository only through `Workspace.exec`, so one team runs locally and in benchmark sandboxes.
 
-## input / output
+## rules
 
-- Input: a text query, plus the agents for each role.
-- Evaluator agents used by `RefineLoop` / `BestOfN` must set `output_type` to a subclass of
-  `agent.workflows.Verdict` (`score`, `passed`, `feedback`, + domain fields).
-- Output: `WorkflowResult` — see `reference/protocol.md`.
+1. Never change the contracts in `agent/teams/types.py` without updating every implementation.
+2. Patterns in `agent/workflows` never call the SDK directly; they call an injected
+   `runner(agent, input_text) -> final_output`. Tests inject a fake runner.
+3. Evaluators used by `RefineLoop` / `BestOfN` return an `agent.workflows.Verdict` subclass
+   (`score`, `passed`, `feedback`, plus domain fields).
+4. Cost honesty: a harness that cannot report or price a call returns `Usage.cost_usd=None`;
+   never guess prices. Every harness call made by a team appears in `TeamResult.runs`.
+5. Reviewers and judges must not mutate a worker's workspace; give them a fork.
 
-## detail method
+## tests
 
-1. Create `agent/<name>/my_agents/*.py`, one `Agent` per role (keep prompts in module constants).
-2. Give the evaluator a `Verdict` subclass as `output_type`.
-3. Write `agent/<name>/manager.py` that builds one of the patterns and accepts `runner=` so tests
-   can inject a fake.
-4. Write `agent/<name>/main.py` (argparse; run with `python -m agent.<name>.main`).
-5. Add offline tests under `tests/workflows/` using `tests/workflows/fakes.py`
-   (`FakeAgent`, `fake_runner`, `scripted_evaluator`); run `make test-workflows`.
-6. Add the module to `tests/workflows/test_imports.py`.
-
-7. Register the workflow as a `Route` in `agent/triage/manager.py::build_routes` so
-   `python -m agent.main` can dispatch to it.
-
-Reference implementation: `agent/story_agent_simple/`.
+Offline and deterministic: `tests/workflows/fakes.py` (`FakeAgent`, `fake_runner`,
+`scripted_evaluator`) for patterns; fake harnesses and temp git repos for teams. Run
+`make test`, then `make check` before a PR.
