@@ -21,6 +21,9 @@ Every agent call goes through the supplied `AgentRunner`, so `RunTracker` captur
 as well as top-level stages. Workflows do not start their own SDK trace or bypass the runner
 with streamed SDK calls; the caller owns any enclosing trace.
 
+`BestOfN(generator=[...])` accepts one generator per candidate (`n` defaults to the list length) for
+candidates that differ in kind, e.g. different harnesses, not only in prompt.
+
 `BestOfN` uses `map_concurrently(items, worker, max_concurrency=...)`. It uses a fixed-size
 worker pool, returns results in input order, and cancels and awaits all workers on failure or
 caller cancellation. Queued work does not start after a worker fails. `BestOfN` defaults to

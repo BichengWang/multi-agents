@@ -107,3 +107,29 @@ def test_closing_the_original_also_closes_forks_left_open(repo):
 
     assert not os.path.exists(run(go()))
     assert git(repo, "worktree", "list").count("\n") == 1
+
+
+def test_diff_round_trips_whatever_diff_prefix_config_the_user_has(repo, monkeypatch):
+    monkeypatch.setenv("GIT_CONFIG_PARAMETERS", "'diff.noprefix=true'")
+
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            await ws.exec(["sh", "-c", "echo changed > a.txt; echo new > sub_b.txt"])
+            patch = await ws.diff()
+            async with await ws.fork() as fork:
+                await fork.apply(patch)
+                return patch, await fork.diff()
+
+    patch, again = run(go())
+    assert "diff --git a/a.txt b/a.txt" in patch and again == patch
+
+
+def test_repeated_event_loops_can_create_forks_concurrently(repo):
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            forks = await asyncio.gather(ws.fork(), ws.fork(), ws.fork())
+            for fork in forks:
+                await fork.close()
+
+    run(go())
+    run(go())  # a second loop must not trip over locks bound to the first

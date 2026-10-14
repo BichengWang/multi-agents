@@ -119,3 +119,18 @@ def test_litellm_models_need_the_litellm_extra(tmp_path, monkeypatch):
 
     with pytest.raises(RuntimeError, match="litellm extra"):
         run(go())
+
+
+def test_usage_spent_before_an_sdk_error_is_still_reported(tmp_path, monkeypatch):
+    monkeypatch.setenv("MULTI_AGENTS_WORKTREE_DIR", str(tmp_path / "worktrees"))
+    repo = make_repo(tmp_path / "repo")
+    loops_forever = ScriptedModel([[tool_call("run_shell", f"c{i}", command="true")] for i in range(5)])
+
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            return await SdkHarness(loops_forever, max_turns=3).run(ws, "x")
+
+    result = run(go())
+    assert result.exit_code == 1
+    assert result.usage.input_tokens == 3000 and result.usage.output_tokens == 150
+    assert result.usage.cost_usd is not None

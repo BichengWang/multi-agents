@@ -25,6 +25,7 @@ import os
 import shutil
 import signal
 import uuid
+import weakref
 from pathlib import Path
 from typing import Optional
 
@@ -33,7 +34,15 @@ from .types import ExecResult
 _GIT_ENV = {"GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0"}
 
 # `git worktree add/remove/prune` mutate shared repository metadata; serialize them per repo.
-_repo_locks: dict[str, asyncio.Lock] = {}
+# Locks are bound to an event loop, so they are keyed by (loop, repo) and dropped with the loop.
+_repo_locks: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Lock]] = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _repo_lock(common_dir: str) -> asyncio.Lock:
+    locks = _repo_locks.setdefault(asyncio.get_running_loop(), {})
+    return locks.setdefault(common_dir, asyncio.Lock())
 
 
 class ExecTimeout(TimeoutError):
@@ -117,12 +126,20 @@ async def _git(
     return code, out, err
 
 
+def user_cache_dir() -> Path:
+    """``$XDG_CACHE_HOME/multi-agents`` (default ``~/.cache/multi-agents``)."""
+    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(base) / "multi-agents"
+
+
 def _cache_root() -> Path:
     override = os.environ.get("MULTI_AGENTS_WORKTREE_DIR")
-    if override:
-        return Path(override)
-    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
-    return Path(base) / "multi-agents" / "worktrees"
+    return Path(override) if override else user_cache_dir() / "worktrees"
+
+
+def repo_key(repo: str, common_dir: str) -> str:
+    """Stable, readable per-repository directory name: ``<name>-<hash of the git dir>``."""
+    return f"{Path(repo).name}-{hashlib.sha1(common_dir.encode()).hexdigest()[:8]}"
 
 
 class LocalWorktree:
@@ -173,11 +190,10 @@ class LocalWorktree:
         parent_dir: Optional[str],
         family: Optional[list[LocalWorktree]] = None,
     ) -> LocalWorktree:
-        digest = hashlib.sha1(common_dir.encode()).hexdigest()[:8]
-        group = Path(parent_dir) if parent_dir else _cache_root() / f"{Path(repo).name}-{digest}"
+        group = Path(parent_dir) if parent_dir else _cache_root() / repo_key(repo, common_dir)
         group.mkdir(parents=True, exist_ok=True)
         root = str((group / uuid.uuid4().hex[:10]).resolve())
-        lock = _repo_locks.setdefault(common_dir, asyncio.Lock())
+        lock = _repo_lock(common_dir)
         async with lock:
             try:
                 await _git(repo, "worktree", "add", "--detach", "--quiet", root, base_commit)
@@ -231,6 +247,10 @@ class LocalWorktree:
                 "--no-color",
                 "--no-ext-diff",
                 "--no-renames",
+                # Pin the prefixes: diff.noprefix / mnemonicPrefix / srcPrefix in the user's git
+                # config would otherwise change the header and break `git apply`.
+                "--src-prefix=a/",
+                "--dst-prefix=b/",
                 self.base_commit,
                 env=env,
             )
@@ -269,7 +289,7 @@ class LocalWorktree:
             for member in list(self._family):
                 if member is not self:
                     await member.close()
-        lock = _repo_locks.setdefault(self.common_dir, asyncio.Lock())
+        lock = _repo_lock(self.common_dir)
         async with lock:
             await _git(self.repo, "worktree", "remove", "--force", self.root, check=False)
             if os.path.exists(self.root):
@@ -278,4 +298,4 @@ class LocalWorktree:
         self._closed = True
 
 
-__all__ = ["ExecTimeout", "GitError", "LocalWorktree", "run_process"]
+__all__ = ["ExecTimeout", "GitError", "LocalWorktree", "repo_key", "run_process", "user_cache_dir"]

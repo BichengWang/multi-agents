@@ -22,9 +22,9 @@ from agent.workflows import to_jsonable
 from .harnesses.base import PERMISSIONS
 from .spec import SpecError, build_team, parse_team_spec
 from .types import CodingTask, TeamResult
-from .worktree import GitError, LocalWorktree, run_process
+from .worktree import GitError, LocalWorktree, repo_key, run_process, user_cache_dir
 
-EXIT_OK, EXIT_NO_PATCH, EXIT_USAGE, EXIT_APPLY, EXIT_CANCELLED = 0, 1, 2, 3, 130
+EXIT_OK, EXIT_NO_PATCH, EXIT_USAGE, EXIT_APPLY, EXIT_FAILED, EXIT_CANCELLED = 0, 1, 2, 3, 4, 130
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,7 +43,12 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--base", default="HEAD", help="base ref the workers start from (default: HEAD)")
     run.add_argument("--timeout", type=float, default=None, help="seconds allowed per harness run")
     run.add_argument("--keep-worktrees", action="store_true", help="do not delete the main worktree")
-    run.add_argument("--runs-dir", default="runs", help="where run records are saved (default: runs)")
+    run.add_argument(
+        "--runs-dir",
+        default=None,
+        help="where run records are saved (default: <user cache>/multi-agents/runs/<repo>-<hash>, "
+        "never inside your repository)",
+    )
     run.add_argument(
         "--permissions",
         choices=PERMISSIONS,
@@ -75,40 +80,58 @@ def _cost_text(cost: Optional[float]) -> str:
     return "n/a" if cost is None else f"${cost:.4f}"
 
 
+def _tokens(n: int) -> str:
+    if n < 1000:
+        return str(n)
+    if n < 10_000:
+        return f"{n / 1000:.1f}k"
+    if n < 1_000_000:
+        return f"{n // 1000}k"
+    return f"{n / 1_000_000:.1f}M"
+
+
+def _token_triplet(input_tokens: int, cached: int, output: int) -> str:
+    return f"{_tokens(input_tokens)}/{_tokens(cached)}/{_tokens(output)}"
+
+
 def render_summary(
     console: Console, team: str, result: TeamResult, *, repo: str, patch_path: Path, record_path: Path
 ) -> None:
-    table = Table(title=f"Team {team}", title_justify="left")
-    for col in ("#", "role", "harness", "model", "input", "cached", "output", "cost", "secs", "exit"):
-        table.add_column(
-            col,
-            justify="right" if col in ("input", "cached", "output", "cost", "secs") else "left",
-            no_wrap=True,
-            overflow="fold",
-        )
-    for i, run in enumerate(result.runs, 1):
+    console.print(f"Team: {team}", soft_wrap=True)
+    table = Table(show_edge=False, pad_edge=False)
+    table.add_column("role", no_wrap=True)
+    table.add_column("harness@model", no_wrap=True, overflow="ellipsis")
+    table.add_column("tokens in/cached/out", no_wrap=True, justify="right")
+    table.add_column("cost", no_wrap=True, justify="right")
+    table.add_column("secs", no_wrap=True, justify="right")
+    for run in result.runs:
         u = run.usage
+        failed = run.exit_code != 0
         table.add_row(
-            str(i), run.role, run.harness, run.model or "-", f"{u.input_tokens:,}",
-            f"{u.cached_input_tokens:,}", f"{u.output_tokens:,}", _cost_text(u.cost_usd),
-            f"{run.duration_s:.1f}", str(run.exit_code),
+            f"[red]x {run.role}[/red]" if failed else run.role,
+            f"{run.harness}@{run.model}" if run.model else run.harness,
+            _token_triplet(u.input_tokens, u.cached_input_tokens, u.output_tokens),
+            _cost_text(u.cost_usd),
+            f"{run.duration_s:.1f}",
         )
     console.print(table)
     usage = result.usage
-    known = sum(r.usage.cost_usd for r in result.runs if r.usage.cost_usd is not None)
-    unpriced = sum(1 for r in result.runs if r.usage.cost_usd is None)
-    cost = _cost_text(usage.cost_usd) if usage.cost_usd is not None else (
-        f"${known:.4f} + {unpriced} unpriced run(s)" if result.runs else "n/a"
-    )
+    if usage.cost_usd is not None:
+        cost = _cost_text(usage.cost_usd)
+    else:
+        known = sum(r.usage.cost_usd for r in result.runs if r.usage.cost_usd is not None)
+        unpriced = sum(1 for r in result.runs if r.usage.cost_usd is None)
+        cost = f"${known:.4f} + {unpriced} unpriced run(s)"
     console.print(
-        f"Total: {usage.input_tokens:,} input ({usage.cached_input_tokens:,} cached), "
-        f"{usage.output_tokens:,} output tokens, cost {cost}, {result.duration_s:.1f}s"
+        f"Total: {_token_triplet(usage.input_tokens, usage.cached_input_tokens, usage.output_tokens)} "
+        f"tokens, cost {cost}, {result.duration_s:.1f}s",
+        soft_wrap=True,
     )
     for key in ("scores", "chosen", "best_round", "accepted"):
         if key in result.meta:
-            console.print(f"{key}: {result.meta[key]}")
+            console.print(f"{key}: {result.meta[key]}", soft_wrap=True)
     for failure in result.meta.get("failures", []):
-        console.print(f"[yellow]failure:[/yellow] {failure}", highlight=False)
+        console.print(f"[yellow]failure:[/yellow] {failure}", highlight=False, soft_wrap=True)
     files = _files_changed(result.patch)
     if not files:
         console.print("[red]No changes were produced.[/red]")
@@ -124,6 +147,10 @@ def render_summary(
         )
 
 
+def default_runs_dir(workspace: LocalWorktree) -> str:
+    return str(user_cache_dir() / "runs" / repo_key(workspace.repo, workspace.common_dir))
+
+
 def save_record(runs_dir: str, record: dict, patch: str) -> tuple[Path, Path]:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     slug = re.sub(r"[^A-Za-z0-9_-]+", "-", str(record["team"])).strip("-") or "run"
@@ -135,10 +162,17 @@ def save_record(runs_dir: str, record: dict, patch: str) -> tuple[Path, Path]:
     return record_path, patch_path
 
 
+async def _is_clean(repo: str, *, untracked: bool) -> bool:
+    flag = "--untracked-files=all" if untracked else "--untracked-files=no"
+    code, out, _ = await run_process(["git", "status", "--porcelain", flag], cwd=repo)
+    return code == 0 and not out.strip()
+
+
 async def _apply_to_tree(repo: str, patch_path: Path, console: Console) -> int:
-    code, out, _ = await run_process(["git", "status", "--porcelain"], cwd=repo)
-    if code != 0 or out.strip():
-        console.print("[red]Not applying: the working tree has uncommitted changes.[/red]")
+    # The tree may have changed while the team ran; untracked files only matter if they collide,
+    # and then `git apply` refuses on its own.
+    if not await _is_clean(repo, untracked=False):
+        console.print("[red]Not applying: the working tree changed during the run.[/red]")
         return EXIT_APPLY
     code, _, err = await run_process(["git", "apply", "--binary", str(patch_path)], cwd=repo)
     if code != 0:
@@ -166,6 +200,11 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         console.print(f"[red]Cannot create a worktree:[/red] {exc}")
         return EXIT_USAGE
     repo = workspace.repo
+    if args.apply and not await _is_clean(repo, untracked=True):
+        console.print("[red]--apply needs a clean working tree; commit or stash your changes first.[/red]")
+        await workspace.close()
+        return EXIT_APPLY
+    runs_dir = args.runs_dir or default_runs_dir(workspace)
     task = CodingTask(task_id=datetime.now(timezone.utc).strftime("task-%Y%m%dT%H%M%S"), instruction=args.instruction)
     started_at = datetime.now(timezone.utc).isoformat()
     console.print(
@@ -188,6 +227,9 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         result = await team.solve(task, workspace)
     except asyncio.CancelledError:
         return EXIT_CANCELLED
+    except Exception as exc:
+        console.print(f"[red]The team failed:[/red] {type(exc).__name__}: {exc}", soft_wrap=True)
+        return EXIT_FAILED
     finally:
         loop.remove_signal_handler(signal.SIGINT)
         if args.keep_worktrees:
@@ -210,7 +252,7 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         "cost_usd": usage.cost_usd,
         "meta": to_jsonable(result.meta),
     }
-    record_path, patch_path = save_record(args.runs_dir, record, result.patch)
+    record_path, patch_path = save_record(runs_dir, record, result.patch)
     render_summary(console, team.name, result, repo=repo, patch_path=patch_path, record_path=record_path)
     if not result.patch.strip():
         return EXIT_NO_PATCH

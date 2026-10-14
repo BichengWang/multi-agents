@@ -169,9 +169,9 @@ class SdkHarness:
         except RuntimeError as exc:
             if "litellm extra" in str(exc):
                 raise
-            return self._failed(role, name, f"{type(exc).__name__}: {exc}", 1, start, sid)
+            return self._failed(role, name, f"{type(exc).__name__}: {exc}", 1, start, sid, exc)
         except Exception as exc:
-            return self._failed(role, name, f"{type(exc).__name__}: {exc}", 1, start, sid)
+            return self._failed(role, name, f"{type(exc).__name__}: {exc}", 1, start, sid, exc)
 
         self._sessions[sid] = result.to_input_list()
         usage = self._usage(result.context_wrapper.usage, name)
@@ -187,10 +187,21 @@ class SdkHarness:
         )
 
     def _failed(
-        self, role: str, name: Optional[str], message: str, code: int, start: float, sid: str
+        self,
+        role: str,
+        name: Optional[str],
+        message: str,
+        code: int,
+        start: float,
+        sid: str,
+        exc: Optional[BaseException] = None,
     ) -> HarnessRun:
+        # Model calls made before an SDK error (e.g. max turns exceeded) were still paid for.
+        run_data = getattr(exc, "run_data", None)
+        sdk_usage = getattr(getattr(run_data, "context_wrapper", None), "usage", None)
+        usage = self._usage(sdk_usage, name) if sdk_usage is not None else Usage()
         return HarnessRun(
-            "sdk", name, role, message, code, Usage(), time.perf_counter() - start, sid, message
+            "sdk", name, role, message, code, usage, time.perf_counter() - start, sid, message
         )
 
     def _usage(self, sdk_usage: Any, name: Optional[str]) -> Usage:

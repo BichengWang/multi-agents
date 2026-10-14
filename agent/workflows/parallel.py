@@ -11,11 +11,11 @@ from .concurrency import map_concurrently
 class BestOfN:
     """Fan out N candidate generations concurrently, score each with the evaluator, keep the best.
 
-    ``variant_prompt`` lets each candidate get a different input (e.g. a different angle or
-    genre) so the candidates are diverse rather than N samples of the same prompt.
-    ``generator`` may also be a list of agents, one per candidate (``n`` then defaults to its
-    length), for candidates that differ in kind rather than just in prompt. Otherwise ``n``
-    defaults to 3. ``max_concurrency`` bounds concurrent candidates. Failed candidates are recorded and
+    ``variant_prompt`` lets each candidate get a different input (e.g. a different approach) so
+    the candidates are diverse rather than N samples of the same prompt. ``generator`` may also
+    be a list of agents, one per candidate (``n`` then defaults to its length), for candidates
+    that differ in kind rather than just in prompt; otherwise ``n`` defaults to 3.
+    ``max_concurrency`` bounds concurrent candidates. Failed candidates are recorded and
     skipped; the run fails only if none produces a valid verdict.
     """
 

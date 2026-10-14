@@ -238,6 +238,10 @@ class CodexHarness:
         if resumed_from:
             baseline = self._totals.get(resumed_from)
             delta = totals.minus(baseline) if baseline else None
+            if delta is not None and min(
+                delta.input_tokens, delta.cached_input_tokens, delta.cache_write_tokens, delta.output_tokens
+            ) < 0:
+                delta = None  # not cumulative after all: the baseline is unusable
         if thread_id:
             self._totals[thread_id] = totals
         if model is None and thread_id:

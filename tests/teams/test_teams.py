@@ -1,8 +1,11 @@
+import asyncio
 import os
+import time
 
 import pytest
 
 from agent.teams import BestTeam, CodingTask, LocalWorktree, ReviewTeam, SoloTeam
+from agent.teams.worktree import GitError
 
 from .fakes import FakeHarness, make_repo, read, run, verdict_json, write
 
@@ -49,7 +52,7 @@ def test_review_returns_the_best_patch_and_feeds_feedback_back_to_the_coder(repo
     assert [r.role for r in result.runs] == ["coder", "reviewer"] * 3
     # The revision prompt carries the reviewer's feedback and the coder resumes its session.
     second = coder.calls[1]
-    assert "fix-1" in second.prompt and "4.0/10" in second.prompt and TASK.instruction in second.prompt
+    assert "fix-1" in second.prompt and TASK.instruction in second.prompt
     assert second.session_id == "session-coder" and coder.calls[0].session_id is None
     assert result.usage.cost_usd == pytest.approx(0.06)
 
@@ -161,3 +164,64 @@ def test_solo_returns_the_workers_patch_and_records_failures(repo):
 
     result, *_ = solve(SoloTeam(FakeHarness(crash)), repo)
     assert result.patch == "" and result.runs == [] and "down" in result.meta["failures"][0]["error"]
+
+
+def test_a_fork_that_cannot_be_created_is_reported_as_that_candidates_failure(repo):
+    class FlakyFork:
+        """Delegates to a real worktree but its second fork() fails."""
+
+        def __init__(self, inner):
+            self.inner, self.forks = inner, 0
+            self.root = inner.root
+
+        async def fork(self):
+            self.forks += 1
+            if self.forks == 2:
+                raise GitError("disk full")
+            return await self.inner.fork()
+
+        def __getattr__(self, name):
+            return getattr(self.inner, name)
+
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            workers = [worker_writing("a\n", "w1"), worker_writing("b\n", "w2")]
+            return await BestTeam(workers, judge_scoring({"a": 5, "b": 9})).solve(TASK, FlakyFork(ws))
+
+    result = run(go())
+    assert result.meta["scores"][1] is None and result.meta["chosen"] == 1
+    assert any(f["candidate"] == 2 and "disk full" in f["error"] for f in result.meta["failures"])
+
+
+def test_cancelling_a_best_team_removes_its_forks_and_kills_the_agents_processes(repo):
+    async def sleeper(call):
+        await call.workspace.exec(["sh", "-c", "sleep 300 & echo $! > pid; wait"])
+        return "unreachable"
+
+    workers = [FakeHarness(sleeper, name="w1"), FakeHarness(sleeper, name="w2")]
+
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            task = asyncio.create_task(BestTeam(workers, judge_scoring({})).solve(TASK, ws))
+            pids = []
+            for _ in range(200):
+                await asyncio.sleep(0.05)
+                pids = [
+                    open(os.path.join(r, "pid")).read().strip()
+                    for h in workers for r in h.roots
+                    if os.path.exists(os.path.join(r, "pid"))
+                ]
+                if len(pids) == 2 and all(pids):
+                    break
+            assert len(pids) == 2
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            return [int(p) for p in pids], [r for h in workers for r in h.roots]
+
+    pids, roots = run(go())
+    time.sleep(0.2)
+    assert not any(os.path.exists(r) for r in roots)
+    for pid in pids:
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)

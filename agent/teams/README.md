@@ -58,9 +58,9 @@ python -m agent run --team review:coder=codex,reviewer=claude@haiku,rounds=2 \
 | `--repo PATH` | repository (default: current directory); `--base REF` base ref (default `HEAD`) |
 | `--timeout S` | seconds allowed per harness run (not for the whole team) |
 | `--permissions safe\|bypass` | see Safety (default `safe`) |
-| `--runs-dir DIR` | where records go (default `runs/`) |
+| `--runs-dir DIR` | where records go (default `$XDG_CACHE_HOME/multi-agents/runs/<repo>-<hash>/`, i.e. never inside your repository; the path is printed) |
 | `--keep-worktrees` | keep the main worktree for inspection (forks made by teams are always removed) |
-| `--apply` | apply the patch to your tree, only if it is clean |
+| `--apply` | apply the patch to your tree; refused up front (before any agent runs) if the tree is not clean |
 
 The run creates `<runs-dir>/<utc-timestamp>_<team>/record.json` (team, task, repo, base commit,
 patch, every run with harness/role/model/tokens/cost/seconds/session/log, usage, total cost, duration,
@@ -73,7 +73,7 @@ git -C <repo> apply <runs-dir>/<run>/final.patch
 Your working tree is never modified unless you pass `--apply` (and then only if `git status` is
 clean). The base is a commit: uncommitted changes in your tree are not visible to the workers.
 Ctrl-C cancels all workers (their whole process groups are killed) and removes the worktrees.
-Exit code: 0 patch produced, 1 empty patch, 2 usage error, 3 `--apply` refused or failed, 130 interrupted.
+Exit code: 0 patch produced, 1 empty patch, 2 usage error, 3 `--apply` refused or failed, 4 the team crashed, 130 interrupted.
 
 ### Where worktrees live
 
@@ -113,7 +113,7 @@ hooks, default model).
 
 | Harness | Tokens | Cost |
 |---|---|---|
-| `claude` | from `modelUsage` (input + cache read + cache creation, output) | the CLI's own `total_cost_usd`; `None` if it is absent |
+| `claude` | from `modelUsage` (input + cache read + cache creation, output); on resume the CLI's totals are cumulative over the session, so the previous total is subtracted | the CLI's own `total_cost_usd` (same delta); `None` if absent or if the session's earlier total was not seen by this harness object |
 | `codex` | `turn.completed` usage, minus the previous total when resuming (the CLI reports a cumulative thread total) | [`pricing.py`](pricing.py): list price × tokens, short-context rates, for models in the table. The stream does not name the model: with no `@model` it is read from the session's rollout file; if that fails, or the model is not listed, `None` |
 | `sdk` | summed over all requests of the run | `pricing.py` for OpenAI models; `litellm.cost_per_token` for `litellm/...` models when litellm knows the model; else `None` |
 

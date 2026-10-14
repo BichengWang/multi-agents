@@ -38,9 +38,10 @@ WORKER_PROMPT = (
 
 REVIEW_PROMPT = (
     "You are the {role} for a candidate change to the repository in the current directory. The "
-    "candidate is applied as uncommitted modifications (see `git status` and `git diff`). Read "
-    "it, and run the project's tests or write throwaway checks where useful. Do NOT modify, "
-    "create or delete any file in the repository: you are judging the change, not fixing it. "
+    "candidate is applied as uncommitted modifications: changes to existing files show in "
+    "`git diff HEAD`, new files are untracked (see `git status`). Read it, and run the "
+    "project's tests or write throwaway checks where useful. Do NOT modify, create or delete "
+    "any file in the repository: you are judging the change, not fixing it. "
     "Judge only against the task below: does the change correctly and completely solve it, "
     "without breaking anything else?\n\nTask:\n{instruction}\n\nCandidate patch:\n```diff\n"
     "{patch}\n```"
@@ -389,10 +390,12 @@ class BestTeam:
             max_concurrency=self.max_concurrency or len(candidates),
         )
         patch = ""
+        flow_failures: list[dict[str, Any]] = []
         meta: dict[str, Any] = {"team": self.name}
         try:
             flow = await pattern.run(WORKER_PROMPT.format(instruction=task.instruction))
             patch = flow.final_output.patch
+            flow_failures = flow.meta.get("failures", [])
             meta.update(chosen=flow.meta["chosen"], scores=flow.meta["scores"])
         except RuntimeError as exc:
             meta.update(chosen=None, scores=[None] * len(candidates), error=str(exc))
@@ -410,6 +413,12 @@ class BestTeam:
             runs += c.runs
         meta["candidates"] = entries
         failures = [{"candidate": c.index, **f} for c in candidates for f in c.failures]
+        # Candidates that failed outside their harness (e.g. fork() raising) only appear in the
+        # pattern's own failure list.
+        seen = {f["candidate"] for f in failures}
+        failures += [
+            {"role": "worker", **f} for f in flow_failures if f["candidate"] not in seen
+        ]
         if failures:
             meta["failures"] = failures
         return TeamResult(patch, runs, time.perf_counter() - start, meta)

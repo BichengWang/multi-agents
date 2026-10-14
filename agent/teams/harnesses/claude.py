@@ -41,6 +41,12 @@ class ClaudeResult:
 def parse_claude_output(stdout: str) -> ClaudeResult:
     """Parse the ``--output-format json`` result object.
 
+    On ``--resume`` the session id is unchanged and ``modelUsage`` and ``total_cost_usd`` are
+    cumulative over the whole session (checked live against claude 2.1.296: output tokens and cost
+    of a resumed run include the earlier run; see ``claude_resume_*.json`` fixtures), while the
+    top-level ``usage`` is per process. ``ClaudeHarness`` therefore subtracts the session total
+    seen at the end of the previous run.
+
     Tokens come from ``modelUsage`` when present (the top-level ``usage`` is zeroed on some error
     results) and count cache reads and cache creation as input; ``cached_input_tokens`` is the
     cache-read part. Cost is the CLI's own ``total_cost_usd``; missing means unpriced (None).
@@ -105,6 +111,8 @@ class ClaudeHarness:
     max_budget_usd: Optional[float] = None
     name: str = field(default="claude", init=False)
     supports_output_schema: bool = field(default=True, init=False)
+    # session id -> cumulative usage reported at the end of its latest run
+    _totals: dict[str, Usage] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.permissions = check_permissions(self.permissions)
@@ -131,6 +139,25 @@ class ClaudeHarness:
         if self.max_budget_usd is not None:
             argv += ["--max-budget-usd", str(self.max_budget_usd)]
         return argv
+
+    def _session_delta(self, new_id: Optional[str], resumed_from: Optional[str], total: Usage) -> Usage:
+        """This run's share of the cumulative session usage; unknown baseline means unpriced."""
+        base = self._totals.get(resumed_from) if resumed_from else None
+        if new_id:
+            self._totals[new_id] = total
+        if not resumed_from:
+            return total
+        if base is None:
+            return Usage(total.input_tokens, total.cached_input_tokens, total.output_tokens, None)
+        delta = Usage(
+            total.input_tokens - base.input_tokens,
+            total.cached_input_tokens - base.cached_input_tokens,
+            total.output_tokens - base.output_tokens,
+            None if total.cost_usd is None or base.cost_usd is None else total.cost_usd - base.cost_usd,
+        )
+        if min(delta.input_tokens, delta.cached_input_tokens, delta.output_tokens, delta.cost_usd or 0) < 0:
+            return Usage(total.input_tokens, total.cached_input_tokens, total.output_tokens, None)
+        return delta
 
     async def run(
         self,
@@ -161,6 +188,7 @@ class ClaudeHarness:
             log = f"{res.stderr}\n{res.stdout}".strip()
             return failed(f"{exc}: {clip(log, 500)}", res.exit_code, log)
         exit_code = res.exit_code if res.exit_code != 0 else (0 if parsed.ok else 1)
+        usage = self._session_delta(parsed.session_id, session_id, parsed.usage)
         log = f"{parsed.detail}\n{res.stderr}".strip()
         return HarnessRun(
             harness="claude",
@@ -168,7 +196,7 @@ class ClaudeHarness:
             role=role,
             final_message=parsed.text,
             exit_code=exit_code,
-            usage=parsed.usage,
+            usage=usage,
             duration_s=outcome.duration_s,
             session_id=parsed.session_id or session_id,
             log=clip(log),
