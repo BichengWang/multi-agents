@@ -20,10 +20,6 @@ from agent.teams.types import ExecResult, HarnessRun, TeamResult, Usage
 # --------------------------------------------------------------------------------------------
 
 
-class ExecTimeoutError(Exception):
-    """Same class name Modal raises when an exec exceeds its timeout."""
-
-
 def git(cwd: str | Path, *args: str, env: Optional[dict[str, str]] = None) -> str:
     full_env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
                 "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
@@ -101,13 +97,17 @@ class FakeProcess:
             stderr=asyncio.subprocess.PIPE,
             start_new_session=True,
         )
-        try:
-            out, err = await asyncio.wait_for(proc.communicate(self._stdin_data), self._timeout)
-        except asyncio.TimeoutError:
+        comm = asyncio.ensure_future(proc.communicate(self._stdin_data))
+        done, _ = await asyncio.wait({comm}, timeout=self._timeout)
+        if not done:
+            # Like modal-client (py/v1.6.0): the deadline raises nothing; the process is killed,
+            # the streams end and wait() reports -1.
             proc.kill()
             await proc.wait()
+            self._out, self._err = await comm
             self._code = -1
-            raise ExecTimeoutError("exec timed out") from None
+            return
+        out, err = comm.result()
         self._out, self._err, self._code = out, err, proc.returncode or 0
 
     async def wait(self) -> int:
@@ -128,6 +128,7 @@ class FakeSandbox:
         (workroot / "home").mkdir()
         self.env = env
         self.terminated = False
+        self.terminate_failures = 0
         self.exec_log: list[list[str]] = []
 
     def _map(self, text: str) -> str:
@@ -151,6 +152,9 @@ class FakeSandbox:
         return FakeProcess(mapped, cwd, full_env, timeout)
 
     async def terminate(self, **_: Any) -> None:
+        if self.terminate_failures > 0:
+            self.terminate_failures -= 1
+            raise RuntimeError("modal unavailable")
         self.terminated = True
 
 
@@ -167,8 +171,17 @@ class FakeImage:
 class FakeModal:
     """Just enough of the ``modal`` module for ``ModalBackend``."""
 
-    def __init__(self, template: Path, workroot: Path) -> None:
+    def __init__(
+        self,
+        template: Path,
+        workroot: Path,
+        *,
+        secret_env: Optional[dict[str, str]] = None,
+        extra_env: Optional[dict[str, str]] = None,
+    ) -> None:
         self.template, self.workroot = template, workroot
+        self.secret_env = secret_env or {}
+        self.extra_env = extra_env or {}
         self.sandboxes: list[FakeSandbox] = []
         self.created: list[dict[str, Any]] = []
         self.secrets: list[tuple[str, list[str]]] = []
@@ -181,8 +194,11 @@ class FakeModal:
             outer.created.append(
                 {"args": args, "image": image, "env": env or {}, "secrets": secrets, **kwargs}
             )
+            sandbox_env = {**(env or {}), **outer.extra_env}
+            if secrets:
+                sandbox_env.update(outer.secret_env)
             sb = FakeSandbox(
-                outer.template, Path(tempfile.mkdtemp(dir=outer.workroot)), image.tag, env or {}
+                outer.template, Path(tempfile.mkdtemp(dir=outer.workroot)), image.tag, sandbox_env
             )
             outer.sandboxes.append(sb)
             return sb
@@ -209,17 +225,22 @@ class MemoryWorkspace:
     """In-memory ``Workspace``: ``diff`` returns whatever the fake team 'edited'."""
 
     created: list["MemoryWorkspace"] = []
+    isolate_history = True
+    head = "a" * 40
 
-    def __init__(self) -> None:
+    def __init__(self, *, diff_fails: bool = False) -> None:
         self.root = "/memory"
         self.edits: list[str] = []
         self.closed = False
+        self.diff_fails = diff_fails
         MemoryWorkspace.created.append(self)
 
     async def exec(self, argv, *, env=None, timeout=None, stdin=None) -> ExecResult:
         return ExecResult(0, "", "")
 
     async def diff(self) -> str:
+        if self.diff_fails:
+            raise RuntimeError("sandbox is gone")
         return "".join(self.edits)
 
     async def apply(self, patch: str) -> None:
@@ -248,12 +269,16 @@ class FakeTeam:
         patch: Callable[[str], str] = lambda task_id: f"diff --git a/{task_id} b/{task_id}\n",
         delay: float = 0.0,
         fail_for: Optional[set[str]] = None,
+        partial: str = "",
+        log: str = "LOG",
     ) -> None:
         self.name = name
         self.cost = cost
         self.patch = patch
         self.delay = delay
         self.fail_for = fail_for or set()
+        self.partial = partial  # edits made before the delay / crash
+        self.log = log
         self.solved: list[str] = []
         self.tasks_seen: list[Any] = []
         self.active = 0
@@ -264,6 +289,8 @@ class FakeTeam:
         self.active += 1
         self.peak = max(self.peak, self.active)
         try:
+            if self.partial:
+                workspace.edits.append(self.partial)
             if self.delay:
                 await asyncio.sleep(self.delay)
             if task.task_id in self.fail_for:
@@ -271,6 +298,8 @@ class FakeTeam:
             self.solved.append(task.task_id)
             patch = self.patch(task.task_id)
             workspace.edits.append(patch)
-            return TeamResult(patch=await workspace.diff(), runs=[make_run(self.cost)], duration_s=2.0)
+            run = make_run(self.cost)
+            run.log = self.log
+            return TeamResult(patch=await workspace.diff(), runs=[run], duration_s=2.0)
         finally:
             self.active -= 1

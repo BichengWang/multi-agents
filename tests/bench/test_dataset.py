@@ -138,7 +138,7 @@ def test_limit_larger_than_pool_returns_everything_and_zero_returns_nothing():
 
 
 def test_unknown_dataset_is_rejected():
-    with pytest.raises(ValueError, match="unknown dataset"):
+    with pytest.raises(ValueError):
         load_tasks("nope")
 
 

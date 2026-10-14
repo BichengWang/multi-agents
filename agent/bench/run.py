@@ -4,12 +4,23 @@
 resumable: pairs with a finished record are skipped; pairs that errored are retried (an error in the
 evaluation stage re-grades the saved patch instead of paying for the agents again).
 
+What counts as an error. Only infrastructure failures: the workspace could not be created
+(``stage="workspace"``, no agent cost incurred), the workspace diff could not be read after the team
+stopped, or grading itself failed. A team that runs out of time (``--solve-timeout``) or crashes is
+*graded on whatever it left in the workspace* and recorded with ``meta.timed_out`` /
+``meta.solve_error``. Dropping those pairs would remove exactly the hardest tasks for the slowest
+topologies and bias every paired comparison.
+
 Budget guard (``max_cost_usd``): before each pair starts, total priced spend so far (including
 previous runs in the same output directory) is compared with the budget and no new pair starts once
 it is reached. Pairs already running finish, so the final spend can exceed the budget by up to
 ``concurrency`` pairs. A budgeted run refuses to start when a team contains a harness whose cost
-cannot be priced unless ``allow_unpriced`` is set, and stops launching as soon as a finished pair
-reports an unpriced cost, because the budget can no longer be enforced.
+cannot be priced unless ``allow_unpriced`` is set. Without ``allow_unpriced`` the run also stops
+launching as soon as any record has an unknown cost, which includes every timed-out or crashed
+solve: the agents may have spent money the run cannot see, so the budget can no longer be enforced.
+With ``allow_unpriced`` the budget counts priced spend only.
+
+Everything written to disk is passed through a ``Redactor`` first; grading uses the originals.
 """
 
 from __future__ import annotations
@@ -29,17 +40,26 @@ from agent.workflows.concurrency import map_concurrently
 
 from .dataset import SOURCES, BenchTask
 from .evaluate import EvalResult, evaluate_patch
-from .sandbox import ModalBackend, ModalSandboxWorkspace, SandboxConfig, SandboxExecTimeout
+from .redact import Redactor
+from .sandbox import ModalBackend, ModalSandboxWorkspace, SandboxConfig
 
 RESULTS_FILE = "results.jsonl"
 META_FILE = "meta.json"
 ARTIFACTS_DIR = "artifacts"
+GOLD_FILE = "gold.jsonl"
 FINAL_MESSAGE_CHARS = 1000
 
 TeamFactory = Callable[[str], Team]
 WorkspaceFactory = Callable[[BenchTask], Awaitable[Workspace]]
 Evaluator = Callable[[BenchTask, str], Awaitable[EvalResult]]
 UnpricedFn = Callable[[str], list[str]]
+
+UNKNOWN_USAGE = {
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": None,
+}
 
 
 class BudgetError(RuntimeError):
@@ -51,7 +71,7 @@ def slug(text: str) -> str:
 
 
 def default_team_factory(spec: str) -> Team:
-    from agent.teams import build_team  # lazy: the team runner is a separate module
+    from agent.teams import build_team  # lazy: keeps agent.bench importable on its own
 
     # The sandbox is the isolation boundary, so CLIs run with permissions bypassed.
     return build_team(spec, permissions="bypass")
@@ -64,35 +84,34 @@ def harness_specs(spec: str) -> list[str]:
     return [str(h) for h in parse_team_spec(spec).harness_specs]
 
 
+def canonical_team(spec: str) -> str:
+    from agent.teams import parse_team_spec
+
+    return parse_team_spec(spec).canonical
+
+
 def default_unpriced(spec: str) -> list[str]:
     from agent.teams import is_priced
 
     return [h for h in harness_specs(spec) if not is_priced(h)]
 
 
-def required_secret_keys(specs: Sequence[str], harnesses: Callable[[str], list[str]] = harness_specs) -> tuple[str, ...]:
-    """API keys the Modal Secret must hold for these teams (checked by Modal at sandbox start)."""
+def required_secret_keys(
+    specs: Sequence[str], harnesses: Callable[[str], list[str]] = harness_specs
+) -> tuple[str, ...]:
+    """Keys the Modal Secret must hold for the CLIs that run *inside* the sandbox.
+
+    ``sdk`` harnesses make their model calls from the host process, so their provider keys are
+    neither required in the secret nor made readable to the agent's shell.
+    """
     keys: set[str] = set()
     for spec in specs:
         for h in harnesses(spec):
-            kind, _, model = h.partition("@")
+            kind = h.partition("@")[0]
             if kind == "claude":
                 keys.add("ANTHROPIC_API_KEY")
             elif kind == "codex":
                 keys.add("OPENAI_API_KEY")
-            elif kind == "sdk":
-                if model.startswith("litellm/"):
-                    provider = model.split("/")[1] if model.count("/") >= 2 else ""
-                    mapped = {
-                        "openrouter": "OPENROUTER_API_KEY",
-                        "anthropic": "ANTHROPIC_API_KEY",
-                        "openai": "OPENAI_API_KEY",
-                        "gemini": "GEMINI_API_KEY",
-                    }.get(provider)
-                    if mapped:
-                        keys.add(mapped)
-                else:
-                    keys.add("OPENAI_API_KEY")
     return tuple(sorted(keys))
 
 
@@ -136,6 +155,27 @@ def load_records(path: Path) -> list[dict[str, Any]]:
     return records
 
 
+def load_meta(out: Path) -> dict[str, Any]:
+    path = out / META_FILE
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def record_run_meta(out: Path, entry: dict[str, Any]) -> None:
+    """Append this invocation to ``meta.json``; ``created_at`` and earlier runs are preserved."""
+    meta = load_meta(out)
+    meta.setdefault("created_at", entry["started_at"])
+    meta["datasets"] = {
+        k: {"repo_id": s.repo_id, "revision": s.revision} for k, s in SOURCES.items()
+    }
+    meta.setdefault("runs", []).append(entry)
+    (out / META_FILE).write_text(json.dumps(meta, indent=1), encoding="utf-8")
+
+
 @dataclass
 class RunSummary:
     attempted: int = 0
@@ -143,69 +183,97 @@ class RunSummary:
     skipped_budget: int = 0
     errored: int = 0
     resolved: int = 0
+    timed_out: int = 0
     spent_usd: float = 0.0
     unpriced_pairs: int = 0
     halted: Optional[str] = None
     records: list[dict[str, Any]] = field(default_factory=list)
 
 
+def _cost(record: dict[str, Any]) -> Optional[float]:
+    return (record.get("usage") or {}).get("cost_usd")
+
+
 class _Ledger:
     """Append-only JSONL results plus the running budget state."""
 
-    def __init__(self, out: Path, max_cost_usd: Optional[float]) -> None:
+    def __init__(
+        self, out: Path, max_cost_usd: Optional[float], allow_unpriced: bool, redactor: Redactor
+    ) -> None:
         self.out = out
         self.path = out / RESULTS_FILE
         self.max_cost_usd = max_cost_usd
+        self.allow_unpriced = allow_unpriced
+        self.redactor = redactor
         self._lock = asyncio.Lock()
         self.records = load_records(self.path)
         # Latest record per pair wins (a retried error is superseded by its retry).
         self.latest: dict[tuple[str, str], dict[str, Any]] = {
             (r["task_id"], r["team"]): r for r in self.records
         }
-        self.spent = sum(
-            (r.get("usage") or {}).get("cost_usd") or 0.0 for r in self.latest.values()
-        )
+        self.spent = sum(_cost(r) or 0.0 for r in self.latest.values())
         self.halted: Optional[str] = None
+        for r in self.latest.values():
+            self._check_unpriced(r)
+
+    def _check_unpriced(self, record: dict[str, Any]) -> None:
+        if (
+            self.max_cost_usd is not None
+            and not self.allow_unpriced
+            and record.get("usage")
+            and _cost(record) is None
+            and self.halted is None
+        ):
+            self.halted = (
+                f"pair {record['task_id']} x {record['team']} has an unknown cost (unpriced "
+                "harness, timeout or crash); the budget cannot be enforced "
+                "(--allow-unpriced counts priced spend only)"
+            )
 
     def over_budget(self) -> bool:
         return self.max_cost_usd is not None and self.spent >= self.max_cost_usd
 
-    async def append(self, record: dict[str, Any]) -> None:
+    async def append(self, record: dict[str, Any]) -> dict[str, Any]:
+        stored = self.redactor.obj(record)
+        stored["redacted"] = stored != record
+        stored["patch_redacted"] = stored.get("patch") != record.get("patch")
         async with self._lock:
             self.out.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(record, ensure_ascii=True) + "\n")
+                handle.write(json.dumps(stored, ensure_ascii=True) + "\n")
                 handle.flush()
-            prev = self.latest.get((record["task_id"], record["team"]))
+            key = (stored["task_id"], stored["team"])
+            prev = self.latest.get(key)
             if prev is not None:
-                self.spent -= (prev.get("usage") or {}).get("cost_usd") or 0.0
-            self.latest[(record["task_id"], record["team"])] = record
-            cost = (record.get("usage") or {}).get("cost_usd")
-            self.spent += cost or 0.0
-            if self.max_cost_usd is not None and record.get("usage") and cost is None:
-                self.halted = (
-                    f"pair {record['task_id']} x {record['team']} reported an unpriced cost; "
-                    "the budget cannot be enforced"
-                )
+                self.spent -= _cost(prev) or 0.0
+            self.latest[key] = stored
+            self.spent += _cost(stored) or 0.0
+            self._check_unpriced(stored)
+        return stored
 
 
 def _write_artifacts(
-    out: Path, team: str, task_id: str, patch: str, result: Optional[TeamResult], log: str
+    out: Path,
+    redactor: Redactor,
+    team: str,
+    task_id: str,
+    patch: str,
+    result: Optional[TeamResult],
+    log: str,
 ) -> None:
     directory = out / ARTIFACTS_DIR / slug(team) / slug(task_id)
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "patch.diff").write_text(patch, encoding="utf-8", errors="surrogateescape")
+    (directory / "patch.diff").write_text(
+        redactor.text(patch), encoding="utf-8", errors="surrogateescape"
+    )
     if result is not None:
+        payload = {"meta": result.meta, "runs": [_run_json(r, full=True) for r in result.runs]}
         (directory / "runs.json").write_text(
-            json.dumps(
-                {"meta": result.meta, "runs": [_run_json(r, full=True) for r in result.runs]},
-                indent=1,
-                default=str,
-            ),
+            json.dumps(redactor.obj(json.loads(json.dumps(payload, default=str))), indent=1),
             encoding="utf-8",
         )
     if log:
-        (directory / "eval.log").write_text(log, encoding="utf-8", errors="replace")
+        (directory / "eval.log").write_text(redactor.text(log), encoding="utf-8", errors="replace")
 
 
 async def run_benchmark(
@@ -225,6 +293,7 @@ async def run_benchmark(
     log: Callable[[str], None] = print,
     run_meta: Optional[dict[str, Any]] = None,
     sandbox_config: Optional[SandboxConfig] = None,
+    redactor: Optional[Redactor] = None,
 ) -> RunSummary:
     out = Path(out_dir)
     if not team_specs:
@@ -249,27 +318,35 @@ async def run_benchmark(
 
     if workspace_factory is None or evaluator is None:
         backend = ModalBackend(sandbox_config)
+        redactor = redactor or backend.redactor
         if workspace_factory is None:
 
             async def workspace_factory(task: BenchTask) -> Workspace:  # noqa: F811
-                return await ModalSandboxWorkspace.create(task.image, backend=backend, agent=True)
+                return await ModalSandboxWorkspace.create(
+                    task.image, backend=backend, agent=True, expected_commit=task.base_commit
+                )
 
         if evaluator is None:
 
             async def evaluator(task: BenchTask, patch: str) -> EvalResult:  # noqa: F811
                 return await evaluate_patch(task, patch, backend=backend)
 
-    ledger = _Ledger(out, max_cost_usd)
+    redactor = redactor or Redactor()
+    ledger = _Ledger(out, max_cost_usd, allow_unpriced, redactor)
     out.mkdir(parents=True, exist_ok=True)
-    meta = {
-        "started_at": datetime.now(timezone.utc).isoformat(),
-        "teams": list(names.values()),
-        "task_ids": [t.task_id for t in tasks],
-        "max_cost_usd": max_cost_usd,
-        "datasets": {k: {"repo_id": s.repo_id, "revision": s.revision} for k, s in SOURCES.items()},
-        **(run_meta or {}),
-    }
-    (out / META_FILE).write_text(json.dumps(meta, indent=1), encoding="utf-8")
+    record_run_meta(
+        out,
+        {
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "teams": list(names.values()),
+            "task_ids": [t.task_id for t in tasks],
+            "max_cost_usd": max_cost_usd,
+            "allow_unpriced": allow_unpriced,
+            "concurrency": concurrency,
+            "solve_timeout_s": solve_timeout_s,
+            **(run_meta or {}),
+        },
+    )
 
     summary = RunSummary()
     pairs = [(task, spec) for task in tasks for spec in team_specs]
@@ -278,38 +355,69 @@ async def run_benchmark(
         task, spec = pair
         name = names[spec]
         prev = ledger.latest.get((task.task_id, name))
-        if prev is not None and prev.get("error") is None:
-            summary.skipped_finished += 1
-            return
-        if prev is not None and not retry_errors:
+        if prev is not None and (prev.get("error") is None or not retry_errors):
             summary.skipped_finished += 1
             return
         if ledger.halted or ledger.over_budget():
             summary.skipped_budget += 1
             return
         summary.attempted += 1
-        record = await _run_pair(
-            task, spec, name, prev, out, solve_timeout_s, team_factory, workspace_factory, evaluator
+        record, result, eval_log = await _run_pair(
+            task, spec, name, prev, solve_timeout_s, team_factory, workspace_factory, evaluator
         )
-        await ledger.append(record)
-        summary.records.append(record)
-        if record.get("error"):
+        stored = await ledger.append(record)
+        if record["patch"] or result is not None:
+            _write_artifacts(out, redactor, name, task.task_id, record["patch"], result, eval_log)
+        summary.records.append(stored)
+        if stored.get("error"):
             summary.errored += 1
-        elif record.get("resolved"):
+        elif stored.get("resolved"):
             summary.resolved += 1
-        label = "ERROR " + record["error"][:120] if record.get("error") else (
-            "resolved" if record.get("resolved") else "unresolved"
+        if (stored.get("meta") or {}).get("timed_out"):
+            summary.timed_out += 1
+        label = (
+            "ERROR " + stored["error"][:120]
+            if stored.get("error")
+            else ("resolved" if stored.get("resolved") else "unresolved")
         )
+        if (stored.get("meta") or {}).get("timed_out"):
+            label += " (timed out, graded as left)"
         log(f"[{summary.attempted}] {task.task_id} x {name}: {label} (spent ${ledger.spent:.2f})")
 
     await map_concurrently(pairs, run_pair, max_concurrency=concurrency)
 
     summary.spent_usd = ledger.spent
-    summary.halted = ledger.halted or ("budget reached" if ledger.over_budget() and summary.skipped_budget else None)
+    summary.halted = ledger.halted or (
+        "budget reached" if ledger.over_budget() and summary.skipped_budget else None
+    )
     summary.unpriced_pairs = sum(
-        1 for r in ledger.latest.values() if r.get("usage") and r["usage"].get("cost_usd") is None
+        1 for r in ledger.latest.values() if r.get("usage") and _cost(r) is None
     )
     return summary
+
+
+async def _solve(
+    team: Team, task: BenchTask, workspace: Workspace, timeout_s: Optional[float]
+) -> tuple[Optional[TeamResult], Optional[BaseException], bool]:
+    """Run ``team.solve``; returns (result, crash, timed_out). Cancellation propagates, and takes
+    the running solve down with it."""
+    job = asyncio.ensure_future(team.solve(task.coding_task(), workspace))
+    try:
+        done, _ = await asyncio.wait({job}, timeout=timeout_s)
+    except BaseException:
+        job.cancel()
+        await asyncio.gather(job, return_exceptions=True)
+        raise
+    if not done:
+        job.cancel()
+        await asyncio.gather(job, return_exceptions=True)
+        return None, None, True
+    try:
+        return job.result(), None, False
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        return None, exc, False
 
 
 async def _run_pair(
@@ -317,12 +425,11 @@ async def _run_pair(
     spec: str,
     name: str,
     prev: Optional[dict[str, Any]],
-    out: Path,
     solve_timeout_s: Optional[float],
     team_factory: TeamFactory,
     workspace_factory: WorkspaceFactory,
     evaluator: Evaluator,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], Optional[TeamResult], str]:
     loop = asyncio.get_running_loop()
     started = time.time()
     record: dict[str, Any] = {
@@ -332,6 +439,7 @@ async def _run_pair(
         "repo": task.repo,
         "language": task.language,
         "created_at": task.created_at.isoformat() if task.created_at else None,
+        "base_commit": task.base_commit,
         "started_at": datetime.fromtimestamp(started, timezone.utc).isoformat(),
         "resolved": None,
         "patch": "",
@@ -341,44 +449,68 @@ async def _run_pair(
         "meta": {},
         "eval": None,
         "error": None,
-        "stage": "solve",
+        "stage": "workspace",
     }
     result: Optional[TeamResult] = None
-    if prev is not None and prev.get("stage") == "evaluate" and prev.get("patch"):
+    if (
+        prev is not None
+        and prev.get("stage") == "evaluate"
+        and prev.get("patch")
+        and not prev.get("patch_redacted")
+    ):
         # Only grading failed last time: keep the agents' work and cost, re-grade the patch.
-        for key in ("patch", "usage", "duration_s", "runs", "meta"):
-            record[key] = prev[key]
+        for key in ("patch", "usage", "duration_s", "runs", "meta", "isolate_history", "image_head"):
+            record[key] = prev.get(key, record.get(key))
         record["resumed_from_error"] = prev["error"]
     else:
         try:
             team = team_factory(spec)
             workspace = await workspace_factory(task)
-            try:
-                t0 = loop.time()
-                coro = team.solve(task.coding_task(), workspace)
-                result = await (
-                    asyncio.wait_for(coro, solve_timeout_s) if solve_timeout_s else coro
-                )
-                wall = loop.time() - t0
-            finally:
-                await workspace.close()
         except asyncio.CancelledError:
             raise
-        except asyncio.TimeoutError as exc:
-            if isinstance(exc, SandboxExecTimeout):  # a command timed out inside the team
-                record["error"] = f"solve: SandboxExecTimeout: {exc}"[:2000]
-            else:
-                record["error"] = f"solve timed out after {solve_timeout_s:g}s"
-            return record
         except Exception as exc:
-            record["error"] = f"solve: {type(exc).__name__}: {exc}"[:2000]
-            return record
+            # No agent has run yet: nothing was spent, usage stays None.
+            record["error"] = f"workspace: {type(exc).__name__}: {exc}"[:2000]
+            return record, None, ""
+        record["stage"] = "solve"
+        record["isolate_history"] = getattr(workspace, "isolate_history", None)
+        record["image_head"] = getattr(workspace, "head", None)
+        try:
+            t0 = loop.time()
+            result, crash, timed_out = await _solve(team, task, workspace, solve_timeout_s)
+            wall = loop.time() - t0
+            if result is not None:
+                patch, meta = result.patch, dict(result.meta)
+                usage = _usage_json(result.usage)
+                duration = result.duration_s or wall
+                runs = [_run_json(r, full=False) for r in result.runs]
+            else:
+                # Out of time or crashed: grade whatever the team left in the workspace. Its cost
+                # is unknown, which a budgeted run treats as unpriced.
+                try:
+                    patch = await workspace.diff()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    record["error"] = (
+                        f"solve: could not read the workspace after "
+                        f"{'a timeout' if timed_out else type(crash).__name__}: "
+                        f"{type(exc).__name__}: {exc}"
+                    )[:2000]
+                    record["usage"] = dict(UNKNOWN_USAGE)
+                    record["duration_s"] = round(wall, 3)
+                    return record, None, ""
+                if timed_out:
+                    meta = {"timed_out": True, "solve_timeout_s": solve_timeout_s}
+                else:
+                    meta = {"solve_error": f"{type(crash).__name__}: {crash}"[:1000]}
+                usage = dict(UNKNOWN_USAGE)
+                duration = wall
+                runs = []
+        finally:
+            await workspace.close()
         record.update(
-            patch=result.patch,
-            usage=_usage_json(result.usage),
-            duration_s=round(result.duration_s or wall, 3),
-            runs=[_run_json(r, full=False) for r in result.runs],
-            meta=result.meta,
+            patch=patch, usage=usage, duration_s=round(duration, 3), runs=runs, meta=meta
         )
 
     record["stage"] = "evaluate"
@@ -388,16 +520,11 @@ async def _run_pair(
         raise
     except Exception as exc:
         record["error"] = f"evaluate: {type(exc).__name__}: {exc}"[:2000]
-        _write_artifacts(out, name, task.task_id, record["patch"], result, "")
-        return record
+        return record, result, ""
     record["resolved"] = evaluation.resolved
     record["eval"] = evaluation.to_json()
     record["stage"] = "done"
-    _write_artifacts(out, name, task.task_id, record["patch"], result, evaluation.log)
-    return record
-
-
-GOLD_FILE = "gold.jsonl"
+    return record, result, evaluation.log
 
 
 async def validate_gold(
@@ -425,6 +552,7 @@ async def validate_gold(
         async def evaluator(task: BenchTask, patch: str) -> EvalResult:  # noqa: F811
             return await evaluate_patch(task, patch, backend=backend)
 
+    redactor = Redactor()
     lock = asyncio.Lock()
 
     async def one(task: BenchTask) -> None:
@@ -439,6 +567,7 @@ async def validate_gold(
             raise
         except Exception as exc:
             record["error"] = f"{type(exc).__name__}: {exc}"[:2000]
+        record = redactor.obj(record)
         async with lock:
             done[task.task_id] = record
             with path.open("a", encoding="utf-8") as handle:

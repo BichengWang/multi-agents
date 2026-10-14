@@ -26,11 +26,14 @@ import importlib
 import inspect
 import math
 import shlex
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from agent.teams.types import ExecResult
+
+from .redact import Redactor
 
 # Pinned toolchain baked into the derived image. Bump deliberately; the Modal image cache key
 # includes these strings, so a bump rebuilds every instance image once.
@@ -80,6 +83,9 @@ class SandboxConfig:
     # Strip refs, remotes, reflogs and unreachable objects so the fix commit cannot be read from
     # git history inside the image.
     isolate_history: bool = True
+    # Refuse images whose checked-out commit is not the task's base_commit (a dataset/image
+    # mismatch would otherwise be graded silently).
+    check_base_commit: bool = True
     node_version: str = NODE_VERSION
     claude_code_version: str = CLAUDE_CODE_VERSION
     codex_version: str = CODEX_VERSION
@@ -166,12 +172,19 @@ if [ "$1" = 1 ]; then
   for r in $(git remote); do git remote remove "$r"; done
   rm -f "$GITDIR/ORIG_HEAD" "$GITDIR/FETCH_HEAD"
   git reflog expire --expire=now --all
-  git gc --prune=now --quiet || true
+  # No `|| true`: if the fix objects cannot be pruned the pair must error, not leak silently.
+  git gc --prune=now --quiet
 fi
+# Files untracked-but-not-ignored in the image (build output, generated reports) are baseline
+# state, not the agent's work: they stay out of the baseline tree and out of every diff.
+git ls-files --others --exclude-standard -z > "$GITDIR/bench-untracked"
 IDX="$GITDIR/bench-base-index"
 rm -f "$IDX"
 GIT_INDEX_FILE="$IDX" git read-tree HEAD
 GIT_INDEX_FILE="$IDX" git add --all
+if [ -s "$GITDIR/bench-untracked" ]; then
+  GIT_INDEX_FILE="$IDX" git update-index --force-remove -z --stdin < "$GITDIR/bench-untracked"
+fi
 TREE=$(GIT_INDEX_FILE="$IDX" git write-tree)
 rm -f "$IDX"
 echo "BENCH_ROOT=$ROOT"
@@ -181,11 +194,15 @@ echo "BENCH_TREE=$TREE"
 
 _DIFF = r"""
 set -e
-IDX="$(git rev-parse --absolute-git-dir)/bench-diff-index"
+GITDIR=$(git rev-parse --absolute-git-dir)
+IDX="$GITDIR/bench-diff-index"
 export GIT_INDEX_FILE="$IDX"
 trap 'rm -f "$IDX"' EXIT
 git read-tree "$1"
 git add --all
+if [ -s "$GITDIR/bench-untracked" ]; then
+  git update-index --force-remove -z --stdin < "$GITDIR/bench-untracked"
+fi
 git diff --cached --binary --full-index --no-color --no-ext-diff --no-renames "$1"
 """
 
@@ -212,6 +229,7 @@ class ModalBackend:
     def __init__(self, config: Optional[SandboxConfig] = None, *, modal: Any = None) -> None:
         self.config = config or SandboxConfig()
         self.modal = modal if modal is not None else load_modal()
+        self.redactor = Redactor()
         self._app: Any = None
         self._app_lock = asyncio.Lock()
 
@@ -284,14 +302,18 @@ class ModalSandboxWorkspace:
         root: str,
         head: str,
         base_tree: str,
+        isolate_history: bool,
+        expected_commit: Optional[str] = None,
     ) -> None:
         self._sandbox = sandbox
         self._backend = backend
         self.image_tag = image_tag
         self.agent = agent
         self.root = root
-        self.head = head
+        self.head = head  # the commit the image was checked out at
         self.base_tree = base_tree
+        self.isolate_history = isolate_history
+        self.expected_commit = expected_commit
         self._closed = False
 
     @classmethod
@@ -301,29 +323,32 @@ class ModalSandboxWorkspace:
         *,
         backend: Optional[ModalBackend] = None,
         agent: bool = True,
+        expected_commit: Optional[str] = None,
     ) -> ModalSandboxWorkspace:
         """Start a sandbox from ``image_tag``.
 
         ``agent=True`` adds the pinned CLIs and the API-key secret, finds the git root, strips git
-        history (per config) and records the baseline for ``diff``. ``agent=False`` is the grader:
-        the unmodified instance image, no secrets, no setup; ``exec`` runs in ``/testbed`` and the
-        evaluation script locates the repository itself, as upstream does.
+        history (per config), verifies the checkout is ``expected_commit`` and records the
+        baseline for ``diff``. ``agent=False`` is the grader: the unmodified instance image, no
+        secrets, no setup; ``exec`` runs in ``/testbed`` and the evaluation script locates the
+        repository itself, as upstream does.
         """
         backend = backend or ModalBackend()
         sandbox = await backend.create_sandbox(image_tag, agent=agent)
         if not agent:
             return cls(
                 sandbox, backend=backend, image_tag=image_tag, agent=False,
-                root="/testbed", head="", base_tree="",
+                root="/testbed", head="", base_tree="", isolate_history=False,
             )
+        cfg = backend.config
         try:
-            isolate = "1" if backend.config.isolate_history else "0"
+            isolate = cfg.isolate_history
             code, stdout, stderr = await cls._raw_exec(
                 sandbox,
-                backend.config,
-                ["sh", "-c", _SETUP, "sh", isolate],
+                cfg,
+                ["sh", "-c", _SETUP, "sh", "1" if isolate else "0"],
                 workdir="/",
-                timeout=backend.config.default_exec_timeout_s,
+                timeout=cfg.default_exec_timeout_s,
             )
             facts = dict(
                 line.split("=", 1) for line in stdout.decode().splitlines() if line.startswith("BENCH_")
@@ -333,6 +358,20 @@ class ModalSandboxWorkspace:
                     f"workspace setup failed in {image_tag} (exit {code}): "
                     f"{stderr.decode('utf-8', 'replace').strip()[-2000:]}"
                 )
+            head = facts["BENCH_HEAD"]
+            if cfg.check_base_commit and expected_commit and not (
+                head.startswith(expected_commit) or expected_commit.startswith(head)
+            ):
+                raise SandboxError(
+                    f"image {image_tag} is checked out at {head}, but the task's base_commit is "
+                    f"{expected_commit}"
+                )
+            # Learn the secret values this sandbox holds so stored artifacts can be scrubbed.
+            _, env_dump, _ = await cls._raw_exec(sandbox, cfg, ["env"], workdir="/", timeout=60)
+            backend.redactor.add_env_dump(
+                env_dump.decode("utf-8", "replace"),
+                ignore=[*_SANDBOX_ENV.values(), *cfg.env.values()],
+            )
         except BaseException:
             await _terminate(sandbox)
             raise
@@ -342,8 +381,10 @@ class ModalSandboxWorkspace:
             image_tag=image_tag,
             agent=True,
             root=facts["BENCH_ROOT"],
-            head=facts["BENCH_HEAD"],
+            head=head,
             base_tree=facts["BENCH_TREE"],
+            isolate_history=isolate,
+            expected_commit=expected_commit,
         )
 
     @staticmethod
@@ -358,6 +399,8 @@ class ModalSandboxWorkspace:
         stdin: Optional[bytes] = None,
     ) -> tuple[int, bytes, bytes]:
         limit = timeout if timeout is not None else config.default_exec_timeout_s
+        loop = asyncio.get_running_loop()
+        started = loop.time()
         try:
             proc = await _call(
                 sandbox.exec,
@@ -384,7 +427,13 @@ class ModalSandboxWorkspace:
             if _is_exec_timeout(exc):
                 raise SandboxExecTimeout(argv, limit) from exc
             raise
-        return int(code), _as_bytes(out), _as_bytes(err)
+        code = int(code)
+        # modal-client (py/v1.6.0, container_process.py) swallows its ExecTimeoutError: the
+        # streams just end and ``wait()`` returns -1. Treat that, or a SIGKILL right at the
+        # deadline, as the timeout it is, never as an ordinary failing command.
+        if code == -1 or (code == 137 and loop.time() - started >= limit):
+            raise SandboxExecTimeout(argv, limit)
+        return code, _as_bytes(out), _as_bytes(err)
 
     async def exec(
         self,
@@ -438,13 +487,30 @@ class ModalSandboxWorkspace:
             raise SandboxError(f"git apply failed ({code}): {err.decode('utf-8', 'replace').strip()}")
 
     async def fork(self) -> ModalSandboxWorkspace:
-        return await self.create(self.image_tag, backend=self._backend, agent=self.agent)
+        return await self.create(
+            self.image_tag,
+            backend=self._backend,
+            agent=self.agent,
+            expected_commit=self.expected_commit,
+        )
 
     async def close(self) -> None:
+        """Terminate the sandbox. ``_closed`` is set only once termination succeeded, so a failed
+        attempt (leaving a billed sandbox running) can be retried by a later ``close``."""
         if self._closed:
             return
-        self._closed = True
-        await _terminate(self._sandbox)
+        for attempt in range(3):
+            if await _terminate(self._sandbox):
+                self._closed = True
+                return
+            if attempt < 2:
+                await asyncio.sleep(0.5 * (attempt + 1))
+        warnings.warn(
+            f"could not terminate sandbox for {self.image_tag}; it keeps running until its "
+            f"{self._backend.config.lifetime_s}s lifetime ends",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     async def __aenter__(self) -> ModalSandboxWorkspace:
         return self
@@ -457,8 +523,8 @@ def _as_bytes(value: Any) -> bytes:
     return value.encode("utf-8", "surrogateescape") if isinstance(value, str) else bytes(value)
 
 
-async def _terminate(sandbox: Any) -> None:
-    """Terminate even when the caller is being cancelled; never raise from cleanup."""
+async def _terminate(sandbox: Any) -> bool:
+    """Terminate even when the caller is being cancelled. True on success; never raises."""
     task = asyncio.ensure_future(_call(sandbox.terminate))
     try:
         await asyncio.shield(task)
@@ -466,4 +532,5 @@ async def _terminate(sandbox: Any) -> None:
         await asyncio.gather(task, return_exceptions=True)
         raise
     except Exception:
-        pass
+        return False
+    return True

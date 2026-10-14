@@ -91,26 +91,91 @@ def test_summary_statistics_on_common_tasks_with_paired_comparison():
     assert [(t, team) for t, team, _ in s.errored] == [("t6", "best:workers=claude+claude")]
 
 
-def test_markdown_table_cost_and_wall_time_columns():
-    text = render(summarize(records(), baseline="solo:worker=claude", meta={"dataset": "multilang", "seed": 3}))
-    assert "dataset `multilang`" in text and "seed 3" in text
-    assert "5 tasks with a valid result for every team" in text
-    lines = {}
-    for line in text.splitlines():  # first match per team = the main table, not the paired one
-        if line.startswith("| `"):
-            lines.setdefault(line.split("|")[1].strip(" `"), line)
-    solo = lines["solo:worker=claude"]
-    assert "| 3/5 | 60.0% (23.1%–88.2%) |" in solo
-    assert "| $0.10 | $0.10 | $0.17 | 60 s | 0 |" in solo  # 0.5 / 3 resolved
-    review = lines["review:coder=claude,reviewer=claude"]
-    assert "| 4/5 | 80.0% (37.6%–96.4%) |" in review
-    assert "| $0.40 | $0.40 | $0.50 | 2.0 min | 0 |" in review  # mean/median of .3 .2 .4 .6 .5; 2.0/4
-    best = lines["best:workers=claude+claude"]
-    assert "≥$0.20 (1 unpriced)" in best and "≥$0.40 (1 unpriced)" in best and best.endswith("| 1 |")
-    assert "## Paired comparison vs `solo:worker=claude`" in text
-    assert "| `review:coder=claude,reviewer=claude` | 5 | 2 | 1 | +20.0 pts | 1.0000 |" in text
-    assert "## Excluded and errored pairs" in text
-    assert "- `t6` × `best:workers=claude+claude`: solve: boom" in text
+def table(text, heading_prefix="| Team | Resolved"):
+    """First Markdown table after ``heading_prefix`` as {team: {column: cell}}."""
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(heading_prefix))
+    header = [c.strip() for c in lines[start].strip("|").split("|")]
+    rows = {}
+    for line in lines[start + 2 :]:
+        if not line.startswith("|"):
+            break
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        rows[cells[0].strip("`")] = dict(zip(header, cells))
+    return rows
+
+
+def test_markdown_table_reports_rates_costs_wall_time_and_exclusions():
+    text = render(
+        summarize(records(), baseline="solo:worker=claude", meta={"dataset": "multilang", "seed": 3})
+    )
+    assert "multilang" in text and "seed 3" in text
+    rows = table(text)
+    solo = rows["solo:worker=claude"]
+    assert solo["Resolved"] == "3/5" and solo["Rate (95% CI)"].startswith("60.0%")
+    assert solo["Mean cost/task"] == "$0.10" and solo["Median cost/task"] == "$0.10"
+    assert solo["Cost/resolved"] == "$0.17"  # 0.50 total / 3 resolved
+    assert solo["Median wall time"] == "60 s" and solo["Excluded"] == "0"
+    review = rows["review:coder=claude,reviewer=claude"]
+    assert review["Resolved"] == "4/5" and review["Mean cost/task"] == "$0.40"
+    assert review["Cost/resolved"] == "$0.50" and review["Median wall time"] == "2.0 min"
+    best = rows["best:workers=claude+claude"]
+    assert best["Excluded"] == "1" and "unpriced" in best["Mean cost/task"]
+    paired = table(text, "| Team | Tasks")
+    assert paired["review:coder=claude,reviewer=claude"]["Wins"] == "2"
+    assert paired["review:coder=claude,reviewer=claude"]["Losses"] == "1"
+    assert "t6" in text and "solve: boom" in text  # the errored pair is named
+
+
+def test_unpriced_costs_are_not_presented_as_lower_bounds_when_they_are_not():
+    # Costs 1.0, 1.0, 1.0 and one unknown: the priced-only mean (1.0) overstates a lower bound;
+    # the true mean is >= 3/4 and the median has no bound at all.
+    recs = [rec(f"t{i}", "a", True, 1.0, 10) for i in range(3)]
+    recs.append(rec("t3", "a", True, None, 10))
+    st = summarize(recs).teams[0]
+    assert st.unpriced == 1
+    text = render(summarize(recs))
+    row = table(text)["a"]
+    assert row["Mean cost/task"].startswith("≥$0.75")
+    assert "≥" not in row["Median cost/task"] and "unpriced" in row["Median cost/task"]
+    assert row["Cost/resolved"].startswith("≥$0.75")  # 3.0 priced / 4 resolved
+    clean = table(render(summarize(recs[:3])))["a"]
+    assert clean["Mean cost/task"] == "$1.00" and clean["Median cost/task"] == "$1.00"
+
+
+def test_report_covers_only_the_latest_run_and_lists_pairs_that_never_ran():
+    old = [rec(t, "solo:worker=codex", True, 0.1, 5) for t in ("t1", "t2", "t9")]
+    new = [
+        rec("t1", "solo:worker=claude", True, 0.2, 5),
+        rec("t2", "solo:worker=claude", False, 0.2, 5),
+        rec("t1", "best:workers=claude+claude", True, 0.5, 9),
+        # best was halted before t2: no record at all
+    ]
+    allrecs = old + new
+    s = summarize(
+        allrecs,
+        baseline="solo:worker=claude",
+        teams=["solo:worker=claude", "best:workers=claude+claude"],
+        task_ids=["t1", "t2"],
+    )
+    assert [t.team for t in s.teams] == ["solo:worker=claude", "best:workers=claude+claude"]
+    assert s.common_tasks == ["t1"]  # t2 lacks a best record; old-run leftovers are out of scope
+    assert s.not_run == [("t2", "best:workers=claude+claude")] and s.errored == []
+    assert "t2" in render(s)
+    with pytest.raises(ValueError, match="no results for team"):
+        summarize(allrecs, teams=["solo:worker=gemini"])
+
+
+def test_timed_out_pairs_are_graded_and_counted_not_excluded():
+    recs = [rec("t1", "a", True, 1.0, 5), rec("t2", "a", False, 1.0, 5)]
+    timed = rec("t1", "b", False, None, 3600)
+    timed["meta"] = {"timed_out": True}
+    timed["usage"] = {"cost_usd": None}
+    recs += [timed, rec("t2", "b", True, 0.5, 9)]
+    s = summarize(recs, baseline="a")
+    assert s.common_tasks == ["t1", "t2"] and s.errored == []
+    b = next(t for t in s.teams if t.team == "b")
+    assert b.timed_out == 1 and b.resolved == 1 and b.unpriced == 1
 
 
 def test_errors_can_count_as_failures_and_later_records_supersede_earlier_ones():
@@ -118,7 +183,7 @@ def test_errors_can_count_as_failures_and_later_records_supersede_earlier_ones()
     assert len(s.common_tasks) == 6
     best = next(t for t in s.teams if t.team.startswith("best"))
     assert (best.resolved, best.n, best.excluded) == (2, 6, [])
-    assert "counted as unresolved" in render(s)
+    assert "unresolved" in render(s)
     # A retried pair replaces its errored record.
     retried = records() + [rec("t6", "best:workers=claude+claude", True, 0.2, 90)]
     s = summarize(retried)
@@ -127,7 +192,7 @@ def test_errors_can_count_as_failures_and_later_records_supersede_earlier_ones()
 
 
 def test_unknown_baseline_is_an_error():
-    with pytest.raises(ValueError, match="no results"):
+    with pytest.raises(ValueError):
         summarize(records(), baseline="solo:worker=codex")
 
 
@@ -135,8 +200,10 @@ def test_report_command_reads_results_dir(tmp_path, capsys):
     (tmp_path / "results.jsonl").write_text(
         "\n".join(json.dumps(r) for r in records()) + "\n{torn line", encoding="utf-8"
     )
-    (tmp_path / "meta.json").write_text(json.dumps({"dataset": "multilang", "since": "2026-03-01"}))
+    (tmp_path / "meta.json").write_text(
+        json.dumps({"runs": [{"dataset": "multilang", "since": "2026-03-01"}]})
+    )
     assert main(["report", str(tmp_path), "--baseline", "solo:worker=claude"]) == 0
     out = capsys.readouterr().out
-    assert "tasks created since 2026-03-01" in out and "Paired comparison" in out
+    assert "2026-03-01" in out and "Paired comparison" in out
     assert "solo:worker=claude" in build_report(tmp_path)

@@ -101,12 +101,19 @@ uv run --extra bench modal secret create multi-agents-bench \
 ```
 
 - **Modal Secret** `multi-agents-bench` (override with `--secret`) is injected into *agent*
-  sandboxes only, never into grading sandboxes. `run` derives which keys your teams need
-  (`claude` -> `ANTHROPIC_API_KEY`, `codex` and `sdk@<model>` -> `OPENAI_API_KEY`,
-  `sdk@litellm/openrouter/...` -> `OPENROUTER_API_KEY`, ...) and Modal fails fast naming any that
-  are missing. Teams run with permissions bypassed inside the sandbox
+  sandboxes only, never into grading sandboxes. `run` derives which keys the CLIs inside the
+  sandbox need (`claude` -> `ANTHROPIC_API_KEY`, `codex` -> `OPENAI_API_KEY`) and Modal fails fast
+  naming any that are missing. `sdk` harnesses call their provider from the host process, so their
+  keys (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, ...) come from your host environment and are never
+  put in a sandbox. Teams run with permissions bypassed inside the sandbox
   (`build_team(spec, permissions="bypass")`; Claude Code only accepts `--dangerously-skip-permissions` as root when `IS_SANDBOX=1`, which the sandbox sets, see [this write-up](https://wmedia.es/en/tips/claude-code-dangerously-skip-permissions-what-it-does); Codex gets [`--dangerously-bypass-approvals-and-sandbox`](https://developers.openai.com/codex/cli/reference)), so
-  **an agent can read the keys in its sandbox: use keys with a spend limit.**
+  **an agent can read the keys in its sandbox: use keys with a spend limit.** Everything the run
+  writes (`results.jsonl`, `artifacts/`, `gold.jsonl`) is scrubbed first: the values of every
+  credential-looking variable (`*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`) read from the agent
+  sandbox's own environment and from your host environment, plus anything shaped like a provider
+  key (`sk-...`, `sk-ant-...`, `ghp_...`, `AIza...`, ...), becomes `[REDACTED]`. Records say whether
+  that happened (`redacted`, `patch_redacted`). Grading uses the unscrubbed patch. The scrub is
+  pattern- and value-based, so skim `artifacts/` before publishing trajectories.
 - Images are pulled from Docker Hub by Modal. If pulls are rate limited, create a secret with
   `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` and pass `--registry-secret NAME`.
 - Agent sandboxes extend the instance image with Node.js 24.21.0 (tarball checksum-verified against
@@ -131,7 +138,7 @@ python -m agent.bench run --since 2026-07-01 --limit 50 --seed 7 \
     --team solo:worker=claude@claude-sonnet-5-5 \
     --team review:coder=claude@claude-sonnet-5-5,reviewer=claude@claude-sonnet-5-5 \
     --team best:workers=claude@claude-sonnet-5-5+claude@claude-sonnet-5-5+claude@claude-sonnet-5-5 \
-    --max-cost-usd 400 --concurrency 6 --out runs/pilot
+    --max-cost-usd 600 --concurrency 6 --out runs/pilot
 
 # 4. Report, comparing every team with the solo baseline on the same tasks.
 python -m agent.bench report runs/pilot --baseline solo:worker=claude@claude-sonnet-5-5
@@ -142,17 +149,37 @@ cost, duration, runs summary, grading details, error), `meta.json`, and
 `artifacts/<team>/<task>/{patch.diff,runs.json,eval.log}` with full harness logs (the raw
 trajectories). Filters shared by `tasks`, `gold` and `run`: `--dataset`, `--since` (inclusive),
 `--until` (exclusive), `--repo`, `--language`, `--instance-id`, `--limit`, `--seed`.
+`meta.json` keeps the first invocation's `created_at` and appends one entry per invocation with the
+complete filter set (dataset, dates, repos, languages, instance ids, limit, seed, gold file, history
+and base-commit checks), the teams, the task ids and the budget; `report` covers the teams and tasks
+of the latest entry.
 
-- **Resume**: finished pairs are skipped; errored pairs are retried (`--no-retry-errors` to keep
-  them). An error in the *grading* stage re-grades the saved patch instead of re-running (and
-  re-paying for) the agents.
+Every record also notes `isolate_history` and `image_head`, the commit the image was checked out
+at. Setup refuses an image whose checkout is not the task's `base_commit` (a dataset/image mismatch
+would otherwise be graded silently); `--no-check-base-commit` turns that off.
+
+- **Errors vs. timeouts.** Only infrastructure failures are *errored* pairs: the workspace could not
+  be created (nothing was spent), the workspace could not be read after the team stopped, or
+  grading failed. A team that exceeds `--solve-timeout`, or crashes, is **graded on whatever it left
+  in the workspace** and recorded with `meta.timed_out` / `meta.solve_error`; those pairs stay in
+  the statistics (dropping them would remove the hardest tasks for the slowest topologies from every
+  team's numbers) and are shown in the report's *Timed out* column. Their cost is unknown.
+- **Resume**: finished pairs (timeouts included) are skipped; errored pairs are retried
+  (`--no-retry-errors` to keep them). An error in the *grading* stage re-grades the saved patch
+  instead of re-running (and re-paying for) the agents, unless the stored patch had to be scrubbed.
 - **Budget** (`--max-cost-usd X`): no new pair starts once priced spend, including earlier runs in
   the same `--out`, reaches X; running pairs finish, so spend can exceed X by up to `--concurrency`
   pairs. A budgeted run refuses to start if a team contains a harness whose cost cannot be priced
-  (e.g. `codex` without `@model`) unless `--allow-unpriced`, and stops launching as soon as any
-  finished pair reports an unpriced cost.
+  (e.g. `codex` without `@model`) unless `--allow-unpriced`. Without `--allow-unpriced` it also
+  stops launching as soon as any record has an unknown cost, **which includes every timed-out or
+  crashed solve** (the agents may have spent money the run cannot see; the halt survives a
+  restart). Size `--solve-timeout` so timeouts are rare, or pass `--allow-unpriced` to accept that
+  the budget then counts priced spend only. The budget covers model spend, not Modal compute.
 - **Cancellation**: Ctrl-C cancels in-flight pairs and terminates their sandboxes.
-- `--solve-timeout` (default 3600 s) bounds one team solve; a timeout is an errored pair.
+- `--solve-timeout` (default 3600 s) bounds one team solve. Grading has one 150-minute budget for
+  apply + rebuild + tests (upstream allows 150 minutes per command); a run that hits it is
+  unresolved with `timed_out: true`. Modal's client swallows its own exec deadline and reports exit
+  code -1, which `sandbox.py` turns into a timeout.
 - `--keep-history` disables the git-history stripping described below.
 
 ## Methodology
@@ -170,63 +197,132 @@ trajectories). Filters shared by `tasks`, `gold` and `run`: `--dataset`, `--sinc
   (`review`) use only the agents' own judgment.
 - **No leaks through the image.** Instance images are built at the task's base commit but may carry
   later git history. Agent sandboxes strip every ref, remote, reflog entry and unreachable object
-  before the agent starts, so the fix commit cannot be read with `git log --all`. The hidden tests
+  before the agent starts (`git gc --prune=now` failing fails the pair, never silently leaks), so
+  the fix commit cannot be read with `git log --all`. The hidden tests
   are only ever written into a separate grading sandbox, which has no secrets and no agent CLIs.
   What cannot be stripped: network access (an agent could in principle fetch the upstream fix; the
   protocol's trajectory-audit remedy applies, and `artifacts/` keeps the trajectories).
 - **Patch** = everything changed since the sandbox started (commits, edits, new files,
-  `.gitignore` honoured), diffed against a tree snapshot taken at start so build leftovers in the
-  image are not attributed to the agent.
+  `.gitignore` honoured), diffed against a tree snapshot taken at start. Files that were untracked
+  but not ignored in the image (build output, generated reports) are excluded from the snapshot
+  and from every diff, so rebuild churn is not attributed to the agent and cannot crowd the real
+  change out of the reviewer's and judge's prompts.
 - **Statistics** (`report.py`, pure Python): resolve rate with the Wilson 95 % interval; paired
   comparison against the baseline on the *same* tasks with the exact two-sided McNemar test on
   discordant tasks (wins = team solved, baseline did not; losses = the reverse); mean, median and
   per-resolved cost; median wall time. All statistics use the *common* tasks, those with a valid
-  result for every team. Errored pairs (infrastructure, agent crash, timeout, grading failure) are
-  excluded and listed by name; `--count-errors-as-failures` counts them as unresolved instead. No
+  result for every team. Errored pairs (infrastructure failures only, see above) are excluded and
+  listed by name; `--count-errors-as-failures` counts them as unresolved instead. Pairs that never
+  ran (budget halt) are listed under *Not run* and also leave their task out of every team's
+  numbers. `report` covers the teams and tasks of the latest `meta.json` entry (`--team` overrides).
+  No
   multiplicity correction across teams is applied. With 50 tasks only large effects reach
   significance: 6 wins against 0 losses gives p = 0.031 (5 against 0 gives 0.063), 12 against 3
   gives 0.035; a 4 to 8 point gap is not detectable, so read the intervals.
-- **Cost** is `TeamResult.usage` summed over all harness runs. Unpriced runs make a total
-  "unpriced" and are shown as lower bounds (`≥$x (k unpriced)`), never silently dropped.
+- **Cost** is `TeamResult.usage` summed over all harness runs. Unpriced runs (and timed-out or
+  crashed solves) have unknown cost. The mean then shows `≥` the sum of priced costs divided by *all*
+  runs, which is a true lower bound; cost per resolved shows `≥` priced total over resolved runs;
+  the median has no bound and is labelled "priced runs only".
 
-## Cost estimate: 50-task pilot
+## Cost estimate
 
 Anchors, measured by others on a fresh-task benchmark (SWE-rebench leaderboard,
 [swe-rebench.com](https://swe-rebench.com/leaderboard), window 2026-05-15 to 2026-07-01,
 111 problems; read 2026-10-13): **Claude Code $3.39 per problem** (60.4 % resolved),
-**Codex $1.59** (58.0 %), Sonnet 5 [high] $1.43, Opus 5 [high] $3.47, GPT-5.6 Sol [medium] $0.85.
-Those are Python tasks at then-current prices; this benchmark's tasks skew to Rust/Java/C/C++ and
-need larger builds, so treat the numbers as order of magnitude and replace them with measured ones
-(next paragraph).
+**Codex $1.59** (58.0 %), Sonnet 5 [high] $1.43, Opus 5 [high] $3.47, GPT-5.6 Sol [medium] $0.85,
+GPT-5.6 Luna [medium] $0.11 (395,522 tokens per problem). Those are Python tasks at then-current
+prices; this benchmark's tasks skew to Rust/Java/C/C++ and need larger builds, so treat every number
+as an order of magnitude and replace it with measured cost from a 5-task run.
+
+Prices used ([Anthropic models overview](https://platform.claude.com/docs/en/models/overview),
+`agent/teams/pricing.py` from [OpenAI pricing](https://developers.openai.com/api/docs/pricing)):
+Haiku 5.5 from $0.10 / $0.50 per MTok (the tiers above 100K prompt tokens, $0.50 / $2.50 with cache
+reads $0.05, come from a [third-party comparison](https://platform.teamai.com/blog/large-language-models-llms/understanding-different-claude-models/), not Anthropic's page), Sonnet 5.5 $2 / $10, `gpt-6-luna` $0.10 input, $0.01 cached input, $0.50 output.
 
 Modal sandbox rate (from [modal.com/pricing](https://modal.com/pricing), Sandbox rates):
-2 cores x $0.00003942 + 16 GiB x $0.00000667 = $0.0001856/s = **$0.668/hour**.
+2 cores x $0.00003942 + 16 GiB x $0.00000667 = $0.0001856/s = **$0.668/hour**. Grading alone
+(15 minutes) is $0.167 per task.
+
+Shared assumptions. Pair sandbox time: 20 minutes of agent work per worker plus 15 minutes of
+grading. Multipliers on a solo run (assumptions, not measurements): a reviewer pass costs about 0.4x
+of the coder run, a fix pass 0.3x, the judge 0.3x of one worker. `review` low end = coder plus one
+approving review (1 + 0.4 = 1.4x, 43 minutes); high end = the default 3 rounds of review and fix
+(1 + 3 x (0.4 + 0.3) = 3.1x, 75 minutes). `best` = 3 workers + judge = 3.3x, 3 x 20 + 10 + 15 = 85
+minutes. Image builds (first use of each instance image) are not estimated.
+
+### Recommended first pilot: about $467, within $500
+
+Cheap models carry the 50-task comparison of all three topologies; a small frontier spot-check
+follows. Per-task LLM costs for the cheap tier are deliberately rounded up: Codex with `gpt-6-luna`
+$0.25 (SWE-rebench: GPT-5.6 Luna $0.11 bare, Codex-style agent overhead about 1.9x from $1.59 vs
+$0.85, and `gpt-6-luna` is priced below `gpt-5.6-luna`), Claude Code with Haiku 5.5 $1.00 (Claude
+Code measured $3.39, which we assume was at Sonnet-class prices; Haiku 5.5 at its long-context tier is a quarter of
+Sonnet 5.5's list price, so $0.85, rounded up for weaker models taking more turns).
+
+| Stage | LLM per task | Sandbox per pair | LLM total | Sandbox total | Total |
+|---|---|---|---|---|---|
+| gold validation, 70 candidate tasks | | 15 min = $0.167 | | $11.7 | **$12** |
+| 50 tasks `solo:worker=codex@gpt-6-luna` | $0.25 | 35 min = $0.39 | $12.50 | $19.50 | **$32** |
+| 50 tasks `review:coder=codex@gpt-6-luna,reviewer=codex@gpt-6-luna` (3 rounds) | 3.1 x $0.25 = $0.775 | 75 min = $0.835 | $38.75 | $41.75 | **$80.50** |
+| 50 tasks `best:workers=codex@gpt-6-luna+codex@gpt-6-luna+codex@gpt-6-luna` | 3.3 x $0.25 = $0.825 | 85 min = $0.946 | $41.25 | $47.30 | **$88.55** |
+| 50 tasks `solo:worker=claude@claude-haiku-5-5` (cross-harness reference) | $1.00 | 35 min = $0.39 | $50.00 | $19.50 | **$69.50** |
+| *Stage 1 total* | | | *$142.50* | *$139.75* | ***$282*** |
+| gold validation, 25 candidates for the spot-check | | $0.167 | | $4.2 | **$4** |
+| 20 tasks `solo:worker=claude@claude-sonnet-5-5` | $3.39 | 35 min = $0.39 | $67.80 | $7.80 | **$75.60** |
+| 20 tasks `review:coder=claude@claude-sonnet-5-5,reviewer=claude@claude-sonnet-5-5,rounds=1` | 1.4 x $3.39 = $4.75 | 43 min = $0.48 | $94.92 | $9.58 | **$104.50** |
+| *Stage 2 total* | | | *$162.72* | *$21.58* | ***$184*** |
+| **Both stages** | | | **$305** | **$161** | **$467** |
+
+```bash
+# Stage 1 (50 tasks, three topologies on the cheap tier)
+python -m agent.bench gold --since 2026-07-01 --limit 70 --seed 7 --out runs/gold
+python -m agent.bench run --since 2026-07-01 --limit 50 --seed 7 --gold-file runs/gold/gold.jsonl \
+    --team solo:worker=codex@gpt-6-luna \
+    --team review:coder=codex@gpt-6-luna,reviewer=codex@gpt-6-luna \
+    --team best:workers=codex@gpt-6-luna+codex@gpt-6-luna+codex@gpt-6-luna \
+    --team solo:worker=claude@claude-haiku-5-5 \
+    --max-cost-usd 160 --solve-timeout 5400 --concurrency 6 --out runs/pilot-cheap
+python -m agent.bench report runs/pilot-cheap --baseline solo:worker=codex@gpt-6-luna
+
+# Stage 2 (frontier spot-check; a different 20-task draw, compared within itself)
+python -m agent.bench gold --since 2026-07-01 --limit 25 --seed 8 --out runs/gold2
+python -m agent.bench run --since 2026-07-01 --limit 20 --seed 8 --gold-file runs/gold2/gold.jsonl \
+    --team solo:worker=claude@claude-sonnet-5-5 \
+    --team review:coder=claude@claude-sonnet-5-5,reviewer=claude@claude-sonnet-5-5,rounds=1 \
+    --max-cost-usd 180 --solve-timeout 5400 --concurrency 4 --out runs/pilot-frontier
+```
+
+`--max-cost-usd` bounds model spend only; the roughly $161 of Modal compute is on top, so also set a
+spend limit in the Modal workspace settings. The estimate has little headroom ($33): a first
+timeout halts a budgeted run (see Budget above), which is the intended brake. Run 5 tasks first
+(`--limit 5 --max-cost-usd 15`), read the measured cost per task in `report`, and rescale before
+committing to the full stages. Twenty tasks per arm only detect large differences (see Statistics).
+
+### Full-scale option (not within a $500 budget): about $1,156 to $1,462
+
+Frontier Claude Code in all configurations, 50 tasks each, same assumptions:
 
 | Config (50 tasks) | LLM cost per task | Sandbox time per pair | LLM total | Sandbox total | Total |
 |---|---|---|---|---|---|
-| `solo` Claude Code | $3.39 | 20 min agent + 15 min grading = 35 min = $0.39 | $169.50 | $19.50 | **$189** |
+| `solo` Claude Code | $3.39 | 35 min = $0.39 | $169.50 | $19.50 | **$189** |
 | `solo` Codex | $1.59 | 35 min = $0.39 | $79.50 | $19.50 | **$99** |
 | `review` Claude coder + Claude reviewer | 1.4x to 3.1x solo = $4.75 to $10.51 | 43 to 75 min = $0.48 to $0.84 | $237 to $525 | $24 to $42 | **$261 to $567** |
-| `best` 3 Claude workers + judge | 3.3x solo = $11.19 | 3 x 20 + 10 + 15 = 85 min = $0.95 | $559 | $47 | **$607** |
+| `best` 3 Claude workers + judge | 3.3x solo = $11.19 | 85 min = $0.95 | $559 | $47 | **$607** |
 
-Multipliers are assumptions, not measurements: a reviewer pass costs about 0.4x of the coder run, a
-fix pass 0.3x, the judge 0.3x of one worker. `review` low end = coder + one approving review
-(1 + 0.4); high end = the default 3 rounds of review and fix (1 + 3 x (0.4 + 0.3)). Sandbox time
-assumes 20 minutes of agent work per worker and 15 minutes of grading. The four configurations
-together cost roughly **$1,156 to $1,462**. Image builds (first use of each instance image) are not
-estimated. A cheaper pilot swaps the model: solo Sonnet 5 through the SDK agent is $1.43 x 50 = $71.50.
-
-Do not commit to this budget blind: run 5 tasks first
-(`--limit 5 --max-cost-usd 40`), read the measured cost per task in `report`, and scale.
+The four configurations together cost roughly **$1,156 to $1,462**.
 
 ## Limitations
 
 - **Not exercised live here.** The Modal sandbox, image build and grading paths are covered by
   offline tests that drive the same code through a fake Modal client running commands in local
   temporary git repositories (diff/apply/fork semantics, history stripping, grading order, parser
-  isolation). Nothing was run against real Modal, the real instance images or real model APIs. In
+  isolation). The fake client mirrors the real client's behaviour at its deadline (exit code -1,
+  streams end, no exception) as read from the SDK source at tag `py/v1.6.0`; it was not observed
+  live. Nothing was run against real Modal, the real instance images or real model APIs. In
   particular unverified: whether Modal accepts every instance image without Python on `PATH`
-  (use `--add-python 3.12` if not), and wall-clock cost per task.
+  (use `--add-python 3.12` if not), whether every image is checked out at the task's `base_commit`
+  (the check fails loudly if not; `--no-check-base-commit` is the escape hatch), and wall-clock
+  cost per task.
 - Teams come from the separate team runner (`agent.teams.build_team`, imported lazily); the
   benchmark depends only on the frozen contracts in `agent/teams/types.py` plus `build_team`,
   `parse_team_spec` and `is_priced`.

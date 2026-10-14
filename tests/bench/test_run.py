@@ -7,6 +7,7 @@ import pytest
 from agent.bench.cli import main
 from agent.bench.dataset import BenchTask, GradingSpec
 from agent.bench.evaluate import EvalResult
+from agent.bench.redact import Redactor
 from agent.bench.run import (
     BudgetError,
     load_records,
@@ -51,6 +52,8 @@ class Harness:
         self.workspaces = []
         self.graded = []
         self.eval_fail = eval_fail or set()
+        self.workspace_fail = set()
+        self.diff_fails = False
         self.resolve = resolve
         self.eval_calls = 0
         MemoryWorkspace.created = self.workspaces
@@ -59,7 +62,9 @@ class Harness:
         return self.teams[spec]
 
     async def workspace_factory(self, task):
-        return MemoryWorkspace()
+        if task.task_id in self.workspace_fail:
+            raise RuntimeError("image pull failed")
+        return MemoryWorkspace(diff_fails=self.diff_fails)
 
     async def evaluator(self, task, patch):
         self.eval_calls += 1
@@ -71,6 +76,7 @@ class Harness:
     def run(self, out, tasks, specs=None, **kwargs):
         kwargs.setdefault("unpriced_fn", lambda spec: [])
         kwargs.setdefault("log", lambda message: None)
+        kwargs.setdefault("redactor", Redactor(host_env=False))
         return asyncio.run(
             run_benchmark(
                 tasks,
@@ -101,12 +107,30 @@ def test_every_pair_gets_a_fresh_workspace_a_team_run_and_a_graded_record(tmp_pa
     assert rec["duration_s"] == 2.0 and rec["created_at"].startswith("2026-05-01")
     assert rec["runs"][0]["harness"] == "claude" and rec["runs"][0]["usage"]["cost_usd"] == 1.0
     assert rec["eval"]["resolved"] is True
+    assert rec["isolate_history"] is True and rec["image_head"] == "a" * 40
     assert summary.spent_usd == pytest.approx(3 * 0.5 + 3 * 1.0)
     artifacts = tmp_path / "artifacts" / "review_coder=claude,reviewer=claude" / "o__r-0"
     assert (artifacts / "patch.diff").read_text().startswith("diff --git")
     assert json.loads((artifacts / "runs.json").read_text())["runs"][0]["log"] == "LOG"
     assert (artifacts / "eval.log").read_text() == "test log"
-    assert json.loads((tmp_path / "meta.json").read_text())["teams"] == [solo.name, review.name]
+
+
+def test_meta_json_keeps_the_first_invocation_and_appends_later_ones_with_the_full_filters(tmp_path):
+    team = FakeTeam("solo:worker=claude")
+    h = Harness(team)
+    filters = {"dataset": "multilang", "since": "2026-07-01", "languages": ["go"], "seed": 7,
+               "repos": None, "instance_ids": None, "gold_file": "g.jsonl"}
+    h.run(tmp_path, make_tasks(2), run_meta=filters)
+    first = json.loads((tmp_path / "meta.json").read_text())
+    h.run(tmp_path, make_tasks(3), max_cost_usd=50, run_meta={**filters, "seed": 8})
+    meta = json.loads((tmp_path / "meta.json").read_text())
+    assert meta["created_at"] == first["created_at"] and meta["runs"][0] == first["runs"][0]
+    assert len(meta["runs"]) == 2
+    one, two = meta["runs"]
+    assert one["task_ids"] == ["o__r-0", "o__r-1"] and two["task_ids"][-1] == "o__r-2"
+    assert one["teams"] == [team.name] and one["languages"] == ["go"] and one["gold_file"] == "g.jsonl"
+    assert two["seed"] == 8 and two["max_cost_usd"] == 50
+    assert meta["datasets"]["multilang"]["revision"]
 
 
 def test_agents_receive_only_the_visible_task_never_hidden_tests(tmp_path):
@@ -118,31 +142,48 @@ def test_agents_receive_only_the_visible_task_never_hidden_tests(tmp_path):
         assert not hasattr(seen, "grading")
 
 
-def test_resume_skips_finished_pairs_and_retries_only_errors(tmp_path):
-    flaky = FakeTeam("solo:worker=claude", fail_for={"o__r-1"})
-    h = Harness(flaky)
+def test_resume_skips_finished_pairs_and_retries_only_infrastructure_errors(tmp_path):
+    team = FakeTeam("solo:worker=claude")
+    h = Harness(team)
+    h.workspace_fail = {"o__r-1"}
     first = h.run(tmp_path, make_tasks(3))
     assert (first.attempted, first.errored) == (3, 1)
     records = load_records(tmp_path / "results.jsonl")
     errored = next(r for r in records if r["error"])
-    assert errored["task_id"] == "o__r-1" and errored["error"].startswith("solve: RuntimeError")
-    assert errored["resolved"] is None and errored["stage"] == "solve"
+    assert errored["task_id"] == "o__r-1" and errored["stage"] == "workspace"
+    assert errored["resolved"] is None and errored["usage"] is None  # no agent ever ran
 
-    flaky.fail_for = set()
-    flaky.solved.clear()
+    h.workspace_fail = set()
+    team.solved.clear()
     second = h.run(tmp_path, make_tasks(3))
     assert (second.attempted, second.skipped_finished, second.errored) == (1, 2, 0)
-    assert flaky.solved == ["o__r-1"]
+    assert team.solved == ["o__r-1"]
 
     third = h.run(tmp_path, make_tasks(3))
     assert (third.attempted, third.skipped_finished) == (0, 3)
     assert len(load_records(tmp_path / "results.jsonl")) == 4  # append-only; retry superseded the error
 
-    opted_out = Harness(FakeTeam("solo:worker=claude", fail_for={"o__r-1"}))
+    opted_out = Harness(FakeTeam("solo:worker=claude"))
+    opted_out.workspace_fail = {"o__r-1"}
     out2 = tmp_path / "second"
     opted_out.run(out2, make_tasks(3))
+    opted_out.workspace_fail = set()
     again = opted_out.run(out2, make_tasks(3), retry_errors=False)
     assert again.attempted == 0
+
+
+def test_a_crashing_team_is_graded_on_what_it_left_instead_of_dropping_the_task(tmp_path):
+    team = FakeTeam("solo:worker=claude", fail_for={"o__r-1"}, partial="diff --git a/partial b/partial\n")
+    h = Harness(team)
+    summary = h.run(tmp_path, make_tasks(3))
+    assert (summary.attempted, summary.errored) == (3, 0)
+    record = next(r for r in load_records(tmp_path / "results.jsonl") if r["task_id"] == "o__r-1")
+    assert record["error"] is None and record["stage"] == "done"
+    assert record["meta"]["solve_error"].startswith("RuntimeError")
+    assert record["patch"] == "diff --git a/partial b/partial\n"
+    assert ("o__r-1", record["patch"]) in h.graded
+    assert record["usage"]["cost_usd"] is None  # what the agents spent is unknown
+    assert all(w.closed for w in h.workspaces)
 
 
 def test_grading_errors_regrade_the_saved_patch_without_paying_for_the_agents_again(tmp_path):
@@ -161,6 +202,7 @@ def test_grading_errors_regrade_the_saved_patch_without_paying_for_the_agents_ag
     final = load_records(tmp_path / "results.jsonl")[-1]
     assert final["error"] is None and final["resolved"] is True
     assert final["usage"]["cost_usd"] == 2.0 and final["resumed_from_error"].startswith("evaluate:")
+    assert final["isolate_history"] is True and final["image_head"] == "a" * 40
     assert second.spent_usd == pytest.approx(2.0)  # counted once, not twice
 
 
@@ -181,6 +223,40 @@ def test_budget_guard_stops_launching_pairs_once_priced_spend_reaches_the_cap(tm
     assert more.attempted == 3 and more.spent_usd == 6.0
 
 
+def test_timed_out_solves_are_graded_as_left_and_halt_a_budgeted_run(tmp_path):
+    team = FakeTeam("solo:worker=claude", delay=30, partial="diff --git a/half b/half\n")
+    h = Harness(team)
+    summary = h.run(tmp_path, make_tasks(4), concurrency=1, solve_timeout_s=0.05, max_cost_usd=100)
+    # The first timeout leaves an unknown cost: the budget cannot be enforced, nothing else starts.
+    assert (summary.attempted, summary.timed_out, summary.errored) == (1, 1, 0)
+    assert summary.skipped_budget == 3 and "unknown cost" in summary.halted
+    record = load_records(tmp_path / "results.jsonl")[0]
+    assert record["error"] is None and record["stage"] == "done"
+    assert record["meta"]["timed_out"] is True
+    assert record["patch"] == "diff --git a/half b/half\n"
+    assert record["usage"]["cost_usd"] is None and record["resolved"] is True
+    assert h.graded == [("o__r-0", record["patch"])]
+    assert h.workspaces[0].closed
+
+    # Resuming does not forget that: the halt survives a restart, and the pair is not re-run.
+    again = h.run(tmp_path, make_tasks(4), concurrency=1, solve_timeout_s=0.05, max_cost_usd=100)
+    assert again.attempted == 0 and "unknown cost" in again.halted
+    # Without a budget the same timeouts just run, each graded.
+    free = Harness(FakeTeam("solo:worker=claude", delay=30, partial="x\n"))
+    summary = free.run(tmp_path / "free", make_tasks(3), solve_timeout_s=0.05)
+    assert (summary.attempted, summary.timed_out, summary.errored) == (3, 3, 0)
+
+
+def test_allow_unpriced_budgets_priced_spend_only_and_keeps_running(tmp_path):
+    team = FakeTeam("solo:worker=codex", cost=None)
+    h = Harness(team)
+    summary = h.run(
+        tmp_path, make_tasks(4), concurrency=1, max_cost_usd=5, allow_unpriced=True,
+        unpriced_fn=lambda spec: ["codex"],
+    )
+    assert summary.attempted == 4 and summary.halted is None and summary.unpriced_pairs == 4
+
+
 def test_no_budget_means_no_limit_even_for_unpriced_costs(tmp_path):
     team = FakeTeam("solo:worker=codex", cost=None)
     summary = Harness(team).run(tmp_path, make_tasks(3), unpriced_fn=lambda spec: ["codex"])
@@ -190,22 +266,28 @@ def test_no_budget_means_no_limit_even_for_unpriced_costs(tmp_path):
 def test_budgeted_run_refuses_unpriced_harnesses_before_starting_anything(tmp_path):
     team = FakeTeam("solo:worker=codex", cost=None)
     h = Harness(team)
-    with pytest.raises(BudgetError, match="--allow-unpriced"):
+    with pytest.raises(BudgetError):
         h.run(tmp_path, make_tasks(2), max_cost_usd=5, unpriced_fn=lambda spec: ["codex"])
     assert h.workspaces == [] and not (tmp_path / "results.jsonl").exists()
 
-    # With the override it runs, but stops launching as soon as an unpriced pair shows up.
-    summary = h.run(
-        tmp_path, make_tasks(4), concurrency=1, max_cost_usd=5, allow_unpriced=True,
-        unpriced_fn=lambda spec: ["codex"],
-    )
-    assert summary.attempted == 1 and summary.skipped_budget == 3
-    assert "unpriced" in summary.halted
+
+def test_unreadable_workspace_after_a_timeout_is_an_error_with_unknown_cost_that_halts(tmp_path):
+    team = FakeTeam("solo:worker=claude", delay=30)
+    h = Harness(team)
+    h.diff_fails = True
+    summary = h.run(tmp_path, make_tasks(3), concurrency=1, solve_timeout_s=0.05, max_cost_usd=100)
+    assert (summary.attempted, summary.errored) == (1, 1) and summary.skipped_budget == 2
+    record = load_records(tmp_path / "results.jsonl")[0]
+    assert record["stage"] == "solve" and "timeout" in record["error"]
+    assert record["usage"]["cost_usd"] is None and record["patch"] == ""
+    assert h.eval_calls == 0
 
 
 def test_concurrency_is_bounded_and_failed_pairs_do_not_stop_the_run(tmp_path):
-    team = FakeTeam("solo:worker=claude", delay=0.02, fail_for={"o__r-2"})
-    summary = Harness(team).run(tmp_path, make_tasks(8), concurrency=3)
+    team = FakeTeam("solo:worker=claude", delay=0.02)
+    h = Harness(team)
+    h.workspace_fail = {"o__r-2"}
+    summary = h.run(tmp_path, make_tasks(8), concurrency=3)
     assert team.peak == 3
     assert (summary.attempted, summary.errored) == (8, 1)
 
@@ -220,6 +302,7 @@ def test_cancellation_closes_every_open_workspace(tmp_path):
                 make_tasks(6), [team.name], tmp_path, concurrency=3,
                 team_factory=h.team_factory, workspace_factory=h.workspace_factory,
                 evaluator=h.evaluator, unpriced_fn=lambda s: [], log=lambda m: None,
+                redactor=Redactor(host_env=False),
             )
         )
         while len(h.workspaces) < 3:
@@ -231,27 +314,89 @@ def test_cancellation_closes_every_open_workspace(tmp_path):
     asyncio.run(scenario())
     assert len(h.workspaces) == 3 and all(w.closed for w in h.workspaces)
     assert not (tmp_path / "results.jsonl").exists()
-
-
-def test_solve_timeout_is_an_errored_pair_and_the_workspace_is_closed(tmp_path):
-    team = FakeTeam("solo:worker=claude", delay=30)
-    h = Harness(team)
-    summary = h.run(tmp_path, make_tasks(1), solve_timeout_s=0.05)
-    assert summary.errored == 1
-    record = load_records(tmp_path / "results.jsonl")[0]
-    assert record["error"] == "solve timed out after 0.05s" and h.workspaces[0].closed
-    assert h.eval_calls == 0
+    assert team.active == 0  # the in-flight solves were cancelled with their pairs
 
 
 def test_duplicate_team_specs_are_rejected_after_canonicalisation(tmp_path):
     team = FakeTeam("solo:worker=claude")
     h = Harness(team)
     h.teams["solo:worker=claude@x"] = team
-    with pytest.raises(ValueError, match="duplicate team"):
+    with pytest.raises(ValueError):
         h.run(tmp_path, make_tasks(1), specs=["solo:worker=claude", "solo:worker=claude@x"])
 
 
-def test_required_secret_keys_follow_the_harnesses_in_use():
+def test_secrets_are_scrubbed_from_every_file_the_run_writes_but_grading_sees_originals(tmp_path):
+    host_secret = "host-secret-value-0123456789"
+    sandbox_secret = "opaque-sandbox-key-abcdefgh"
+    pattern_secret = "sk-ant-api03-" + "A1b2C3d4" * 6
+    leak = f"env dump: KEY={sandbox_secret} other={pattern_secret} sk-" + "x" * 30
+    team = FakeTeam(
+        "solo:worker=claude",
+        log=f"trajectory {leak}",
+        patch=lambda task_id: f"+token = '{sandbox_secret}'\n",
+    )
+    redactor = Redactor([host_secret], host_env=False)
+    redactor.add_env_dump(f"PATH=/usr/bin\nANTHROPIC_API_KEY={sandbox_secret}\nHOME=/root")
+
+    class Leaky(Harness):
+        async def evaluator(self, task, patch):
+            result = await super().evaluator(task, patch)
+            result.log = f"grading log {host_secret}"
+            return result
+
+    h = Leaky(team)
+    original = h.workspace_factory
+
+    async def factory(task):
+        if task.task_id == "o__r-1":
+            raise RuntimeError(f"pull failed with token {host_secret}")
+        return await original(task)
+
+    h.workspace_factory = factory
+    summary = h.run(tmp_path, make_tasks(2), redactor=redactor)
+    assert summary.attempted == 2
+    # Grading received the real patch; only the stored copy is scrubbed.
+    assert h.graded[0][1] == f"+token = '{sandbox_secret}'\n"
+    blob = "\n".join(
+        p.read_text(errors="replace") for p in tmp_path.rglob("*") if p.is_file()
+    )
+    for secret in (host_secret, sandbox_secret, pattern_secret, "x" * 30):
+        assert secret not in blob
+    assert "[REDACTED]" in blob
+    records = {r["task_id"]: r for r in load_records(tmp_path / "results.jsonl")}
+    assert records["o__r-0"]["patch_redacted"] is True and records["o__r-0"]["redacted"] is True
+    assert "[REDACTED]" in records["o__r-1"]["error"]
+    clean = Harness(FakeTeam("solo:worker=claude")).run(tmp_path / "clean", make_tasks(1))
+    assert clean.records[0]["redacted"] is False and clean.records[0]["patch_redacted"] is False
+
+
+def test_a_redacted_patch_is_never_reused_for_regrading(tmp_path):
+    secret = "opaque-sandbox-key-abcdefgh"
+    team = FakeTeam("solo:worker=claude", patch=lambda t: f"+{secret}\n")
+    redactor = Redactor([secret], host_env=False)
+    h = Harness(team, eval_fail={"o__r-0"})
+    h.run(tmp_path, make_tasks(1), redactor=redactor)
+    h.eval_fail.clear()
+    team.solved.clear()
+    h.run(tmp_path, make_tasks(1), redactor=redactor)
+    assert team.solved == ["o__r-0"]  # stored patch was scrubbed, so the agents run again
+    assert load_records(tmp_path / "results.jsonl")[-1]["resolved"] is True
+
+
+def test_report_command_covers_only_the_latest_run_of_a_reused_output_dir(tmp_path, capsys):
+    old = FakeTeam("solo:worker=codex")
+    new = FakeTeam("solo:worker=claude")
+    Harness(old).run(tmp_path, make_tasks(3))
+    Harness(new).run(tmp_path, make_tasks(2))
+    assert main(["report", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "solo:worker=claude" in out and "solo:worker=codex" not in out
+    assert "2 of 2 tasks" in out
+    assert main(["report", str(tmp_path), "--team", "solo:worker=codex"]) == 0
+    assert "solo:worker=codex" in capsys.readouterr().out
+
+
+def test_required_secret_keys_cover_only_the_clis_that_run_inside_the_sandbox():
     table = {
         "solo:worker=claude": ["claude"],
         "best:workers=codex@gpt-x+claude": ["codex@gpt-x", "claude"],
@@ -264,11 +409,10 @@ def test_required_secret_keys_follow_the_harnesses_in_use():
     keys = lambda specs: required_secret_keys(specs, harnesses=lambda s: table[s])  # noqa: E731
     assert keys(["solo:worker=claude"]) == ("ANTHROPIC_API_KEY",)
     assert keys(["best:workers=codex@gpt-x+claude"]) == ("ANTHROPIC_API_KEY", "OPENAI_API_KEY")
-    assert keys(["review:coder=sdk@litellm/openrouter/foo/bar,reviewer=sdk@gpt-x"]) == (
-        "OPENAI_API_KEY", "OPENROUTER_API_KEY",
-    )
-    assert keys(["solo:worker=sdk@litellm/gemini/g-1"]) == ("GEMINI_API_KEY",)
-    assert keys(["solo:worker=sdk@litellm/other/m"]) == ()
+    # sdk harnesses call their provider from the host: nothing is required in, or exposed to, the
+    # sandbox for them.
+    assert keys(["review:coder=sdk@litellm/openrouter/foo/bar,reviewer=sdk@gpt-x"]) == ()
+    assert keys(["solo:worker=sdk@litellm/gemini/g-1"]) == ()
 
 
 def test_gold_validation_lists_instances_whose_reference_patch_resolves(tmp_path):

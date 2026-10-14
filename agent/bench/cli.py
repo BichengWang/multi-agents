@@ -15,6 +15,7 @@ from .report import build_report
 from .run import (
     GOLD_FILE,
     BudgetError,
+    canonical_team,
     load_records,
     required_secret_keys,
     run_benchmark,
@@ -93,6 +94,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-retry-errors", action="store_true", help="on resume, do not retry errored pairs"
     )
     run.add_argument(
+        "--no-check-base-commit",
+        action="store_true",
+        help="do not require the image checkout to equal the task's base_commit",
+    )
+    run.add_argument(
         "--keep-history",
         action="store_true",
         help="do not strip git history in agent sandboxes (the fix commit may be readable)",
@@ -101,6 +107,11 @@ def build_parser() -> argparse.ArgumentParser:
     report = sub.add_parser("report", help="Markdown report of a run directory")
     report.add_argument("dir")
     report.add_argument("--baseline", help="team spec to compare every team against")
+    report.add_argument(
+        "--team",
+        action="append",
+        help="only report this team (repeatable); default: the teams of the latest run",
+    )
     report.add_argument(
         "--count-errors-as-failures",
         action="store_true",
@@ -144,6 +155,7 @@ def _sandbox_config(args: argparse.Namespace, teams: Sequence[str] = ()) -> Sand
         registry_secret_name=args.registry_secret,
         add_python=args.add_python,
         isolate_history=not getattr(args, "keep_history", False),
+        check_base_commit=not getattr(args, "no_check_base_commit", False),
     )
 
 
@@ -205,8 +217,14 @@ def _cmd_run(args: argparse.Namespace) -> int:
                     "dataset": args.dataset,
                     "since": args.since,
                     "until": args.until,
-                    "seed": args.seed,
+                    "repos": args.repos,
+                    "languages": args.languages,
+                    "instance_ids": args.instance_ids,
                     "limit": args.limit,
+                    "seed": args.seed,
+                    "gold_file": args.gold_file,
+                    "isolate_history": not args.keep_history,
+                    "check_base_commit": not args.no_check_base_commit,
                 },
             )
         )
@@ -222,25 +240,22 @@ def _cmd_run(args: argparse.Namespace) -> int:
     print(
         f"attempted {summary.attempted}, skipped (finished) {summary.skipped_finished}, "
         f"skipped (budget/halt) {summary.skipped_budget}, errored {summary.errored}, "
+        f"timed out (graded) {summary.timed_out}, "
         f"spent ${summary.spent_usd:.2f}"
         + (f"; halted: {summary.halted}" if summary.halted else "")
     )
     return 0
 
 
-def _canonicalize(spec: str) -> Optional[str]:
-    try:
-        from agent.teams import build_team
-
-        return build_team(spec).name
-    except Exception:
-        return spec
+def _canonicalize(spec: str) -> str:
+    return canonical_team(spec)
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
     text = build_report(
         args.dir,
         baseline=args.baseline,
+        teams=args.team,
         count_errors_as_failures=args.count_errors_as_failures,
         canonicalize=_canonicalize,
     )

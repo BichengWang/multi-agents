@@ -14,7 +14,6 @@ grading failure); such pairs are excluded and listed explicitly, unless
 
 from __future__ import annotations
 
-import json
 import math
 import statistics
 from collections.abc import Sequence
@@ -22,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-from .run import META_FILE, RESULTS_FILE, load_records
+from .run import RESULTS_FILE, load_meta, load_records
 
 Z95 = 1.959963984540054
 
@@ -53,6 +52,7 @@ class TeamStats:
     n: int = 0
     resolved: int = 0
     excluded: list[str] = field(default_factory=list)  # task ids with an errored pair
+    timed_out: int = 0  # common tasks graded as left after a solve timeout
     costs: list[Optional[float]] = field(default_factory=list)
     durations: list[float] = field(default_factory=list)
     outcomes: dict[str, bool] = field(default_factory=dict)  # common tasks only
@@ -92,6 +92,8 @@ class Summary:
     paired: list[Paired]
     common_tasks: list[str]
     errored: list[tuple[str, str, str]]  # (task, team, error)
+    not_run: list[tuple[str, str]]  # (task, team) pairs in scope without any record
+    scoped_tasks: int
     count_errors_as_failures: bool
     meta: dict[str, Any]
 
@@ -102,14 +104,36 @@ def summarize(
     baseline: Optional[str] = None,
     count_errors_as_failures: bool = False,
     meta: Optional[dict[str, Any]] = None,
+    teams: Optional[Sequence[str]] = None,
+    task_ids: Optional[Sequence[str]] = None,
 ) -> Summary:
+    """``teams`` / ``task_ids`` restrict the report (default: every team and task in ``records``).
+
+    A task counts only if every reported team has a usable record for it; (task, team) pairs that
+    were never run, for instance after a budget halt, are listed as not run, not as errors.
+    """
+    wanted = set(teams) if teams is not None else None
+    in_scope = set(task_ids) if task_ids is not None else None
     latest: dict[tuple[str, str], dict[str, Any]] = {}
     for rec in records:
+        if wanted is not None and rec["team"] not in wanted:
+            continue
+        if in_scope is not None and rec["task_id"] not in in_scope:
+            continue
         latest[(rec["task_id"], rec["team"])] = rec  # later records supersede earlier ones
-    teams = list(dict.fromkeys(rec["team"] for rec in records))
+    if teams is not None:
+        team_list = list(dict.fromkeys(teams))
+        missing = [t for t in team_list if not any(team == t for _, team in latest)]
+        if missing:
+            raise ValueError(f"no results for team(s) {missing}")
+    else:
+        team_list = list(dict.fromkeys(rec["team"] for rec in records))
+        team_list = [t for t in team_list if any(team == t for _, team in latest)]
+    teams = team_list
     if baseline is not None and baseline not in teams:
         raise ValueError(f"baseline {baseline!r} has no results; teams present: {teams}")
-    tasks = sorted({task for task, _ in latest})
+    tasks = sorted(in_scope) if in_scope is not None else sorted({task for task, _ in latest})
+    not_run = [(t, team) for t in tasks for team in teams if (t, team) not in latest]
 
     def valid(rec: Optional[dict[str, Any]]) -> bool:
         if rec is None:
@@ -140,6 +164,7 @@ def summarize(
             st.resolved += ok
             usage = rec.get("usage") or {}
             st.costs.append(usage.get("cost_usd") if usage else None)
+            st.timed_out += bool((rec.get("meta") or {}).get("timed_out"))
             if rec.get("duration_s") is not None:
                 st.durations.append(float(rec["duration_s"]))
         stats.append(st)
@@ -163,7 +188,10 @@ def summarize(
                     delta=(wins - losses) / len(common) if common else 0.0,
                 )
             )
-    return Summary(stats, baseline, paired, common, errored, count_errors_as_failures, meta or {})
+    return Summary(
+        stats, baseline, paired, common, errored, not_run, len(tasks),
+        count_errors_as_failures, meta or {},
+    )
 
 
 def _pct(x: float) -> str:
@@ -174,13 +202,26 @@ def _money(x: float) -> str:
     return f"${x:,.2f}"
 
 
-def _cost_cell(values: list[Optional[float]], reduce: Any) -> str:
+def _mean_cost(values: list[Optional[float]]) -> str:
     priced = [v for v in values if v is not None]
     if not priced:
         return "unpriced"
-    text = _money(reduce(priced))
     missing = len(values) - len(priced)
-    return text if not missing else f"≥{text} ({missing} unpriced)"
+    if not missing:
+        return _money(sum(priced) / len(values))
+    # Unpriced runs cost something unknown >= 0, so total priced / all runs bounds the mean below.
+    return f"≥{_money(sum(priced) / len(values))} ({missing} unpriced)"
+
+
+def _median_cost(values: list[Optional[float]]) -> str:
+    priced = [v for v in values if v is not None]
+    if not priced:
+        return "unpriced"
+    missing = len(values) - len(priced)
+    if not missing:
+        return _money(statistics.median(priced))
+    # No honest bound exists for a median with unknown members; say what was measured.
+    return f"{_money(statistics.median(priced))} (priced runs only; {missing} unpriced)"
 
 
 def _cost_per_resolved(st: TeamStats) -> str:
@@ -215,30 +256,32 @@ def render(summary: Summary) -> str:
         if bits:
             lines += [", ".join(bits), ""]
     lines.append(
-        f"{n} tasks with a valid result for every team"
+        f"{n} of {summary.scoped_tasks} tasks have a valid result for every team"
         + (" (errored pairs counted as unresolved)" if summary.count_errors_as_failures else "")
         + ". Resolve rate shows the Wilson 95% confidence interval. "
-        "Wall time is the median team solve time per task."
+        "Wall time is the median team solve time per task. *Timed out* counts tasks where the "
+        "team hit the solve timeout and was graded on what it had produced (cost unknown)."
     )
     lines.append("")
     lines.append(
-        "| Team | Resolved | Rate (95% CI) | Mean cost/task | Median cost/task | Cost/resolved | Median wall time | Excluded |"
+        "| Team | Resolved | Rate (95% CI) | Mean cost/task | Median cost/task | Cost/resolved | Median wall time | Timed out | Excluded |"
     )
-    lines.append("|---|---|---|---|---|---|---|---|")
+    lines.append("|---|---|---|---|---|---|---|---|---|")
     for st in summary.teams:
         lo, hi = st.interval
         lines.append(
-            "| `{team}` | {res}/{n} | {rate} ({lo}–{hi}) | {mean} | {med} | {cpr} | {wall} | {exc} |".format(
+            "| `{team}` | {res}/{n} | {rate} ({lo}–{hi}) | {mean} | {med} | {cpr} | {wall} | {tmo} | {exc} |".format(
                 team=st.team,
                 res=st.resolved,
                 n=st.n,
                 rate=_pct(st.rate),
                 lo=_pct(lo),
                 hi=_pct(hi),
-                mean=_cost_cell(st.costs, statistics.fmean),
-                med=_cost_cell(st.costs, statistics.median),
+                mean=_mean_cost(st.costs),
+                med=_median_cost(st.costs),
                 cpr=_cost_per_resolved(st),
                 wall=_duration(st.durations),
+                tmo=st.timed_out,
                 exc=len(st.excluded),
             )
         )
@@ -277,31 +320,58 @@ def render(summary: Summary) -> str:
         lines.append("")
         for task, team, error in summary.errored:
             lines.append(f"- `{task}` × `{team}`: {error[:200]}")
+    lines += ["", "## Not run", ""]
+    if not summary.not_run:
+        lines.append("None.")
+    else:
+        lines.append(
+            f"{len(summary.not_run)} (task, team) pair(s) have no record (for example after a "
+            "budget halt); their tasks are left out of every team's numbers:"
+        )
+        lines.append("")
+        for task, team in summary.not_run[:50]:
+            lines.append(f"- `{task}` × `{team}`")
+        if len(summary.not_run) > 50:
+            lines.append(f"- ... and {len(summary.not_run) - 50} more")
     return "\n".join(lines) + "\n"
+
+
+def latest_run(meta: dict[str, Any]) -> dict[str, Any]:
+    runs = meta.get("runs") or []
+    return runs[-1] if runs else {}
 
 
 def build_report(
     out_dir: str | Path,
     *,
     baseline: Optional[str] = None,
+    teams: Optional[Sequence[str]] = None,
     count_errors_as_failures: bool = False,
     canonicalize: Any = None,
 ) -> str:
+    """Report for ``out_dir``. Without ``teams`` it covers the teams (and tasks) of the latest run
+    recorded in ``meta.json``, so leftovers of earlier invocations in the same directory neither
+    appear nor shrink the common task set; without a ``meta.json`` it covers every record."""
     out = Path(out_dir)
     records = load_records(out / RESULTS_FILE)
     if not records:
         raise ValueError(f"no results in {out / RESULTS_FILE}")
-    meta: dict[str, Any] = {}
-    if (out / META_FILE).exists():
-        meta = json.loads((out / META_FILE).read_text(encoding="utf-8"))
-    teams = list(dict.fromkeys(r["team"] for r in records))
-    if baseline is not None and baseline not in teams and canonicalize is not None:
-        baseline = canonicalize(baseline)
+    meta = load_meta(out)
+    run = latest_run(meta)
+    canon = canonicalize or (lambda spec: spec)
+    selected = [canon(t) for t in teams] if teams else (run.get("teams") or None)
+    if selected is not None:
+        selected = [t for t in selected if any(r["team"] == t for r in records)] or None
+    if baseline is not None:
+        present = {r["team"] for r in records}
+        baseline = baseline if baseline in present else canon(baseline)
     return render(
         summarize(
             records,
             baseline=baseline,
             count_errors_as_failures=count_errors_as_failures,
-            meta=meta,
+            meta=run,
+            teams=selected,
+            task_ids=run.get("task_ids") or None,
         )
     )
