@@ -37,7 +37,9 @@ Teams are selected with a compact spec string; the canonical form is the team's 
 solo:worker=H
 review:coder=H,reviewer=H[,rounds=N]          # rounds defaults to 3
 best:workers=H+H[+H...][,judge=H]             # judge defaults to the first worker's harness
+plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]   # next stage, see below
 H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@litellm/<provider>/<model>
+                                              # check: the --check command as reviewer or judge
 ```
 
 ## Milestones
@@ -54,3 +56,20 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 5. **Launch** — README led by the results, terminal demo, launch posts.
 6. **Growth loop** — monthly refresh on newly created tasks, more harnesses, community-submitted
    team topologies.
+
+## Current stage: teams that finish real work
+
+The pilot (milestone 4) waits on Modal and API credentials. Meanwhile, the runner should finish
+real work end to end, inside the tools people already use:
+
+1. **Objective checks** — `--check CMD` runs a command (tests, build, lint) against the final
+   patch in a fork and records pass/fail. `check` can be the reviewer (a test-driven loop with no
+   LLM reviewer) or the judge; with an LLM judge, candidates that fail the check rank below those
+   that pass.
+2. **`plan` topology** — a planner splits the task into independent subtasks, workers solve them
+   in parallel forks, an integrator merges the patches and resolves conflicts, and the check
+   verifies the result. This is the coordinator pattern the published gains come from.
+3. **Use from inside your agent** — a Claude Code plugin and a Codex plugin, installable from this
+   repository, that let a running agent hand a task to a team and review the patch.
+4. **Issue to pull request** — `--issue N|URL` takes the task from a GitHub issue; `--pr` commits the
+   result to a new branch and opens a draft pull request with the run summary.
