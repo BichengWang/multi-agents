@@ -13,8 +13,6 @@ help:
 	@echo "  venv         - Create the project virtual environment"
 	@echo "  install      - Install project dependencies"
 	@echo "  install-dev  - Install development dependencies"
-	@echo "  train        - Run model training"
-	@echo "  serve        - Start the FastAPI server"
 	@echo "  update-deps  - Update dependencies"
 	@echo "  bootstrap    - Bootstrap the environment"
 	@echo "  lock         - Refresh the dependency lockfile"
@@ -42,14 +40,6 @@ venv:
 .PHONY: install install-dev bootstrap
 install install-dev bootstrap:
 	$(UV) sync --locked --extra dev
-
-.PHONY: train
-train:
-	cd ml && $(UV) run --locked --extra train python trainer/train.py
-
-.PHONY: serve
-serve:
-	cd ml && $(UV) run --locked --extra serve python server/serve.py
 
 .PHONY: update-deps
 update-deps:
