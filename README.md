@@ -65,14 +65,16 @@ outside your repository (`~/.cache/multi-agents/runs/`).
 | `solo:worker=H` | One agent works on the task. This is the baseline. |
 | `review:coder=H,reviewer=H[,rounds=N]` | The coder works; the reviewer scores the patch in a separate copy and sends feedback; the coder resumes its session and revises. Returns the best-scoring patch, not the last one. |
 | `best:workers=H+H[+H...][,judge=H]` | Workers run in parallel, each in its own worktree, possibly different CLIs and models. The judge scores each patch and the best one wins. |
+| `plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]` | A planner splits the task into independent subtasks, workers solve them in parallel worktrees, and the patches are merged; an integrator resolves conflicts and gets one fix pass if the check fails. |
 
 `H` is `claude`, `codex` or `sdk`, optionally with `@model`, for example `claude@haiku`,
-`codex@gpt-6-luna` or `sdk@litellm/openrouter/<model>`. Details:
+`codex@gpt-6-luna` or `sdk@litellm/openrouter/<model>`. `check` (the `--check` command) can be the
+reviewer or the judge: a test-driven loop with no LLM reviewer. Details:
 [team runner guide](agent/teams/README.md).
 
 ```mermaid
 flowchart LR
-  T["Task"] --> Team["Team: solo / review / best"]
+  T["Task"] --> Team["Team: solo / review / best / plan"]
   Team --> H1["Claude Code"]
   Team --> H2["Codex"]
   Team --> H3["SDK agent (any model)"]
@@ -81,6 +83,35 @@ flowchart LR
   H3 --> W3["Worktree 3"]
   Team --> R["Patch + record: runs, tokens, cost, time"]
 ```
+
+## From issue to pull request
+
+`--check` runs your tests (or build, or lint) against the final patch in a separate worktree and
+records pass/fail; with an LLM judge, candidates that fail it rank below those that pass. `--issue`
+takes the task from a GitHub issue, and `--pr` commits the result to a new branch and opens a draft
+pull request with the run summary, without touching your checkout.
+
+```bash
+multi-agents run --repo . --issue 42 --pr \
+  --team 'plan:planner=claude@haiku,workers=claude@haiku+codex@gpt-6-luna' \
+  --check 'python3 -m unittest -q'
+```
+
+A real `plan` run on a repository with two unrelated bugs (without `--issue`/`--pr`):
+
+```text
+role    ┃ harness@model           ┃ tokens in/cached/out ┃    cost ┃ secs
+planner │ claude@claude-haiku-5-5 │       187k/150k/2.0k │ $0.0101 │ 16.8
+worker  │ claude@claude-haiku-5-5 │        141k/104k/510 │ $0.0088 │  8.7
+worker  │ codex@gpt-6-luna        │          55k/37k/349 │ $0.0024 │  9.7
+Total: 385k/291k/2.9k tokens, cost $0.0212, 26.8s
+subtask 1 [applied]: Fix word_count in textstats.py (claude@haiku)
+subtask 2 [applied]: Fix format_cents in money.py (codex@gpt-6-luna)
+check: passed (exit 0, 0.0s) python3 -m unittest -q
+```
+
+Issue text is untrusted input to the agents: don't combine `--issue` on public repositories with
+`--permissions bypass` or the `sdk` harness.
 
 ## Use it from your coding agent
 
@@ -139,7 +170,8 @@ First results will be published here.
 
 | Area | State |
 |---|---|
-| Team runner (`solo`, `review`, `best`), Claude Code and Codex harnesses | Working; smoke-tested with real CLIs |
+| Team runner (`solo`, `review`, `best`, `plan`), Claude Code and Codex harnesses | Working; smoke-tested with real CLIs |
+| `--check`, `--issue`, `--pr`, plugins for both CLIs | Working; smoke-tested end to end |
 | SDK harness (any model) | Implemented and tested offline; not yet run against a live model |
 | Benchmark | Built and tested offline; the Modal path has not run live yet |
 | Results | Pending the first pilot run |
