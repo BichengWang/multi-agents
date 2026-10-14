@@ -187,8 +187,8 @@ make check    # also the GitHub workflow and attribution tests (Node.js 22+)
 ```
 
 Reusable orchestration patterns (`RefineLoop`, `BestOfN`, `SequentialWorkflow`, `Router`) are in
-[`agent/workflows`](agent/workflows/README.md). Pre-pivot experiments live in the archived
-[multi-agents-legacy](https://github.com/BichengWang/multi-agents-legacy) repository.
+[`agent/workflows`](agent/workflows/README.md). Pre-pivot experiments are in this repository's history
+at the [`pre-pivot`](https://github.com/BichengWang/multi-agents/tree/pre-pivot) tag.
 
 ## License
 
