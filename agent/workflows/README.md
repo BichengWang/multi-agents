@@ -39,10 +39,10 @@ and `feedback`. Subclass `Verdict` to add domain-specific fields:
 from agents import Agent
 from agent.workflows import Verdict
 
-class StoryEvaluation(Verdict):
-    originality: float
+class PatchReview(Verdict):
+    tests_pass: bool
 
-evaluator = Agent(name="Evaluator", instructions="...", output_type=StoryEvaluation)
+evaluator = Agent(name="Reviewer", instructions="...", output_type=PatchReview)
 ```
 
 ## Router
@@ -54,9 +54,9 @@ usually another workflow's `run`. Unknown routes or confidence below `min_confid
 the handler returns a `WorkflowResult`, its steps are appended after the `classify` step.
 
 ```python
-router = Router(classifier, [Route("story", "creative writing", story_wf.run), ...], fallback="story")
-result = await router.run("Write a heist on the moon")
-result.meta  # {'route': 'story', 'confidence': 0.93, 'fallback_used': False, ...}
+router = Router(classifier, [Route("bugfix", "fix a reported defect", bugfix_wf.run), ...], fallback="bugfix")
+result = await router.run("The CSV export drops the last row")
+result.meta  # {'route': 'bugfix', 'confidence': 0.93, 'fallback_used': False, ...}
 ```
 
 ## Example
@@ -64,7 +64,7 @@ result.meta  # {'route': 'story', 'confidence': 0.93, 'fallback_used': False, ..
 ```python
 from agent.workflows import RefineLoop
 
-result = await RefineLoop(generator, evaluator, max_iterations=3, threshold=8).run("idea")
+result = await RefineLoop(generator, evaluator, max_iterations=3, threshold=8).run("Draft the migration plan")
 print(result.final_output, result.meta)  # {'iterations': 2, 'accepted': True, 'scores': [6.0, 8.5]}
 ```
 
@@ -84,9 +84,9 @@ reached. Leaving it unset preserves automatic refinement.
 from agent.workflows import CheckpointDecision, RefineLoop
 
 async def review(state):
-    return CheckpointDecision(feedback="Give the protagonist a stronger motive.")
+    return CheckpointDecision(feedback="Keep the public API unchanged.")
 
-result = await RefineLoop(generator, evaluator, checkpoint=review).run("A moon heist")
+result = await RefineLoop(generator, evaluator, checkpoint=review).run("Draft the migration plan")
 ```
 
 `cli_checkpoint` is a ready-to-use callback: Enter continues, text steers, `/stop` or EOF stops.
@@ -103,8 +103,8 @@ write the result, verdict, meta, step trace, per-call timings and token totals t
 from agent.workflows import RefineLoop, RunTracker, run_record, save_run
 
 tracker = RunTracker()                      # or RunTracker(base=fake_runner) in tests
-result = await RefineLoop(generator, evaluator, runner=tracker).run("idea")
-save_run(run_record(result, workflow="story/refine", query="idea",
+result = await RefineLoop(generator, evaluator, runner=tracker).run("Draft the migration plan")
+save_run(run_record(result, workflow="plan/refine", query="Draft the migration plan",
                     started_at=t0, duration_s=elapsed, tracker=tracker))
 ```
 
