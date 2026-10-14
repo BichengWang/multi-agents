@@ -1,0 +1,30 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "multi-agents",
+  "version": "0.1.0",
+  "description": "Hand a coding task to a team of coding agents (Claude Code, Codex) in isolated git worktrees and review the patch they return.",
+  "author": {
+    "name": "BichengWang",
+    "url": "https://github.com/BichengWang"
+  },
+  "homepage": "https://github.com/BichengWang/multi-agents",
+  "repository": "https://github.com/BichengWang/multi-agents",
+  "license": "MIT",
+  "keywords": ["multi-agent", "teams", "code-review", "codex", "claude-code"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Multi-agent teams",
+        "shortDescription": "Hand a task to a team of coding agents and review the patch",
+        "longDescription": "Run Claude Code and Codex as a team in isolated git worktrees: a coder and a reviewer, or several workers and a judge. You get one patch and an itemized cost record, and nothing changes in your tree until you approve it.",
+        "developerName": "BichengWang",
+        "category": "Coding",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://github.com/BichengWang/multi-agents",
+        "defaultPrompt": [
+          "Use multi-agents to get a second opinion on this failing test."
+        ]
+      }
+    }
+  }
+}

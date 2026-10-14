@@ -1,0 +1,18 @@
+{
+  "name": "multi-agents",
+  "description": "Multi-agent teams for real work: hand a task to a team of coding agents and review the patch.",
+  "owner": {
+    "name": "BichengWang",
+    "url": "https://github.com/BichengWang"
+  },
+  "plugins": [
+    {
+      "name": "multi-agents",
+      "source": "./plugins/multi-agents",
+      "description": "Hand a coding task to a team of coding agents (Claude Code, Codex) in isolated git worktrees and review the patch they return.",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": ["multi-agent", "teams", "code-review"]
+    }
+  ]
+}

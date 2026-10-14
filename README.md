@@ -82,6 +82,33 @@ flowchart LR
   Team --> R["Patch + record: runs, tokens, cost, time"]
 ```
 
+## Use it from your coding agent
+
+This repository is also a plugin marketplace for both coding CLIs, so a running agent can hand a
+task to a team and then show you the patch. Install it once:
+
+```bash
+# Claude Code
+claude plugin marketplace add BichengWang/multi-agents
+claude plugin install multi-agents@multi-agents
+
+# Codex
+codex plugin marketplace add BichengWang/multi-agents
+codex plugin add multi-agents@multi-agents
+```
+
+Then, inside Claude Code (the optional spec comes first; the default is a cheap coder ⇄ reviewer
+pair that pairs the other CLI with the one you are in):
+
+```text
+/multi-agents:team make the tests pass
+/multi-agents:team best:workers=claude@haiku+codex@gpt-6-luna fix the flaky retry in client.py
+```
+
+In Codex, ask for the skill by name, for example `Use $multi-agents:multi-agents to make the tests
+pass`. Either way the agent runs the published CLI, shows you the summary and the patch, and applies
+it only after you say so. The skill is in [`plugins/multi-agents`](plugins/multi-agents).
+
 ## Safety and cost
 
 - **Permissions.** By default (`--permissions safe`) each CLI runs inside its own sandbox: edits
