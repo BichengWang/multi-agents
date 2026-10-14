@@ -75,7 +75,7 @@ git -C <repo> apply <runs-dir>/<run>/final.patch
 Your working tree is never modified unless you pass `--apply` (and then only if `git status` is
 clean). The base is a commit: uncommitted changes in your tree are not visible to the workers.
 Ctrl-C cancels all workers (their whole process groups are killed) and removes the worktrees.
-Exit code: 0 patch produced, 1 empty patch, 2 usage error, 3 `--apply` refused or failed, 4 the team crashed, 130 interrupted.
+Exit code: 0 patch produced, 1 empty patch, 2 usage error, 3 `--apply` refused or failed (or `--pr` delivery failed), 4 the team crashed, 130 interrupted.
 
 ### Where worktrees live
 
@@ -144,6 +144,12 @@ multi-agents run --team "review:coder=codex,reviewer=claude" --issue https://git
 
 Both need the [GitHub CLI](https://cli.github.com) (`gh`), logged in.
 
+**Issue text is untrusted input.** Whoever can open an issue on the repository writes part of the
+agent's prompt. The text is passed to the agent as a delimited problem description it is told not to
+obey as instructions, which reduces but does not remove prompt-injection risk. Do not combine `--issue`
+on a repository where strangers can open issues with `--permissions bypass` or the `sdk` harness (both
+run commands with your privileges), and read the patch and the draft PR before trusting them.
+
 * `--issue N|URL` reads the issue (`gh issue view`, run in the target repo, so a bare number resolves
   against its default remote) and uses its title and body (capped at 8000 characters) as the task. A
   positional instruction is added as extra guidance. The issue is stored in `record.json` as
@@ -151,17 +157,22 @@ Both need the [GitHub CLI](https://cli.github.com) (`gh`), logged in.
   code 2 before any agent starts.
 * `--pr` publishes a non-empty patch: a branch `multi-agents/<issue-number-or-slug>-<run-id>` is
   committed at the base commit with a temporary index (your checkout, index and current branch are never
-  touched), as your configured git identity, pushed to `origin` (never forced; if the name exists locally
-  or on `origin`, a `-2`, `-3`... suffix is used), and opened with `gh pr create --draft` against the
-  branch the base commit came from if `origin` has it, else the repository's default branch. `--ready`
-  opens a regular PR instead. Before the team runs, `--pr` checks that `gh` is logged in and that `origin`
-  is a repository `gh` can use (exit code 2 otherwise).
+  touched), as your configured git identity (unsigned, even with `commit.gpgsign`: sign it afterwards
+  if a ruleset requires signatures), pushed to `origin` (never forced; if the name exists locally or on
+  `origin`, a `-2`, `-3`... suffix is used), and opened with `gh pr create --draft` against the branch
+  the base commit came from if `origin` has it, else the repository's default branch. `--ready` opens a
+  regular PR instead. The push runs your repository's `pre-push` hook, if any, like any `git push`.
+* Before the team runs, `--pr` checks (exit code 2 otherwise) that `gh` is logged in, that `origin` is a
+  repository `gh` can use, and that the base commit is already on that base branch on `origin`. The
+  pushed branch carries every commit below it, so unpushed local commits would otherwise be published
+  and show up in the PR: push them, or pass `--base origin/<branch>`.
 * The PR body has `Closes #N` (`Closes OWNER/REPO#N` for an issue in another repository), the team spec,
-  the check result when `--check` was used, a per-role cost/tokens/time table with the total, and the
-  files changed. It is also saved as `pr-body.md` next to `record.json`. The PR URL and branch are stored
-  as `pull_request: {url, branch}` and printed.
+  the check result when the run record has one, a per-role cost/tokens/time table with the total, and
+  the files changed. It is also saved as `pr-body.md` next to `record.json`. The PR URL and branch are
+  stored as `pull_request: {url, branch}` and printed.
 * An empty patch opens nothing (exit code 1). If committing, pushing or `gh pr create` fails (exit code
-  3), the local branch is kept and the exact commands to finish by hand are printed.
+  3, the same code as a failed `--apply`), the local branch is kept where there is one and the exact
+  commands to finish by hand are printed; the patch is always saved as `final.patch` next to the record.
 
 `gh` picks the repository for `pr create` from your remotes (`gh repo set-default` to change it). Fork
 workflows where `origin` is not that repository are not handled specially.

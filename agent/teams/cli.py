@@ -202,26 +202,25 @@ async def _open_pull_request(
     console: Console,
     *,
     repo: str,
-    base_commit: str,
+    patch_path: Path,
     instruction: str,
     team: str,
     result: TeamResult,
     issue: Optional[github.Issue],
-    info: github.RepoInfo,
+    target: github.PrTarget,
     record: dict,
     record_path: Path,
 ) -> int:
     try:
         pub = await github.publish(
             repo,
-            base_commit=base_commit,
-            base_ref=args.base,
+            target=target,
             patch=result.patch,
+            patch_path=patch_path,
             instruction=instruction,
             team=team,
             result=result,
             issue=issue,
-            info=info,
             check=record.get("check"),
             draft=not args.ready,
             body_path=record_path.with_name("pr-body.md"),
@@ -261,18 +260,18 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
     if not args.instruction and not args.issue:
         console.print("[red]Give an instruction, --issue, or both.[/red]")
         return EXIT_USAGE
-    issue = repo_info = None
+    issue = target = None
     try:
         if args.pr:
-            repo_info = await github.preflight(args.repo)
+            target = await github.resolve_target(args.repo, args.base, await github.preflight(args.repo))
         if args.issue:
             issue = await github.read_issue(args.issue, args.repo)
-    except github.GitHubError as exc:
-        console.print(f"[red]GitHub:[/red] {exc}", soft_wrap=True)
+    except (github.GitHubError, OSError) as exc:
+        console.print(f"[red]GitHub:[/red] {exc}", soft_wrap=True, highlight=False)
         return EXIT_USAGE
     instruction = github.issue_instruction(issue, args.instruction) if issue else args.instruction
     try:
-        workspace = await LocalWorktree.create(args.repo, args.base)
+        workspace = await LocalWorktree.create(args.repo, target.base_commit if target else args.base)
     except (GitError, OSError) as exc:
         console.print(f"[red]Cannot create a worktree:[/red] {exc}")
         return EXIT_USAGE
@@ -343,12 +342,12 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
             args,
             console,
             repo=repo,
-            base_commit=workspace.base_commit,
+            patch_path=patch_path,
             instruction=instruction,
             team=team.name,
             result=result,
             issue=issue,
-            info=repo_info,
+            target=target,
             record=record,
             record_path=record_path,
         )
