@@ -1,0 +1,13 @@
+{
+  "name": "multi-agents",
+  "description": "Hand a coding task to a team of coding agents (Claude Code, Codex) in isolated git worktrees and review the patch they return.",
+  "version": "0.1.0",
+  "author": {
+    "name": "BichengWang",
+    "url": "https://github.com/BichengWang"
+  },
+  "homepage": "https://github.com/BichengWang/multi-agents",
+  "repository": "https://github.com/BichengWang/multi-agents",
+  "license": "MIT",
+  "keywords": ["multi-agent", "teams", "code-review", "codex", "claude-code"]
+}
