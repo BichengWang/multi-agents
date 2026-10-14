@@ -13,18 +13,27 @@ class BestOfN:
 
     ``variant_prompt`` lets each candidate get a different input (e.g. a different angle or
     genre) so the candidates are diverse rather than N samples of the same prompt.
-    ``max_concurrency`` bounds concurrent candidates. Failed candidates are recorded and
+    ``generator`` may also be a list of agents, one per candidate (``n`` then defaults to its
+    length), for candidates that differ in kind rather than just in prompt. Otherwise ``n``
+    defaults to 3. ``max_concurrency`` bounds concurrent candidates. Failed candidates are recorded and
     skipped; the run fails only if none produces a valid verdict.
     """
 
     generator: Any
     evaluator: Any
-    n: int = 3
+    n: Optional[int] = None
     runner: AgentRunner = field(default=default_runner)
     variant_prompt: Optional[Callable[[str, int], str]] = None
     max_concurrency: int = 3
 
     def __post_init__(self) -> None:
+        if isinstance(self.generator, (list, tuple)):
+            if self.n is None:
+                self.n = len(self.generator)
+            elif self.n != len(self.generator):
+                raise ValueError(f"n={self.n} does not match {len(self.generator)} generators")
+        elif self.n is None:
+            self.n = 3
         if self.n < 1:
             raise ValueError("n must be >= 1")
         if self.max_concurrency < 1:
@@ -33,10 +42,11 @@ class BestOfN:
     async def _candidate(
         self, query: str, idx: int, steps: list[StepRecord]
     ) -> tuple[Any, VerdictLike]:
+        generator = self.generator[idx - 1] if isinstance(self.generator, (list, tuple)) else self.generator
         gen_input = self.variant_prompt(query, idx) if self.variant_prompt else query
-        steps.append(StepRecord("generate", agent_name(self.generator), gen_input, None, iteration=idx))
+        steps.append(StepRecord("generate", agent_name(generator), gen_input, None, iteration=idx))
         try:
-            draft = await self.runner(self.generator, gen_input)
+            draft = await self.runner(generator, gen_input)
             steps[-1].output = draft
             steps.append(
                 StepRecord("evaluate", agent_name(self.evaluator), str(draft), None, iteration=idx)
