@@ -44,7 +44,7 @@ CODEX_VERSION = "0.162.1"
 
 SECRET_HELP = (
     "Create the Modal Secret once with the keys your teams need, e.g.\n"
-    "  modal secret create multi-agents-bench ANTHROPIC_API_KEY=... OPENAI_API_KEY=... "
+    "  modal secret create multi-agents-bench ANTHROPIC_API_KEY=... CODEX_API_KEY=... "
     "[OPENROUTER_API_KEY=...]"
 )
 
