@@ -101,8 +101,9 @@ def required_secret_keys(
 ) -> tuple[str, ...]:
     """Keys the Modal Secret must hold for the CLIs that run *inside* the sandbox.
 
-    ``sdk`` harnesses make their model calls from the host process, so their provider keys are
-    neither required in the secret nor made readable to the agent's shell.
+    ``codex exec`` without a saved login authenticates only with ``CODEX_API_KEY``; it ignores
+    ``OPENAI_API_KEY``. ``sdk`` harnesses make their model calls from the host process, so their
+    provider keys are neither required in the secret nor made readable to the agent's shell.
     """
     keys: set[str] = set()
     for spec in specs:
@@ -111,7 +112,7 @@ def required_secret_keys(
             if kind == "claude":
                 keys.add("ANTHROPIC_API_KEY")
             elif kind == "codex":
-                keys.add("OPENAI_API_KEY")
+                keys.add("CODEX_API_KEY")
     return tuple(sorted(keys))
 
 

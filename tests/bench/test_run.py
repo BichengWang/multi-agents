@@ -408,7 +408,7 @@ def test_required_secret_keys_cover_only_the_clis_that_run_inside_the_sandbox():
     }
     keys = lambda specs: required_secret_keys(specs, harnesses=lambda s: table[s])  # noqa: E731
     assert keys(["solo:worker=claude"]) == ("ANTHROPIC_API_KEY",)
-    assert keys(["best:workers=codex@gpt-x+claude"]) == ("ANTHROPIC_API_KEY", "OPENAI_API_KEY")
+    assert keys(["best:workers=codex@gpt-x+claude"]) == ("ANTHROPIC_API_KEY", "CODEX_API_KEY")
     # sdk harnesses call their provider from the host: nothing is required in, or exposed to, the
     # sandbox for them.
     assert keys(["review:coder=sdk@litellm/openrouter/foo/bar,reviewer=sdk@gpt-x"]) == ()

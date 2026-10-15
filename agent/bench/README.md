@@ -97,12 +97,14 @@ results should use only instances whose reference patch resolves on your machine
 uv sync --locked --extra dev --extra bench          # add --extra litellm for sdk@litellm/... teams
 uv run --extra bench modal token set --token-id ak-... --token-secret as-...
 uv run --extra bench modal secret create multi-agents-bench \
-    ANTHROPIC_API_KEY=... OPENAI_API_KEY=... [OPENROUTER_API_KEY=...]
+    ANTHROPIC_API_KEY=... CODEX_API_KEY=... [OPENROUTER_API_KEY=...]
 ```
 
 - **Modal Secret** `multi-agents-bench` (override with `--secret`) is injected into *agent*
   sandboxes only, never into grading sandboxes. `run` derives which keys the CLIs inside the
-  sandbox need (`claude` -> `ANTHROPIC_API_KEY`, `codex` -> `OPENAI_API_KEY`) and Modal fails fast
+  sandbox need (`claude` -> `ANTHROPIC_API_KEY`, `codex` -> `CODEX_API_KEY`, an OpenAI API key:
+  without a saved login `codex exec` reads only that variable and ignores `OPENAI_API_KEY`, see
+  [non-interactive mode](https://developers.openai.com/codex/noninteractive)) and Modal fails fast
   naming any that are missing. `sdk` harnesses call their provider from the host process, so their
   keys (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, ...) come from your host environment and are never
   put in a sandbox. Teams run with permissions bypassed inside the sandbox
