@@ -206,7 +206,9 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   `.gitignore` honoured), diffed against a tree snapshot taken at start. Files that were untracked
   but not ignored in the image (build output, generated reports) are excluded from the snapshot
   and from every diff, so rebuild churn is not attributed to the agent and cannot crowd the real
-  change out of the reviewer's and judge's prompts.
+  change out of the reviewer's and judge's prompts. New Python bytecode (`__pycache__/`, `*.pyc`)
+  is left out too, even where the repository does not ignore it (`GENERATED_FILES` in
+  `agent/teams/types.py`, shared with local worktrees).
 - **Statistics** (`report.py`, pure Python): resolve rate with the Wilson 95 % interval; paired
   comparison against the baseline on the *same* tasks with the exact two-sided McNemar test on
   discordant tasks (wins = team solved, baseline did not; losses = the reverse); mean, median and

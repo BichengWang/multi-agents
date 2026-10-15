@@ -51,6 +51,21 @@ def test_diff_covers_new_binary_committed_files_and_skips_ignored(repo):
     assert "x.log" not in patch and "GIT binary patch" in patch
 
 
+def test_diff_leaves_out_python_bytecode_the_repository_does_not_ignore(repo):
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            await ws.exec(["sh", "-c", "mkdir -p pkg/__pycache__ && echo 'X = 1' > pkg/mod.py"])
+            await ws.exec(["sh", "-c", "printf '\\000' > pkg/__pycache__/mod.cpython-312.pyc"])
+            await ws.exec(["git", "-c", "user.email=a@b", "-c", "user.name=a", "add", "-A"])
+            await ws.exec(["git", "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-qm", "agent commit"])
+            await ws.exec(["sh", "-c", "printf '\\000' > stray.pyc"])
+            return await ws.diff()
+
+    patch = run(go())
+    assert "pkg/mod.py" in patch
+    assert "__pycache__" not in patch and ".pyc" not in patch
+
+
 def test_apply_to_fork_reproduces_changes_and_fork_starts_at_base(repo):
     async def go():
         async with await LocalWorktree.create(repo) as ws:
