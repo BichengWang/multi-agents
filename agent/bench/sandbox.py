@@ -7,7 +7,8 @@ from a Modal Secret. Grading uses the plain instance image with no CLIs and no s
 Semantics match ``agent.teams.worktree.LocalWorktree``:
 
 * ``diff`` is everything since the workspace was created (commits, edits, new files; ``.gitignore``
-  honoured), computed with a throwaway git index, binary-safe (``--binary --full-index``);
+  honoured, untracked ``GENERATED_FILES`` left out), computed with a throwaway git index,
+  binary-safe (``--binary --full-index``);
 * ``apply`` is ``git apply --binary``;
 * ``fork`` is an independent sandbox from the same image, at its pristine state.
 
@@ -31,7 +32,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from agent.teams.types import ExecResult
+from agent.teams.types import GENERATED_FILES, ExecResult
 
 from .redact import Redactor
 
@@ -192,18 +193,25 @@ echo "BENCH_HEAD=$HEAD_SHA"
 echo "BENCH_TREE=$TREE"
 """
 
+# $1 is the baseline tree; the remaining arguments are `--exclude=<GENERATED_FILES pattern>`.
 _DIFF = r"""
 set -e
+TREE=$1
+shift
 GITDIR=$(git rev-parse --absolute-git-dir)
 IDX="$GITDIR/bench-diff-index"
+GEN="$GITDIR/bench-generated"
 export GIT_INDEX_FILE="$IDX"
-trap 'rm -f "$IDX"' EXIT
-git read-tree "$1"
+trap 'rm -f "$IDX" "$GEN"' EXIT
+git read-tree "$TREE"
+git ls-files -z --others --ignored "$@" > "$GEN"
 git add --all
-if [ -s "$GITDIR/bench-untracked" ]; then
-  git update-index --force-remove -z --stdin < "$GITDIR/bench-untracked"
-fi
-git diff --cached --binary --full-index --no-color --no-ext-diff --no-renames "$1"
+for list in "$GITDIR/bench-untracked" "$GEN"; do
+  if [ -s "$list" ]; then
+    git update-index --force-remove -z --stdin < "$list"
+  fi
+done
+git diff --cached --binary --full-index --no-color --no-ext-diff --no-renames "$TREE"
 """
 
 
@@ -468,7 +476,9 @@ class ModalSandboxWorkspace:
     async def diff(self) -> str:
         if not self.base_tree:
             raise SandboxError("grading sandboxes have no baseline to diff against")
-        code, out, err = await self._git_script(_DIFF, self.base_tree)
+        code, out, err = await self._git_script(
+            _DIFF, self.base_tree, *(f"--exclude={pattern}" for pattern in GENERATED_FILES)
+        )
         if code != 0:
             raise SandboxError(f"git diff failed ({code}): {err.decode('utf-8', 'replace').strip()}")
         return out.decode("utf-8", "surrogateescape")

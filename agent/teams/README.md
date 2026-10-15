@@ -33,6 +33,11 @@ spec with every default spelled out (`rounds=3`, `judge=...`), so `build_team(te
 team.name`. `build_team(spec)` and `build_harness(spec)` raise `SpecError` with a message naming the
 bad part and the allowed values.
 
+`sdk` reaches any OpenAI-compatible endpoint (a local proxy, vLLM, a gateway): set `OPENAI_BASE_URL`
+and `OPENAI_API_KEY`. `sdk@<model>` then uses the Responses API, `sdk@litellm/openai/<model>` Chat
+Completions. Cost is still the list price of the model name (see Cost semantics), not what the
+endpoint charges; names LiteLLM does not know are unpriced.
+
 | Team | Behaviour |
 |---|---|
 | `solo` | The worker edits the given workspace. |
@@ -139,7 +144,8 @@ Not inside your working tree (editors and `git status` never see them) and not i
 agent CLIs protect paths containing a `.git` segment). Creating one adds only metadata under the
 repository's `worktrees/` directory; your index, HEAD and branches are untouched. `diff()` uses a
 throwaway index, so it leaves the worktree's own index alone, includes new files and commits the
-agent made, honours `.gitignore` and is binary-safe.
+agent made, honours `.gitignore`, leaves out new Python bytecode (`__pycache__/`, `*.pyc`) even
+where the repository does not ignore it, and is binary-safe.
 
 ## Safety: permission modes
 

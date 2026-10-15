@@ -220,6 +220,20 @@ def test_files_untracked_in_the_image_are_not_attributed_to_the_agent(tmp_path):
     run(scenario())
 
 
+def test_new_python_bytecode_is_not_part_of_the_patch(tmp_path):
+    _, backend, _, _ = prepare(tmp_path)
+
+    async def scenario():
+        async with await ModalSandboxWorkspace.create("img:1", backend=backend) as ws:
+            await sh(ws, "mkdir -p pkg/__pycache__ && echo b > pkg/__pycache__/mod.cpython-312.pyc")
+            await sh(ws, "echo b > stray.pyc && echo 'X = 2' > pkg/mod.py")
+            patch = await ws.diff()
+            assert "pkg/mod.py" in patch
+            assert "__pycache__" not in patch and ".pyc" not in patch
+
+    run(scenario())
+
+
 def test_image_checkout_must_be_the_tasks_base_commit_and_is_recorded(tmp_path):
     modal, backend, base, _ = prepare(tmp_path)
 

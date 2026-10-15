@@ -11,6 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional, Protocol, runtime_checkable
 
+# Untracked files that the agents' own test runs leave behind and that never belong in a patch,
+# as gitignore patterns. ``Workspace.diff`` leaves them out even where the repository's
+# ``.gitignore`` does not cover them: Python writes no ``.gitignore`` into ``__pycache__``, unlike
+# pytest into ``.pytest_cache``.
+GENERATED_FILES: tuple[str, ...] = ("__pycache__/", "*.py[cod]")
+
 
 @dataclass(frozen=True)
 class ExecResult:
@@ -44,7 +50,10 @@ class Workspace(Protocol):
     ) -> ExecResult: ...
 
     async def diff(self) -> str:
-        """Binary-safe unified diff of every change since the base commit, new files included."""
+        """Binary-safe unified diff of every change since the base commit, new files included.
+
+        Ignored files (``.gitignore``) and untracked ``GENERATED_FILES`` are left out.
+        """
         ...
 
     async def apply(self, patch: str) -> None:

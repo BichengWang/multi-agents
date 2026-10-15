@@ -29,7 +29,7 @@ import weakref
 from pathlib import Path
 from typing import Optional
 
-from .types import ExecResult, Workspace
+from .types import GENERATED_FILES, ExecResult, Workspace
 
 _GIT_ENV = {"GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0"}
 
@@ -243,14 +243,26 @@ class LocalWorktree:
         """Everything since the base commit, including commits the agent made and new files.
 
         Uses a throwaway index inside this worktree's git dir, so the worktree's own index (what
-        an agent sees in ``git status``) is left alone, and ``.gitignore`` is honoured.
+        an agent sees in ``git status``) is left alone. ``.gitignore`` is honoured and untracked
+        ``GENERATED_FILES`` are left out.
         """
         _, out, _ = await _git(self.root, "rev-parse", "--path-format=absolute", "--git-dir")
         index = os.path.join(out.decode().strip(), "multi-agents-diff-index")
         env = {"GIT_INDEX_FILE": index}
         try:
             await _git(self.root, "read-tree", self.base_commit, env=env)
+            _, generated, _ = await _git(
+                self.root,
+                "ls-files",
+                "-z",
+                "--others",
+                "--ignored",
+                *(f"--exclude={pattern}" for pattern in GENERATED_FILES),
+                env=env,
+            )
             await _git(self.root, "add", "--all", env=env)
+            if generated:
+                await _git(self.root, "update-index", "--force-remove", "-z", "--stdin", env=env, stdin=generated)
             _, patch, _ = await _git(
                 self.root,
                 "diff",
