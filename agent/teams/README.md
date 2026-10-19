@@ -120,6 +120,8 @@ multi-agents run --team review:coder=codex,reviewer=claude@haiku,rounds=2 \
 | `--keep-worktrees` | keep the main worktree for inspection (forks made by teams are always removed) |
 | `--apply` | apply the patch to your tree; refused up front (before any agent runs) if the tree is not clean |
 | `--check CMD` | shell command run against the final patch in a fork; see Checks |
+| `--max-cost USD` | hard stop on spend: no new harness run starts once this much has been spent; see Budget |
+| `--allow-unpriced` | with `--max-cost`: accept harnesses that report no cost and count their runs as $0 |
 
 The run creates `<runs-dir>/<utc-timestamp>_<team>/record.json` (team, task, repo, base commit,
 patch, every run with harness/role/model/tokens/cost/seconds/session/log, usage, total cost, duration,
@@ -182,6 +184,30 @@ hooks, default model).
 Prices are never guessed or borrowed from a similar model. `pricing.py` records its source URL and date;
 batch/flex/fast tiers and data-residency uplifts are not applied. `is_priced("codex@model")` tells a
 caller up front whether a harness spec will report a cost.
+
+### Budget
+
+`--max-cost USD` (`build_team(spec, budget=Budget(USD))`) is a hard stop on new work. Every harness of
+the team except `check` (a shell command, exactly $0) shares one `Budget`: before a run starts it is
+admitted only while the spend so far is below the limit, and when it returns its `usage.cost_usd` is
+added (also for a non-zero exit, which still cost money). Once the limit is reached every further run
+is refused with `BudgetExceeded`; the topologies record that in `meta["failures"]` like any failed run,
+so a refused run never appears in `TeamResult.runs` and the team finishes with the best patch it has.
+
+- **The limit can be exceeded.** A harness run cannot be stopped midway without losing its work, and
+  its cost is only known when it ends. Runs already admitted finish, so the total can overshoot by
+  their cost: the run that crossed the limit plus the runs in flight beside it (the workers of `best`
+  or `plan` run concurrently).
+- **Unpriced usage blocks new work.** A run with `cost_usd=None` cannot be counted, so after one the
+  budget can no longer be enforced and further runs are refused. The CLI therefore rejects (exit 2,
+  before any agent runs) a team with a harness that is not `is_priced(...)`, naming it, unless
+  `--allow-unpriced`: then unpriced runs count as $0 and the limit only covers the priced part of the
+  spend. `--allow-unpriced` without `--max-cost` is a usage error.
+- A yellow warning is printed when 80% of the limit is used (`Budget.warn_at`, `on_warn`).
+
+`record.json` gets `budget` (`max_cost_usd`, `spent_usd`, `unpriced_runs`, `warned`, `exhausted`,
+`refused`: the `{role, harness, reason}` of each refused run) and the summary prints one line such as
+`budget: $0.0412 of $0.0500 used, 2 run(s) refused`. Exit codes are unchanged.
 
 ## Python API
 

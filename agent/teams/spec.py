@@ -21,6 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
+from .budget import Budget, BudgetedHarness
 from .harnesses import CheckHarness, ClaudeHarness, CodexHarness, SdkHarness
 from .harnesses.check import Check
 from .harnesses.sdk import LITELLM_PREFIX
@@ -253,6 +254,7 @@ def build_team(
     env: Optional[Mapping[str, str]] = None,
     timeout: Optional[float] = None,
     check: Optional[str] = None,
+    budget: Optional[Budget] = None,
 ) -> Team:
     """Team from a spec string.
 
@@ -260,7 +262,9 @@ def build_team(
     each individual harness run (and the check command) in seconds. ``check`` is a shell command
     run in a fork of the workspace with the team's final patch applied; its result is recorded in
     ``TeamResult.meta["check"]``. It is also what the ``check`` harness runs as ``reviewer=check``
-    or ``judge=check``, which is an error without it.
+    or ``judge=check``, which is an error without it. ``budget`` caps the team's spend: every
+    harness except ``check`` (a shell command that costs $0) is wrapped in a ``BudgetedHarness``
+    sharing it, so runs are refused with ``BudgetExceeded`` once it is used up.
     """
     parsed = parse_team_spec(spec)
     if check is not None and not check.strip():
@@ -268,7 +272,8 @@ def build_team(
     checker = Check(check, timeout) if check is not None else None
 
     def make(h: HarnessSpec) -> Harness:
-        return build_harness(str(h), permissions=permissions, env=env, check=check)
+        harness = build_harness(str(h), permissions=permissions, env=env, check=check)
+        return harness if budget is None or isinstance(harness, CheckHarness) else BudgetedHarness(harness, budget)
 
     if parsed.kind == "solo":
         assert parsed.worker is not None

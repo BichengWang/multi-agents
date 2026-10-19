@@ -21,8 +21,9 @@ from rich.table import Table
 from agent.workflows import to_jsonable
 
 from . import github
+from .budget import Budget
 from .harnesses.base import PERMISSIONS
-from .spec import SpecError, build_team, parse_team_spec
+from .spec import SpecError, build_team, is_priced, parse_team_spec
 from .types import CodingTask, TeamResult
 from .worktree import GitError, LocalWorktree, repo_key, run_process, user_cache_dir
 
@@ -83,6 +84,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="commit the patch to a new branch (your checkout is untouched), push it to origin and "
         "open a draft pull request (needs gh)",
     )
+    run.add_argument(
+        "--max-cost",
+        type=float,
+        default=None,
+        metavar="USD",
+        help="hard stop: no new harness run starts once this much has been spent (runs already "
+        "in flight finish, so the total can exceed it). Needs priced harnesses unless "
+        "--allow-unpriced",
+    )
+    run.add_argument(
+        "--allow-unpriced",
+        action="store_true",
+        help="with --max-cost: accept harnesses that report no cost and count their runs as $0 "
+        "(the limit then only covers the priced part)",
+    )
     run.add_argument("--ready", action="store_true", help="with --pr: open a regular instead of a draft PR")
     return parser
 
@@ -122,7 +138,14 @@ def _token_triplet(input_tokens: int, cached: int, output: int) -> str:
 
 
 def render_summary(
-    console: Console, team: str, result: TeamResult, *, repo: str, patch_path: Path, record_path: Path
+    console: Console,
+    team: str,
+    result: TeamResult,
+    *,
+    repo: str,
+    patch_path: Path,
+    record_path: Path,
+    budget: Optional[Budget] = None,
 ) -> None:
     console.print(f"Team: {team}", soft_wrap=True)
     table = Table(show_edge=False, pad_edge=False)
@@ -154,6 +177,13 @@ def render_summary(
         f"tokens, cost {cost}, {result.duration_s:.1f}s",
         soft_wrap=True,
     )
+    if budget is not None:
+        line = f"budget: {_cost_text(budget.spent_usd)} of {_cost_text(budget.max_cost_usd)} used"
+        if budget.unpriced_runs:
+            line += f", {budget.unpriced_runs} unpriced run(s)"
+        if budget.refused:
+            line += f", {len(budget.refused)} run(s) refused"
+        console.print(line, highlight=False, soft_wrap=True)
     for key in ("scores", "chosen", "best_round", "accepted"):
         if key in result.meta:
             console.print(f"{key}: {result.meta[key]}", soft_wrap=True)
@@ -276,9 +306,45 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
     if args.check is not None and not args.check.strip():
         console.print("[red]Invalid --check:[/red] the command is empty")
         return EXIT_USAGE
+    if args.allow_unpriced and args.max_cost is None:
+        console.print("[red]--allow-unpriced only applies together with --max-cost.[/red]")
+        return EXIT_USAGE
+    if args.max_cost is not None and not args.max_cost > 0:
+        console.print(f"[red]Invalid --max-cost:[/red] must be a positive amount in USD, got {args.max_cost}")
+        return EXIT_USAGE
+    budget = None
+    if args.max_cost is not None:
+        budget = Budget(
+            args.max_cost,
+            allow_unpriced=args.allow_unpriced,
+            on_warn=lambda b: console.print(
+                f"[yellow]Budget: {_cost_text(b.spent_usd)} of {_cost_text(b.max_cost_usd)} used; "
+                "no new run starts once it is used up.[/yellow]",
+                highlight=False,
+                soft_wrap=True,
+            ),
+        )
     try:
         spec = parse_team_spec(args.team)
-        team = build_team(args.team, permissions=args.permissions, timeout=args.timeout, check=args.check)
+        if budget is not None:
+            unpriced = list(dict.fromkeys(str(h) for h in spec.harness_specs if not is_priced(str(h))))
+            if unpriced and not args.allow_unpriced:
+                console.print(
+                    f"[red]--max-cost needs harnesses that report a cost; unpriced: {escape(', '.join(unpriced))}.[/red] "
+                    "Pick priced harnesses (claude, or codex/sdk with a model listed in pricing.py) "
+                    "or pass --allow-unpriced.",
+                    soft_wrap=True,
+                )
+                return EXIT_USAGE
+            if unpriced:
+                console.print(
+                    f"[yellow]Unpriced: {escape(', '.join(unpriced))}. Their runs count as $0 toward the "
+                    "budget, so --max-cost only covers the priced part of the spend.[/yellow]",
+                    soft_wrap=True,
+                )
+        team = build_team(
+            args.team, permissions=args.permissions, timeout=args.timeout, check=args.check, budget=budget
+        )
     except SpecError as exc:
         console.print(f"[red]Invalid --team:[/red] {exc}")
         return EXIT_USAGE
@@ -372,8 +438,12 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         record["issue"] = issue.record()
     if "check" in result.meta:
         record["check"] = to_jsonable(result.meta["check"])
+    if budget is not None:
+        record["budget"] = budget.to_dict()
     record_path, patch_path = save_record(runs_dir, record, result.patch)
-    render_summary(console, team.name, result, repo=repo, patch_path=patch_path, record_path=record_path)
+    render_summary(
+        console, team.name, result, repo=repo, patch_path=patch_path, record_path=record_path, budget=budget
+    )
     if issue:
         console.print(f"Issue: #{issue.number} {issue.title} ({issue.url})", soft_wrap=True, highlight=False)
     if not result.patch.strip():
