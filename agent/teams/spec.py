@@ -5,11 +5,14 @@
     solo:worker=H
     review:coder=H,reviewer=H[,rounds=N]        # rounds defaults to 3
     best:workers=H+H[+H...][,judge=H]           # judge defaults to the first worker's harness
-    plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]
+    plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N][,replans=N][,reviewer=H][,rounds=N]
                                                 # integrator defaults to the first worker's harness,
-                                                # max_tasks to 4
+                                                # max_tasks to 4, replans to 1 (0 = never re-plan);
+                                                # reviewer= reviews every subtask (not ``check``);
+                                                # rounds= (default 3) needs reviewer=
     H := harness[@model]                        # harness in {claude, codex, sdk}
-    reviewer= and judge= (only) may also be ``check``: the --check command as reviewer/judge
+    reviewer= and judge= (only) may also be ``check``: the --check command as reviewer/judge; the
+    reviewer= of a plan team may not (the check runs on the integrated patch, see --check)
 
 The kind is split off at the first ``:`` only; model ids may contain ``/``, ``:``, ``.`` and ``-``
 (but not ``,`` or ``+``). ``Team.name`` is the canonical form, which spells out every default, so
@@ -27,20 +30,19 @@ from .harnesses.check import Check
 from .harnesses.sdk import LITELLM_PREFIX
 from .harnesses.base import Permissions
 from .pricing import lookup_price
-from .plan import DEFAULT_MAX_TASKS, PlanTeam
-from .topologies import BestTeam, ReviewTeam, SoloTeam
+from .plan import DEFAULT_MAX_TASKS, DEFAULT_REPLANS, PlanTeam
+from .topologies import DEFAULT_ROUNDS, BestTeam, ReviewTeam, SoloTeam
 from .types import Harness, Team
 
 HARNESSES = ("claude", "codex", "sdk")
 CHECK = "check"  # pseudo-harness: the --check command acting as reviewer or judge
-DEFAULT_ROUNDS = 3
 
 _KEYS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     # kind -> (required keys, optional keys)
     "solo": (("worker",), ()),
     "review": (("coder", "reviewer"), ("rounds",)),
     "best": (("workers",), ("judge",)),
-    "plan": (("planner", "workers"), ("integrator", "max_tasks")),
+    "plan": (("planner", "workers"), ("integrator", "max_tasks", "replans", "reviewer", "rounds")),
 }
 
 
@@ -83,6 +85,19 @@ def _coding_harness(value: str, key: str, spec: str) -> HarnessSpec:
     return parsed
 
 
+def _rounds(fields: dict[str, str], spec: str) -> int:
+    """``rounds`` from the parsed fields: a positive integer, ``DEFAULT_ROUNDS`` when absent."""
+    if "rounds" not in fields:
+        return DEFAULT_ROUNDS
+    try:
+        rounds = int(fields["rounds"])
+    except ValueError:
+        rounds = 0
+    if rounds < 1:
+        raise SpecError(f"rounds must be a positive integer, got {fields['rounds']!r} in {spec!r}")
+    return rounds
+
+
 @dataclass(frozen=True)
 class TeamSpec:
     kind: str
@@ -95,6 +110,7 @@ class TeamSpec:
     planner: Optional[HarnessSpec] = None
     integrator: Optional[HarnessSpec] = None
     max_tasks: int = DEFAULT_MAX_TASKS
+    replans: int = DEFAULT_REPLANS
 
     @property
     def harness_specs(self) -> tuple[HarnessSpec, ...]:
@@ -108,9 +124,10 @@ class TeamSpec:
         if self.kind == "review":
             return f"review:coder={self.coder},reviewer={self.reviewer},rounds={self.rounds}"
         if self.kind == "plan":
+            review = f",reviewer={self.reviewer},rounds={self.rounds}" if self.reviewer is not None else ""
             return (
                 f"plan:planner={self.planner},workers={'+'.join(map(str, self.workers))},"
-                f"integrator={self.integrator},max_tasks={self.max_tasks}"
+                f"integrator={self.integrator},max_tasks={self.max_tasks},replans={self.replans}{review}"
             )
         return f"best:workers={'+'.join(map(str, self.workers))},judge={self.judge}"
 
@@ -152,14 +169,7 @@ def parse_team_spec(spec: str) -> TeamSpec:
     if kind == "solo":
         return TeamSpec("solo", worker=_coding_harness(fields["worker"], "worker", text))
     if kind == "review":
-        rounds = DEFAULT_ROUNDS
-        if "rounds" in fields:
-            try:
-                rounds = int(fields["rounds"])
-            except ValueError:
-                rounds = 0
-            if rounds < 1:
-                raise SpecError(f"rounds must be a positive integer, got {fields['rounds']!r} in {spec!r}")
+        rounds = _rounds(fields, spec)
         return TeamSpec(
             "review",
             coder=_coding_harness(fields["coder"], "coder", text),
@@ -182,8 +192,35 @@ def parse_team_spec(spec: str) -> TeamSpec:
                 raise SpecError(
                     f"max_tasks must be a positive integer, got {fields['max_tasks']!r} in {spec!r}"
                 )
+        replans = DEFAULT_REPLANS
+        if "replans" in fields:
+            try:
+                replans = int(fields["replans"])
+            except ValueError:
+                replans = -1
+            if replans < 0:
+                raise SpecError(
+                    f"replans must be a non-negative integer, got {fields['replans']!r} in {spec!r}"
+                )
+        reviewer = None
+        if "reviewer" in fields:
+            reviewer = parse_harness_spec(fields["reviewer"])
+            if reviewer.harness == CHECK:
+                raise SpecError(
+                    f"{CHECK!r} cannot be the reviewer of a plan team in {spec!r}: it would run on the "
+                    "integrated patch, not on each subtask; pass the command with --check instead"
+                )
+        if "rounds" in fields and reviewer is None:
+            raise SpecError(f"rounds is only valid together with reviewer in {spec!r}")
         return TeamSpec(
-            "plan", workers=workers, planner=planner, integrator=integrator, max_tasks=max_tasks
+            "plan",
+            workers=workers,
+            planner=planner,
+            integrator=integrator,
+            max_tasks=max_tasks,
+            replans=replans,
+            reviewer=reviewer,
+            rounds=_rounds(fields, spec),
         )
     workers = tuple(_coding_harness(w, "worker", text) for w in fields["workers"].split("+"))
     if len(workers) < 2:
@@ -295,6 +332,9 @@ def build_team(
             [make(w) for w in parsed.workers],
             make(parsed.integrator),
             max_tasks=parsed.max_tasks,
+            replans=parsed.replans,
+            reviewer=make(parsed.reviewer) if parsed.reviewer is not None else None,
+            rounds=parsed.rounds,
             name=parsed.canonical,
             timeout=timeout,
             check=checker,
