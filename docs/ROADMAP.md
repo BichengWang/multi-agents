@@ -4,8 +4,11 @@
 
 Dozens of tools run several coding agents in parallel; none of them tells you whether the team
 beat a single agent, or what the extra agents cost. Published evidence points both ways: a
-coordinator plus a reviewer has gained 4–8 points over solo agents on SWE-bench, while loosely
-coupled teams lost 2–15 points in a 260-configuration study. This project is a headless runner
+coordinator-plus-reviewer team (Agyn, arXiv 2602.01465) reached 72.2% on SWE-bench Verified, +7.2
+over mini-SWE-agent but only +0.4 over the strongest single-agent baseline; a decentralized patch
+editor plus validator (icat-agent, arXiv 2606.25514) gained +3.6 / +8.4 over mini-SWE-agent; and
+loosely coupled teams lost 2–15 points in a 260-configuration study. Numbers and caveats:
+[agent-company-survey.md](agent-company-survey.md). This project is a headless runner
 for teams of coding agents that ships with the measurement: every team topology is benchmarked
 against solo agents on fresh, uncontaminated tasks, with resolve rate, cost and wall time.
 
@@ -17,7 +20,7 @@ It runs on its own or inside terminal/desktop orchestrators; it does not compete
 flowchart LR
   CLI["CLI / Python API"] --> Team
   Bench["Benchmark runner"] --> Team
-  Team["Team topology\nsolo | review | best"] --> H["Harness\nexternal CLI or SDK agent"]
+  Team["Team topology\nsolo | review | best | plan"] --> H["Harness\nexternal CLI or SDK agent"]
   Team --> W["Workspace"]
   H --> W
   W --> WT["Local git worktree"]
@@ -37,7 +40,9 @@ Teams are selected with a compact spec string; the canonical form is the team's 
 solo:worker=H
 review:coder=H,reviewer=H[,rounds=N]          # rounds defaults to 3
 best:workers=H+H[+H...][,judge=H]             # judge defaults to the first worker's harness
-plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]   # next stage, see below
+plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N][,replans=N][,reviewer=H][,rounds=N]
+                                              # integrator defaults to the first worker's harness; max_tasks to 4;
+                                              # replans to 1 (0 = never); rounds (default 3) needs reviewer
 H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@litellm/<provider>/<model>
                                               # check: the --check command as reviewer or judge
 ```
@@ -57,7 +62,7 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 6. **Growth loop** — monthly refresh on newly created tasks, more harnesses, community-submitted
    team topologies.
 
-## Current stage: teams that finish real work (done)
+## Past stage: teams that finish real work (done)
 
 While the pilot (milestone 4) waits on Modal and API credentials, the runner gained end-to-end
 work features, all merged and smoke-tested with real CLIs:
@@ -73,3 +78,22 @@ work features, all merged and smoke-tested with real CLIs:
    repository, that let a running agent hand a task to a team and review the patch.
 4. **Issue to pull request** — `--issue N|URL` takes the task from a GitHub issue; `--pr` commits the
    result to a new branch and opens a draft pull request with the run summary.
+
+## Current stage: agent-company governance (done)
+
+[agent-company-survey.md](agent-company-survey.md) compares the most-starred multi-agent
+"company" projects with this runner and lists three gaps. Each is closed in code, tested offline and
+smoke-tested with real CLIs.
+
+1. **Board: run budget hard stop** — `--max-cost USD [--allow-unpriced]`. Every harness except
+   `check` is wrapped in a shared budget: no new agent run starts once the limit is spent, and a
+   warning is printed at 80%, as in Paperclip and MetaGPT. In-flight runs finish, so spend can
+   overshoot by their cost; an unpriced run blocks further runs unless `--allow-unpriced`, and the
+   CLI rejects unpriced harnesses up front. The record carries the spend and refused runs.
+2. **Executive: replan failed subtasks** — `plan` `replans=N` (default 1). Subtasks whose worker
+   failed or changed nothing go back to the planner, which sees the merged state and returns new
+   subtasks for the rest; rotated workers solve them. This is the Magentic-One stall/replan and
+   CAMEL failure-policy pattern. Conflicts still go to the integrator.
+3. **Team lead: review each subtask** — `plan` `reviewer=H[,rounds=N]`. Every subtask is a
+   coder ⇄ reviewer loop in its own worktree and its best patch is merged. CAID reports a manager
+   reviewing every round at 60.2% against 55.1% when engineers verified their own work.

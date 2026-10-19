@@ -119,13 +119,13 @@ Takeaways:
 
 ## Mapping to this repository
 
-| Company layer | Here today | Gap, and who implements it in code |
+| Company layer | Here today | Gap, and what implements it now |
 |---|---|---|
-| Board | The user: `--permissions`, `--apply`, `--pr` (draft) | Run budget hard stop: Paperclip, MetaGPT |
-| Executive | `plan` planner | Replan when a subtask fails: Magentic-One stall counter, CAMEL failure policy |
-| Team lead | `review` reviewer; `best` judge | `plan` workers are single agents with no reviewer per subtask. CAID: manager review each round 60.2% vs self-verification 55.1% |
+| Board | The user: `--permissions`, `--apply`, `--pr` (draft); `--max-cost USD [--allow-unpriced]` run budget hard stop (Paperclip, MetaGPT) | Closed. No new run starts once the limit is spent; in-flight runs finish |
+| Executive | `plan` planner; `replans=N` (default 1) hands failed subtasks back to the planner (Magentic-One stall counter, CAMEL failure policy) | Closed. Conflicts still go to the integrator, not the planner |
+| Team lead | `review` reviewer; `best` judge; `plan` `reviewer=H[,rounds=N]` runs each subtask as a coder ⇄ reviewer loop (CAID: manager review each round 60.2% vs self-verification 55.1%) | Closed |
 | Worker | One worktree per worker | — |
 | Independent check | `--check`; reviewer and judge work in a fork | — |
-| Ledger | Run record with every harness call, tokens, cost | — |
+| Ledger | Run record with every harness call, tokens, cost; `budget` and `replans` entries | — |
 
-Correction: [`README.md`](../README.md) and [`ROADMAP.md`](ROADMAP.md) attribute "a central coordinator and a reviewer: 4–8 points better" to icat-agent. icat-agent has no coordinator. Agyn is the coordinator-plus-reviewer result: +7.2 points over mini-SWE-agent and +0.4 over the strongest single-agent baseline.
+[`README.md`](../README.md) and [`ROADMAP.md`](ROADMAP.md) now attribute the coordinator-plus-reviewer result to Agyn and the decentralized result to icat-agent.
