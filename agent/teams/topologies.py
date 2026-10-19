@@ -32,6 +32,7 @@ from .verdict import VerdictOutcome, request_verdict
 from .worktree import close_to_completion as _close
 
 MAX_PATCH_IN_PROMPT = 40_000
+DEFAULT_ROUNDS = 3
 
 WORKER_PROMPT = (
     "Solve the task below by editing the files in the current repository (the current "
@@ -300,7 +301,7 @@ class ReviewTeam:
 
     coder: Harness
     reviewer: Harness
-    rounds: int = 3
+    rounds: int = DEFAULT_ROUNDS
     name: str = ""
     timeout: Optional[float] = None
     check: Optional[Check] = None

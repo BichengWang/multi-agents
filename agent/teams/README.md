@@ -20,10 +20,12 @@ patterns: `review` is a `RefineLoop`, `best` is a `BestOfN` with one generator p
 solo:worker=H
 review:coder=H,reviewer=H[,rounds=N]        # rounds defaults to 3
 best:workers=H+H[+H...][,judge=H]           # judge defaults to the first worker's harness
-plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]
-                                            # integrator defaults to the first worker's harness; max_tasks to 4
+plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N][,replans=N][,reviewer=H][,rounds=N]
+                                            # integrator defaults to the first worker's harness; max_tasks to 4;
+                                            # replans to 1 (0 = never re-plan failed subtasks);
+                                            # reviewer= reviews every subtask (not `check`); rounds= (default 3) needs it
 H := harness[@model]                        # claude, codex, sdk
-                                            # reviewer= and judge= also accept `check`, see Checks
+                                            # reviewer= and judge= also accept `check`, see Checks (not a plan's reviewer=)
 ```
 
 The kind is split off at the first `:`; model ids may contain `/`, `:`, `.` and `-`
@@ -43,7 +45,7 @@ endpoint charges; names LiteLLM does not know are unpriced.
 | `solo` | The worker edits the given workspace. |
 | `review` | The coder edits the workspace. After each attempt the reviewer judges the patch in a **fork with the patch applied** (it cannot touch the coder's workspace) and returns a verdict (`score` 0-10, `passed`, `feedback`). The coder resumes its session (where the harness supports it) with the feedback. Stops on `passed`, after `rounds` attempts, or when the coder stops changing anything. Returns the **best-scoring** patch (earliest on ties), not the last. |
 | `best` | Every worker runs concurrently in its own fork, possibly with different harnesses. The judge scores each candidate patch independently (0-10) in another fork. The highest score wins, ties go to the earliest worker. A worker that crashes without producing a change is dropped; the run fails (empty patch) only if all do. |
-| `plan` | A **planner** (it runs in a fork that is discarded, so anything it writes is thrown away) splits the task into 1..`max_tasks` independent subtasks `{title, instruction, paths?}`, returned as JSON (native schema flag where the CLI has one, else the last JSON object in the reply). Workers solve the subtasks concurrently, each in its own fork (subtask *i* goes to `workers[i % len(workers)]`; all at once unless `PlanTeam(max_concurrency=N)` bounds it; the prompt has the whole task, the subtask and the titles of the others, and tells the worker to stay out of their scope). The patches are merged into the team's workspace in subtask order with `git apply --3way` and left as uncommitted, unstaged changes like any other team's; a patch that conflicts or does not apply is rolled back (the clean ones stay) and the **integrator** runs in the workspace with the task, all patches and the failure to produce the combined change. A subtask whose worker failed (or changed nothing) is recorded in `failures` and the integrator is told which subtask is missing and asked to complete it. With a `--check` that fails on the integrated patch, the integrator gets one fix pass with the check output and the check runs again. If the planner fails or returns an invalid plan (recorded in `failures`), or the plan has one subtask, the team behaves like `solo` with the first worker (`meta["fallback"]`). |
+| `plan` | A **planner** (it runs in a fork that is discarded, so anything it writes is thrown away) splits the task into 1..`max_tasks` independent subtasks `{title, instruction, paths?}`, returned as JSON (native schema flag where the CLI has one, else the last JSON object in the reply). Workers solve the subtasks concurrently, each in its own fork (subtask *i* goes to `workers[i % len(workers)]`; all at once unless `PlanTeam(max_concurrency=N)` bounds it; the prompt has the whole task, the subtask and the titles of the others, and tells the worker to stay out of their scope). The patches are merged into the team's workspace in subtask order with `git apply --3way` and left as uncommitted, unstaged changes like any other team's; a patch that conflicts or does not apply is rolled back (the clean ones stay). **Re-planning:** a subtask whose worker failed (or changed nothing) is recorded in `failures` and handed back to the planner, at most `replans` times (default 1). The planner runs in a throwaway fork with the merged changes applied, is told which subtasks are merged and which failed and why, and returns 0..`max_tasks` new subtasks for the remaining work only (0 = nothing is left). They are solved from the base commit like the first wave, with the worker rotated by the round (`workers[(i + round) % len(workers)]`, so a failed piece goes to another harness when there is one), and merged the same way; the replaced subtasks get status `replanned`. A replan planner that fails or returns an invalid plan is recorded in `failures` (role `planner`) and the failed subtasks stay missing. Conflicts are not re-planned. Then the **integrator** runs in the workspace with the task, all patches and what went wrong (conflicts, subtasks still missing after the last replan) to produce the combined change; it does not run when everything merged. With a `--check` that fails on the integrated patch, the integrator gets one fix pass with the check output and the check runs again. **Per-subtask review:** with `reviewer=H` every subtask is solved by a `review` loop (the subtask's worker as coder, the reviewer judging each attempt in a fork of the worker's fork, at most `rounds` attempts) instead of one worker run, and the best-scoring patch is what gets merged; the reviewer never changes the worker's state. If the planner fails or returns an invalid plan (recorded in `failures`), or the plan has one subtask, the team behaves like `solo` with the first worker, or like a `review` loop with it when a reviewer is set (`meta["fallback"]`). |
 
 A reviewer/judge that fails or answers with something that is not a verdict is recorded
 (`meta["failures"]`, the run is kept) and scores 0; it never crashes the team. Verdicts use the CLI's
@@ -54,10 +56,12 @@ otherwise the last JSON object in the reply.
 `accepted`, `best_round`, `round_log`; `best` → `scores` (`null` for dropped workers), `chosen`
 (1-based), `candidates` (harness, score and indices into `runs`). Failures go to `failures`.
 
-`plan` → `subtasks` (title, instruction, paths, `worker`, `status` of `applied`/`conflict`/`failed`/`empty`, indices into `runs`),
+`plan` → `subtasks` (title, instruction, paths, `round` (0 = the initial plan), `worker`, `status` of `applied`/`conflict`/`failed`/`empty`/`replanned`, with a reviewer also `review` (`scores`, `accepted`, `best_round`), indices into `runs`; numbered 1-based in creation order across rounds),
+`replans` (one `{round, failed, subtasks, error?}` per replan round: the subtask numbers handed back and the new ones),
 `integration` (`applied`/`conflicts`/`missing` subtask numbers, `integrator_runs`), `check_before_fix`
-(the failing check result, when a fix pass ran) and `fallback`. Its `runs` have roles `planner`,
-`worker` and `integrator`, in that order.
+(the failing check result, when a fix pass ran) and `fallback`. Its `runs` are in this order: `planner`,
+the first wave's `worker` runs (`coder`/`reviewer` runs with a reviewer), then per replan round the
+`planner` and its workers, then `integrator`.
 
 ## Checks
 
@@ -94,7 +98,7 @@ It also changes how teams decide:
 | LLM `judge` + `--check` | Every candidate is checked as well. Candidates that fail rank below every candidate that passes; the judge's scores order within each group. `meta["candidates"][i]["check"]` has each result; `meta["scores"]` stays the judge's raw scores. |
 
 `check` as `reviewer=`/`judge=` implies `--check` with the same command and raises `SpecError`
-without one; as `worker`, `coder`, `planner` or in `workers` it is rejected. The check reviewer/judge
+without one; as `worker`, `coder`, `planner`, `integrator`, in `workers` or as a `plan` team's `reviewer` it is rejected. The check reviewer/judge
 and the final recorded check share one memoized run per patch (the command is not run twice on the
 same patch). A check is not a harness run: it consumes no tokens. As `reviewer=check` or
 `judge=check` it appears in `runs` with role `reviewer`/`judge`, harness `check` and cost exactly $0.00.
