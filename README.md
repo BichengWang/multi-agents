@@ -17,8 +17,11 @@ The evidence on teams of coding agents points both ways:
 
 - A 260-configuration study found multi-agent setups 2–15% *worse* than single agents on
   SWE-bench Verified ([Towards a Science of Scaling Agent Systems](https://arxiv.org/abs/2512.08296)).
-- Teams with a central coordinator and a reviewer reported 4–8 points *better*
-  ([icat-agent](https://arxiv.org/abs/2606.25514), Agyn).
+- A team with a coordinator, a researcher, an engineer and a reviewer reached 72.2% on SWE-bench
+  Verified, 7.2 points *better* than mini-SWE-agent but only 0.4 above the strongest single-agent
+  baseline, with different models per role ([Agyn](https://arxiv.org/abs/2602.01465)). A
+  decentralized pair, a patch editor and a validator with isolated context, gained 3.6 and 8.4
+  points over mini-SWE-agent ([icat-agent](https://arxiv.org/abs/2606.25514)).
 - The best-known coding benchmark is contaminated: OpenAI stopped reporting SWE-bench Verified
   in February 2026.
 
@@ -65,7 +68,7 @@ outside your repository (`~/.cache/multi-agents/runs/`).
 | `solo:worker=H` | One agent works on the task. This is the baseline. |
 | `review:coder=H,reviewer=H[,rounds=N]` | The coder works; the reviewer scores the patch in a separate copy and sends feedback; the coder resumes its session and revises. Returns the best-scoring patch, not the last one. |
 | `best:workers=H+H[+H...][,judge=H]` | Workers run in parallel, each in its own worktree, possibly different CLIs and models. The judge scores each patch and the best one wins. |
-| `plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]` | A planner splits the task into independent subtasks, workers solve them in parallel worktrees, and the patches are merged; an integrator resolves conflicts and gets one fix pass if the check fails. |
+| `plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N][,replans=N][,reviewer=H][,rounds=N]` | A planner splits the task into independent subtasks, workers solve them in parallel worktrees, and the patches are merged; an integrator resolves conflicts and gets one fix pass if the check fails. Subtasks whose worker failed or changed nothing go back to the planner (`replans`, default 1, 0 = never) for new subtasks that rotated workers solve. With `reviewer` (and `rounds`, default 3) every subtask is a coder ⇄ reviewer loop in its own worktree and its best patch is merged. |
 
 `H` is `claude`, `codex` or `sdk`, optionally with `@model`, for example `claude@haiku`,
 `codex@gpt-6-luna` or `sdk@litellm/openrouter/<model>`. `check` (the `--check` command) can be the
@@ -147,6 +150,13 @@ it only after you say so. The skill is in [`plugins/multi-agents`](plugins/multi
   is meant for disposable machines and containers only. The `sdk` harness has no permission system.
 - **Cost.** Costs come from the CLI's own report or from list prices with a cited source. A run
   that cannot be priced shows as unpriced and makes the total unpriced; nothing is guessed.
+- **Budget.** `--max-cost USD` stops new agent runs once that much has been spent; the team then
+  returns the patch it has so far. It is a stop on new work, not a ceiling: runs already in flight
+  finish (parallel workers run side by side), so the total can overshoot by their cost. An unpriced
+  run cannot be counted, so after one the budget refuses further runs. The CLI therefore rejects
+  a team with an unpriced harness before it starts, unless you pass `--allow-unpriced`, which counts
+  those runs as $0 and leaves their spend outside the limit. The record and summary show the
+  spend and any refused runs.
 
 ## Benchmark
 
@@ -172,6 +182,7 @@ First results will be published here.
 |---|---|
 | Team runner (`solo`, `review`, `best`, `plan`), Claude Code and Codex harnesses | Working; smoke-tested with real CLIs |
 | `--check`, `--issue`, `--pr`, plugins for both CLIs | Working; smoke-tested end to end |
+| `--max-cost` run budget; `plan` re-planning (`replans`) and per-subtask review (`reviewer`) | Working; smoke-tested with real CLIs |
 | SDK harness (any model) | Implemented and tested offline; not yet run against a live model |
 | Benchmark | Built and tested offline; the Modal path has not run live yet |
 | Results | Pending the first pilot run |

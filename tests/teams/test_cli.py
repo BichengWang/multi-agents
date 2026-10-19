@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from agent.teams import SoloTeam
+from agent.teams.budget import BudgetedHarness
 from agent.teams import cli as cli_module
 
 from .fakes import FakeHarness, git, make_repo, write
@@ -53,3 +54,72 @@ def test_without_apply_the_working_tree_is_untouched(env):
     assert cli_module.main(["run", "--team", "solo:worker=claude", "--runs-dir", str(tmp_path / "out"), "x"]) == 0
     assert git(repo, "status", "--porcelain").strip() == ""
     assert Path(tmp_path / "out").exists()
+
+
+@pytest.fixture
+def budgeted(env, monkeypatch):
+    repo, harness, tmp_path = env
+    monkeypatch.setattr(
+        cli_module,
+        "build_team",
+        lambda spec, **kw: SoloTeam(
+            BudgetedHarness(harness, kw["budget"]) if kw.get("budget") else harness, name=spec
+        ),
+    )
+    return harness, tmp_path
+
+
+def read_record(tmp_path):
+    (path,) = (tmp_path / "cache" / "multi-agents" / "runs").glob("*/*/record.json")
+    return json.loads(path.read_text())
+
+
+def test_max_cost_is_recorded_and_summarized(budgeted, capsys):
+    harness, tmp_path = budgeted
+    assert cli_module.main(["run", "--team", "solo:worker=claude", "--max-cost", "1", "make solution.txt"]) == 0
+    budget = read_record(tmp_path)["budget"]
+    assert budget["max_cost_usd"] == 1.0 and budget["spent_usd"] == pytest.approx(0.01)
+    assert budget["refused"] == [] and budget["exhausted"] is False
+    out = capsys.readouterr().out
+    assert "budget: $0.0100 of $1.0000 used" in out and "refused" not in out
+
+
+def test_crossing_the_warning_threshold_is_announced(budgeted, capsys):
+    assert cli_module.main(["run", "--team", "solo:worker=claude", "--max-cost", "0.011", "make solution.txt"]) == 0
+    out = capsys.readouterr().out
+    assert "Budget: $0.0100 of $0.0110 used" in out
+
+
+def test_without_max_cost_the_record_has_no_budget(budgeted):
+    _, tmp_path = budgeted
+    assert cli_module.main(["run", "--team", "solo:worker=claude", "make solution.txt"]) == 0
+    assert "budget" not in read_record(tmp_path)
+
+
+def test_max_cost_rejects_an_unpriced_harness_before_any_agent_runs(budgeted, capsys):
+    harness, _ = budgeted
+    code = cli_module.main(["run", "--team", "solo:worker=codex", "--max-cost", "1", "make solution.txt"])
+    assert code == 2 and harness.calls == []
+    out = capsys.readouterr().out
+    assert "unpriced: codex" in out and "--allow-unpriced" in out
+
+
+def test_allow_unpriced_accepts_it_and_says_what_it_means(budgeted, capsys):
+    harness, tmp_path = budgeted
+    argv = ["run", "--team", "solo:worker=codex", "--max-cost", "1", "--allow-unpriced", "make solution.txt"]
+    assert cli_module.main(argv) == 0
+    assert len(harness.calls) == 1 and read_record(tmp_path)["budget"]["max_cost_usd"] == 1.0
+    assert "count as $0" in capsys.readouterr().out
+
+
+def test_allow_unpriced_without_max_cost_is_a_usage_error(budgeted):
+    harness, _ = budgeted
+    assert cli_module.main(["run", "--team", "solo:worker=claude", "--allow-unpriced", "make solution.txt"]) == 2
+    assert harness.calls == []
+
+
+@pytest.mark.parametrize("amount", ["0", "-3"])
+def test_max_cost_must_be_positive(budgeted, amount):
+    harness, _ = budgeted
+    assert cli_module.main(["run", "--team", "solo:worker=claude", "--max-cost", amount, "x"]) == 2
+    assert harness.calls == []

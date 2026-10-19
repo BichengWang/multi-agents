@@ -1,5 +1,6 @@
 """Teams of coding agents: contracts, harness adapters, topologies and local worktrees."""
 
+from .budget import Budget, BudgetExceeded
 from .harnesses import Check, CheckHarness, CheckResult, ClaudeHarness, CodexHarness, SdkHarness
 from .plan import PlanTeam
 from .spec import SpecError, build_harness, build_team, is_priced, parse_harness_spec, parse_team_spec
@@ -9,6 +10,8 @@ from .worktree import ExecTimeout, LocalWorktree
 
 __all__ = [
     "BestTeam",
+    "Budget",
+    "BudgetExceeded",
     "Check",
     "CheckHarness",
     "CheckResult",

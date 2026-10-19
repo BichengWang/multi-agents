@@ -14,6 +14,17 @@
 
 Team spec grammar: see `docs/ROADMAP.md#team-specs`.
 
+Run budget (`agent/teams/budget.py`, not part of the contracts): `Budget(max_cost_usd, allow_unpriced=False)`
+with `admit(harness, role)` (raises `BudgetExceeded` once the limit is spent, or after an unpriced run
+unless allowed), `charge(run)` and `to_dict()`; `BudgetedHarness` wraps a `Harness` and forwards its
+`run(...)` keywords. `build_team(spec, budget=...)` wraps every harness except `check`. `TeamResult.meta`
+is unchanged; the CLI adds `budget` to `record.json`.
+
+`plan` roles in `TeamResult.runs`, in order: `planner`, the first wave's `worker` runs (`coder`/`reviewer`
+with a reviewer), then per replan round `planner` and its workers, then `integrator`. `meta`: `subtasks`
+(each with `round` and `status` `applied`/`conflict`/`failed`/`empty`/`replanned`), `replans`,
+`integration`, `fallback`.
+
 ## Workflow patterns (`agent/workflows`)
 
 ```python

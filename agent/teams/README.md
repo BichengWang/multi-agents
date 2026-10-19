@@ -20,10 +20,12 @@ patterns: `review` is a `RefineLoop`, `best` is a `BestOfN` with one generator p
 solo:worker=H
 review:coder=H,reviewer=H[,rounds=N]        # rounds defaults to 3
 best:workers=H+H[+H...][,judge=H]           # judge defaults to the first worker's harness
-plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]
-                                            # integrator defaults to the first worker's harness; max_tasks to 4
+plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N][,replans=N][,reviewer=H][,rounds=N]
+                                            # integrator defaults to the first worker's harness; max_tasks to 4;
+                                            # replans to 1 (0 = never re-plan failed subtasks);
+                                            # reviewer= reviews every subtask (not `check`); rounds= (default 3) needs it
 H := harness[@model]                        # claude, codex, sdk
-                                            # reviewer= and judge= also accept `check`, see Checks
+                                            # reviewer= and judge= also accept `check`, see Checks (not a plan's reviewer=)
 ```
 
 The kind is split off at the first `:`; model ids may contain `/`, `:`, `.` and `-`
@@ -43,7 +45,7 @@ endpoint charges; names LiteLLM does not know are unpriced.
 | `solo` | The worker edits the given workspace. |
 | `review` | The coder edits the workspace. After each attempt the reviewer judges the patch in a **fork with the patch applied** (it cannot touch the coder's workspace) and returns a verdict (`score` 0-10, `passed`, `feedback`). The coder resumes its session (where the harness supports it) with the feedback. Stops on `passed`, after `rounds` attempts, or when the coder stops changing anything. Returns the **best-scoring** patch (earliest on ties), not the last. |
 | `best` | Every worker runs concurrently in its own fork, possibly with different harnesses. The judge scores each candidate patch independently (0-10) in another fork. The highest score wins, ties go to the earliest worker. A worker that crashes without producing a change is dropped; the run fails (empty patch) only if all do. |
-| `plan` | A **planner** (it runs in a fork that is discarded, so anything it writes is thrown away) splits the task into 1..`max_tasks` independent subtasks `{title, instruction, paths?}`, returned as JSON (native schema flag where the CLI has one, else the last JSON object in the reply). Workers solve the subtasks concurrently, each in its own fork (subtask *i* goes to `workers[i % len(workers)]`; all at once unless `PlanTeam(max_concurrency=N)` bounds it; the prompt has the whole task, the subtask and the titles of the others, and tells the worker to stay out of their scope). The patches are merged into the team's workspace in subtask order with `git apply --3way` and left as uncommitted, unstaged changes like any other team's; a patch that conflicts or does not apply is rolled back (the clean ones stay) and the **integrator** runs in the workspace with the task, all patches and the failure to produce the combined change. A subtask whose worker failed (or changed nothing) is recorded in `failures` and the integrator is told which subtask is missing and asked to complete it. With a `--check` that fails on the integrated patch, the integrator gets one fix pass with the check output and the check runs again. If the planner fails or returns an invalid plan (recorded in `failures`), or the plan has one subtask, the team behaves like `solo` with the first worker (`meta["fallback"]`). |
+| `plan` | A **planner** (it runs in a fork that is discarded, so anything it writes is thrown away) splits the task into 1..`max_tasks` independent subtasks `{title, instruction, paths?}`, returned as JSON (native schema flag where the CLI has one, else the last JSON object in the reply). Workers solve the subtasks concurrently, each in its own fork (subtask *i* goes to `workers[i % len(workers)]`; all at once unless `PlanTeam(max_concurrency=N)` bounds it; the prompt has the whole task, the subtask and the titles of the others, and tells the worker to stay out of their scope). The patches are merged into the team's workspace in subtask order with `git apply --3way` and left as uncommitted, unstaged changes like any other team's; a patch that conflicts or does not apply is rolled back (the clean ones stay). **Re-planning:** a subtask whose worker failed (or changed nothing) is recorded in `failures` and handed back to the planner, at most `replans` times (default 1). The planner runs in a throwaway fork with the merged changes applied, is told which subtasks are merged and which failed and why, and returns 0..`max_tasks` new subtasks for the remaining work only (0 = nothing is left). They are solved from the base commit like the first wave, with the worker rotated by the round (`workers[(i + round) % len(workers)]`, so a failed piece goes to another harness when there is one), and merged the same way; the replaced subtasks get status `replanned`. A replan planner that fails or returns an invalid plan is recorded in `failures` (role `planner`) and the failed subtasks stay missing. Conflicts are not re-planned. Then the **integrator** runs in the workspace with the task, all patches and what went wrong (conflicts, subtasks still missing after the last replan) to produce the combined change; it does not run when everything merged. With a `--check` that fails on the integrated patch, the integrator gets one fix pass with the check output and the check runs again. **Per-subtask review:** with `reviewer=H` every subtask is solved by a `review` loop (the subtask's worker as coder, the reviewer judging each attempt in a fork of the worker's fork, at most `rounds` attempts) instead of one worker run, and the best-scoring patch is what gets merged; the reviewer never changes the worker's state. If the planner fails or returns an invalid plan (recorded in `failures`), or the plan has one subtask, the team behaves like `solo` with the first worker, or like a `review` loop with it when a reviewer is set (`meta["fallback"]`). |
 
 A reviewer/judge that fails or answers with something that is not a verdict is recorded
 (`meta["failures"]`, the run is kept) and scores 0; it never crashes the team. Verdicts use the CLI's
@@ -54,10 +56,13 @@ otherwise the last JSON object in the reply.
 `accepted`, `best_round`, `round_log`; `best` → `scores` (`null` for dropped workers), `chosen`
 (1-based), `candidates` (harness, score and indices into `runs`). Failures go to `failures`.
 
-`plan` → `subtasks` (title, instruction, paths, `worker`, `status` of `applied`/`conflict`/`failed`/`empty`, indices into `runs`),
+`plan` → `subtasks` (title, instruction, paths, `round` (0 = the initial plan), `worker`, `status` of `applied`/`conflict`/`failed`/`empty`/`replanned`, with a reviewer also `review` (`scores`, `accepted`, `best_round`), indices into `runs`; numbered 1-based in creation order across rounds),
+`replans` (one `{round, failed, subtasks, error?}` per replan round: the subtask numbers handed back and the new ones),
 `integration` (`applied`/`conflicts`/`missing` subtask numbers, `integrator_runs`), `check_before_fix`
-(the failing check result, when a fix pass ran) and `fallback`. Its `runs` have roles `planner`,
-`worker` and `integrator`, in that order.
+(the failing check result, when a fix pass ran) and `fallback`. Its `runs` are in this order: `planner`,
+the first wave's `worker` runs (`coder`/`reviewer` runs with a reviewer), then per replan round the
+`planner` and its workers, then `integrator`. In `failures`, a subtask's entries carry its `subtask`
+number, and with a reviewer the review loop's `attempt`; a failed replan carries its `round`.
 
 ## Checks
 
@@ -94,7 +99,7 @@ It also changes how teams decide:
 | LLM `judge` + `--check` | Every candidate is checked as well. Candidates that fail rank below every candidate that passes; the judge's scores order within each group. `meta["candidates"][i]["check"]` has each result; `meta["scores"]` stays the judge's raw scores. |
 
 `check` as `reviewer=`/`judge=` implies `--check` with the same command and raises `SpecError`
-without one; as `worker`, `coder`, `planner` or in `workers` it is rejected. The check reviewer/judge
+without one; as `worker`, `coder`, `planner`, `integrator`, in `workers` or as a `plan` team's `reviewer` it is rejected. The check reviewer/judge
 and the final recorded check share one memoized run per patch (the command is not run twice on the
 same patch). A check is not a harness run: it consumes no tokens. As `reviewer=check` or
 `judge=check` it appears in `runs` with role `reviewer`/`judge`, harness `check` and cost exactly $0.00.
@@ -120,6 +125,8 @@ multi-agents run --team review:coder=codex,reviewer=claude@haiku,rounds=2 \
 | `--keep-worktrees` | keep the main worktree for inspection (forks made by teams are always removed) |
 | `--apply` | apply the patch to your tree; refused up front (before any agent runs) if the tree is not clean |
 | `--check CMD` | shell command run against the final patch in a fork; see Checks |
+| `--max-cost USD` | hard stop on spend: no new harness run starts once this much has been spent; see Budget |
+| `--allow-unpriced` | with `--max-cost`: accept harnesses that report no cost and count their runs as $0 |
 
 The run creates `<runs-dir>/<utc-timestamp>_<team>/record.json` (team, task, repo, base commit,
 patch, every run with harness/role/model/tokens/cost/seconds/session/log, usage, total cost, duration,
@@ -182,6 +189,30 @@ hooks, default model).
 Prices are never guessed or borrowed from a similar model. `pricing.py` records its source URL and date;
 batch/flex/fast tiers and data-residency uplifts are not applied. `is_priced("codex@model")` tells a
 caller up front whether a harness spec will report a cost.
+
+### Budget
+
+`--max-cost USD` (`build_team(spec, budget=Budget(USD))`) is a hard stop on new work. Every harness of
+the team except `check` (a shell command, exactly $0) shares one `Budget`: before a run starts it is
+admitted only while the spend so far is below the limit, and when it returns its `usage.cost_usd` is
+added (also for a non-zero exit, which still cost money). Once the limit is reached every further run
+is refused with `BudgetExceeded`; the topologies record that in `meta["failures"]` like any failed run,
+so a refused run never appears in `TeamResult.runs` and the team finishes with the best patch it has.
+
+- **The limit can be exceeded.** A harness run cannot be stopped midway without losing its work, and
+  its cost is only known when it ends. Runs already admitted finish, so the total can overshoot by
+  their cost: the run that crossed the limit plus the runs in flight beside it (the workers of `best`
+  or `plan` run concurrently).
+- **Unpriced usage blocks new work.** A run with `cost_usd=None` cannot be counted, so after one the
+  budget can no longer be enforced and further runs are refused. The CLI therefore rejects (exit 2,
+  before any agent runs) a team with a harness that is not `is_priced(...)`, naming it, unless
+  `--allow-unpriced`: then unpriced runs count as $0 and the limit only covers the priced part of the
+  spend. `--allow-unpriced` without `--max-cost` is a usage error.
+- A yellow warning is printed when 80% of the limit is used (`Budget.warn_at`, `on_warn`).
+
+`record.json` gets `budget` (`max_cost_usd`, `spent_usd`, `unpriced_runs`, `warned`, `exhausted`,
+`refused`: the `{role, harness, reason}` of each refused run) and the summary prints one line such as
+`budget: $0.0412 of $0.0500 used, 2 run(s) refused`. Exit codes are unchanged.
 
 ## Python API
 

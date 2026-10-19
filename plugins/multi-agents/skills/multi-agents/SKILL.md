@@ -29,7 +29,7 @@ real money and takes minutes. Say so when you start one.
 | `solo:worker=H` | You only want the other CLI to try, or the other CLI is not installed. Cheapest. |
 | `review:coder=H,reviewer=H[,rounds=N]` | **Default.** One agent codes, another reviews the patch and sends feedback; the best-scoring patch wins. |
 | `best:workers=H+H[+H...][,judge=H]` | The user wants a comparison: workers run in parallel and a judge picks the best patch. |
-| `plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N]` | A large task that splits into independent parts: a planner splits it, workers solve the parts in parallel, an integrator merges. Use it only when the user asks or the task clearly splits. |
+| `plan:planner=H,workers=H[+H...][,integrator=H][,max_tasks=N][,replans=N][,reviewer=H][,rounds=N]` | A large task that splits into independent parts: a planner splits it, workers solve the parts in parallel, an integrator merges. Failed or empty subtasks go back to the planner once (`replans=0` turns that off); `reviewer=H` makes every subtask a coder ⇄ reviewer loop (`rounds` needs it; `check` is not allowed here). Use it only when the user asks or the task clearly splits. |
 
 **Default (cheap):** the coder is the *other* CLI than the one you are running in, so the patch is
 an independent attempt. The reviewer is *your own* CLI, which is certainly installed and logged in.
@@ -62,6 +62,16 @@ Three things make the check trustworthy:
   first: `--check 'git checkout HEAD -- tests && git clean -fdq tests && python3 -m unittest -q'`.
 - `--timeout` bounds the check too; a timeout counts as a failure.
 
+### Cap the spend
+
+`--max-cost USD` stops new agent runs once that much has been spent; the team then returns the patch
+it has so far. Use it when the user names a budget, and say what the cap means: runs already in flight
+finish, so the total can overshoot by their cost (parallel workers run side by side). An unpriced
+harness cannot be counted, so the command refuses to start a team with one and names it, unless you
+also pass `--allow-unpriced`, which counts its runs as $0 and leaves their spend outside the limit.
+Do not add `--allow-unpriced` on your own; tell the user instead. The summary ends with a `budget:`
+line (spend, limit, refused runs).
+
 ## Run it
 
 Run it from the repository the task is about, with the shell tool. Quote the task; put the whole
@@ -76,7 +86,7 @@ Single-quote the task, and replace every `'` inside it with `'\''`. Task text of
 backticks or `$`, which a double-quoted shell argument would execute or expand.
 `--timeout 600` bounds each agent call to ten minutes.
 
-Add `--check '<command>'` when you have one. Requirements: `uv`, `git`, and a logged-in `claude`
+Add `--check '<command>'` when you have one, and `--max-cost <usd>` when the user set a budget. Requirements: `uv`, `git`, and a logged-in `claude`
 and/or `codex` (the CLIs use their own login; no API keys are needed). The repository needs at least
 one commit; workers start from `HEAD`, so **uncommitted changes are not visible to them**. Tell the
 user if the tree is dirty.
@@ -96,12 +106,16 @@ billing. Do not start a second run while one is going.
 
 The command prints:
 
-- one row per agent call: role (`worker`, `coder`, `reviewer`, `judge`, and for `plan` `planner`, `integrator`),
+- one row per agent call: role (`worker`, `coder`, `reviewer`, `judge`, and for `plan` `planner`, `integrator`; a `plan` with
+  `reviewer=` shows `coder`/`reviewer` rows per subtask, and a replan round adds another `planner` row),
   `harness@model`, tokens in/cached/out, cost, seconds; a red `x` marks a call that exited non-zero;
 - `Total` tokens, cost and seconds;
 - `scores` (0-10, one per attempt or candidate), `chosen`, `best_round`, `accepted`; low scores or
   `accepted: False` mean the reviewer was not satisfied;
-- `failure:` lines for calls that crashed or returned something unusable;
+- `failure:` lines for calls that crashed or returned something unusable (with `--max-cost`, runs
+  refused after the limit are listed here too);
+- for `plan`, one `subtask N [status]` line each; `(round 1)` marks work from a replan and
+  `replanned` a subtask that was handed back and replaced;
 - the files changed with `+`/`-` counts, the `Record:` and `Patch:` paths, and the `Apply:` command.
 
 `No changes were produced.` is exit code 1 and has two causes. With `failure:` lines or red `x`

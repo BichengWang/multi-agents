@@ -35,6 +35,14 @@ repository only through `Workspace.exec`, so one team runs locally and in benchm
 4. Cost honesty: a harness that cannot report or price a call returns `Usage.cost_usd=None`;
    never guess prices. Every harness call made by a team appears in `TeamResult.runs`.
 5. Reviewers and judges must not mutate a worker's workspace; give them a fork.
+6. The run budget (`--max-cost`, `agent/teams/budget.py`) is enforced by `build_team`, which wraps every
+   harness except the `check` pseudo-harness in `BudgetedHarness`. Topologies never call the budget:
+   a refused run raises `BudgetExceeded`, which they record like any failed run (`meta["failures"]`,
+   not in `TeamResult.runs`). Runs already admitted finish, so spend can overshoot; unpriced runs
+   block further runs unless `allow_unpriced`.
+7. `plan` runs may carry the roles `coder`/`reviewer` inside subtasks (`reviewer=H`, a `ReviewTeam`
+   per subtask in its own fork) and extra `planner` runs (`replans=N`); subtasks are numbered across
+   rounds and replaced ones get status `replanned`.
 
 ## adding a harness
 
@@ -47,7 +55,8 @@ repository only through `Workspace.exec`, so one team runs locally and in benchm
 
 ## adding a team topology
 
-1. Implement it in `agent/teams/topologies.py` on top of an `agent/workflows` pattern.
+1. Implement it in `agent/teams/topologies.py` (or its own module, like `plan.py`) on top of an
+   `agent/workflows` pattern.
 2. Add its spec kind and keys to `agent/teams/spec.py`; `Team.name` must be the canonical spec.
 3. Test with fake harnesses on a temp git repo (`tests/teams/`): selection, failures, cleanup.
 

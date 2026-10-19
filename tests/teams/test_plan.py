@@ -1,8 +1,10 @@
 import asyncio
 import json
 import os
+from io import StringIO
 
 import pytest
+from rich.console import Console
 
 from agent.teams import (
     Check,
@@ -14,10 +16,12 @@ from agent.teams import (
     build_team,
     parse_team_spec,
 )
+from agent.teams.cli import render_summary
+from agent.teams.harnesses.check import CheckHarness
 from agent.teams.plan import PLAN_SCHEMA, PlanParseError, Subtask, _apply_3way, _SubtaskState, parse_plan
 from agent.teams.topologies import MAX_PATCH_IN_PROMPT
 
-from .fakes import FakeHarness, ScriptedWorkspace, git, make_repo, read, run, write
+from .fakes import FakeHarness, ScriptedWorkspace, git, make_repo, read, run, verdict_json, write
 
 TASK = CodingTask("t1", "add modules a and b")
 
@@ -102,6 +106,15 @@ def test_parse_plan_takes_the_last_plan_object_in_the_reply():
 def test_parse_plan_rejects_invalid_plans(text):
     with pytest.raises(PlanParseError):
         parse_plan(text, 2)
+
+
+def test_a_replan_may_have_no_subtasks_but_a_first_plan_may_not():
+    empty = '{"subtasks": []}'
+    assert parse_plan(empty, 3, min_tasks=0) == []
+    with pytest.raises(PlanParseError, match="expected 1 to 3 subtasks, got 0"):
+        parse_plan(empty, 3)
+    with pytest.raises(PlanParseError, match="expected 0 to 1 subtasks, got 2"):
+        parse_plan(plan_json("a", "b"), 1, min_tasks=0)
 
 
 # --- topology ---------------------------------------------------------------------------------
@@ -252,7 +265,7 @@ def test_the_integrator_defaults_to_the_first_worker(repo):
     assert len(conflicting[1].calls) == 1
 
 
-def test_a_failed_subtask_is_recorded_and_the_integrator_completes_it(repo):
+def test_a_failed_subtask_is_recorded_and_the_integrator_completes_it_when_replans_is_zero(repo):
     async def integrate(call):
         await write(call.workspace, "b.txt", "module b\n")
         return "done"
@@ -260,7 +273,7 @@ def test_a_failed_subtask_is_recorded_and_the_integrator_completes_it(repo):
     integrator = FakeHarness(integrate, name="integrator")
     w1 = worker_writing({"a.txt": "module a\n"}, "w1")
     w2 = worker_writing({}, "w2", fail=True)
-    team = PlanTeam(planner_saying(plan_json("module a", "module b")), [w1, w2], integrator)
+    team = PlanTeam(planner_saying(plan_json("module a", "module b")), [w1, w2], integrator, replans=0)
     result, _ = solve(team, repo)
 
     assert "module a" in result.patch and "module b" in result.patch
@@ -272,14 +285,16 @@ def test_a_failed_subtask_is_recorded_and_the_integrator_completes_it(repo):
     assert [r.role for r in result.runs] == ["planner", "worker", "integrator"]
 
 
-def test_a_worker_that_changes_nothing_counts_as_a_missing_subtask(repo):
+def test_a_worker_that_changes_nothing_counts_as_a_missing_subtask_when_replans_is_zero(repo):
     async def integrate(call):
         await write(call.workspace, "b.txt", "module b\n")
         return "done"
 
     integrator = FakeHarness(integrate, name="integrator")
     w1, w2 = worker_writing({"a.txt": "a\n"}, "w1"), worker_writing({}, "w2")
-    result, _ = solve(PlanTeam(planner_saying(plan_json("a", "b")), [w1, w2], integrator), repo)
+    result, _ = solve(
+        PlanTeam(planner_saying(plan_json("a", "b")), [w1, w2], integrator, replans=0), repo
+    )
     assert result.meta["subtasks"][1]["status"] == "empty" and "b.txt" in result.patch
     assert "no changes" in result.meta["failures"][0]["error"]
 
@@ -367,13 +382,415 @@ def test_cancelling_a_plan_team_removes_the_forks_of_every_running_worker(repo):
     run(go())
 
 
+# --- re-planning ------------------------------------------------------------------------------
+
+
+def planner_replying(*texts, name="planner"):
+    """A planner that answers its n-th call with ``texts[n-1]`` (the last one repeats).
+
+    Returns the harness and, per call, the files it could see in its fork.
+    """
+    seen = []
+
+    async def script(call):
+        await write(call.workspace, "planner-scratch.txt", "x")
+        seen.append((await call.workspace.exec(["ls"])).stdout.split())
+        return f"Here is the plan:\n```json\n{texts[min(call.number, len(texts)) - 1]}\n```"
+
+    return FakeHarness(script, name=name), seen
+
+
+def titled_worker(name, fail_calls=(), always_fail=False):
+    """A worker that writes ``<subtask title>.txt``; it raises on the calls numbered in ``fail_calls``."""
+
+    async def script(call):
+        if always_fail or call.number in fail_calls:
+            raise RuntimeError("worker exploded")
+        title = call.prompt.split("): ", 1)[1].split("\n")[0]
+        await write(call.workspace, f"{title}.txt", f"{name}\n")
+        return "done"
+
+    return FakeHarness(script, name=name)
+
+
+def test_a_failed_subtask_is_replanned_and_the_replacement_is_merged_without_the_integrator(repo):
+    planner, seen = planner_replying(plan_json("a", "b"), plan_json("a again"))
+    w1, w2 = titled_worker("w1", always_fail=True), titled_worker("w2")
+    integrator = FakeHarness(None, name="integrator")
+    result, _ = solve(PlanTeam(planner, [w1, w2], integrator), repo)
+
+    assert "a again.txt" in result.patch and "b.txt" in result.patch and "a.txt" not in result.patch
+    assert "planner-scratch" not in result.patch and not integrator.calls
+    assert [(r.role, r.harness) for r in result.runs] == [
+        ("planner", "planner"),
+        ("worker", "w2"),
+        ("planner", "planner"),
+        ("worker", "w2"),
+    ]
+    subtasks = result.meta["subtasks"]
+    assert [s["status"] for s in subtasks] == ["replanned", "applied", "applied"]
+    assert [s["round"] for s in subtasks] == [0, 0, 1]
+    assert [s["worker"] for s in subtasks] == ["w1@m", "w2@m", "w2@m"]  # round 1 rotates the assignment
+    assert [s["runs"] for s in subtasks] == [[], [1], [3]]
+    assert result.meta["replans"] == [{"round": 1, "failed": [1], "subtasks": [3]}]
+    assert result.meta["integration"]["integrator_runs"] == 0 and result.meta["integration"]["missing"] == []
+    (failure,) = result.meta["failures"]
+    assert failure["subtask"] == 1 and "worker exploded" in failure["error"]
+
+    replan_prompt = planner.calls[1].prompt
+    assert "Merged subtasks (already in the working tree):\n- 2. b\n" in replan_prompt
+    assert "- 1. a: RuntimeError: worker exploded\n  Its instruction was: do a" in replan_prompt
+    assert TASK.instruction in replan_prompt and "between 0 and 4" in replan_prompt
+    assert "b.txt" not in seen[0] and "b.txt" in seen[1]  # the replan planner sees what is merged
+    assert "a again" in w2.calls[1].prompt and "(1 of 1)" in w2.calls[1].prompt
+
+
+def test_replacement_subtasks_rotate_over_the_workers_by_round(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), plan_json("c", "d"))
+    w1, w2 = titled_worker("w1", fail_calls=(1,)), titled_worker("w2", fail_calls=(1,))
+    result, _ = solve(PlanTeam(planner, [w1, w2]), repo)
+
+    subtasks = result.meta["subtasks"]
+    assert [s["status"] for s in subtasks] == ["replanned", "replanned", "applied", "applied"]
+    assert [s["worker"] for s in subtasks] == ["w1@m", "w2@m", "w2@m", "w1@m"]  # workers[(i + round) % 2]
+    assert [s["round"] for s in subtasks] == [0, 0, 1, 1]
+    assert result.meta["replans"] == [{"round": 1, "failed": [1, 2], "subtasks": [3, 4]}]
+    assert "c.txt" in result.patch and "d.txt" in result.patch
+    assert [r.role for r in result.runs] == ["planner", "planner", "worker", "worker"]
+
+
+def test_a_replan_is_bounded_by_replans_and_the_integrator_completes_what_is_still_missing(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), plan_json("c"), plan_json("d"))
+
+    async def integrate(call):
+        await write(call.workspace, "c.txt", "integrator\n")
+        return "done"
+
+    integrator = FakeHarness(integrate, name="integrator")
+    w1, w2 = titled_worker("w1"), titled_worker("w2", always_fail=True)
+    result, _ = solve(PlanTeam(planner, [w1, w2], integrator, replans=1), repo)
+
+    assert len(planner.calls) == 2  # the first plan and one replan
+    assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "replanned", "failed"]
+    assert [s["worker"] for s in result.meta["subtasks"]] == ["w1@m", "w2@m", "w2@m"]
+    assert result.meta["integration"]["missing"] == [3] and result.meta["integration"]["integrator_runs"] == 1
+    prompt = integrator.calls[0].prompt
+    assert "Subtask 2 (b): FAILED" in prompt and "handed back to the planner" in prompt
+    assert "Subtask 3 (c): MISSING" in prompt
+    assert [r.role for r in result.runs] == ["planner", "worker", "planner", "integrator"]
+    assert "c.txt" in result.patch
+
+
+def test_a_second_replan_round_can_fix_what_the_first_one_could_not(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), plan_json("c"), plan_json("d"))
+    w1, w2 = titled_worker("w1"), titled_worker("w2", always_fail=True)
+    integrator = FakeHarness(None, name="integrator")
+    result, _ = solve(PlanTeam(planner, [w1, w2], integrator, replans=2), repo)
+
+    assert len(planner.calls) == 3 and not integrator.calls
+    subtasks = result.meta["subtasks"]
+    assert [s["status"] for s in subtasks] == ["applied", "replanned", "replanned", "applied"]
+    assert [(s["round"], s["worker"]) for s in subtasks] == [(0, "w1@m"), (0, "w2@m"), (1, "w2@m"), (2, "w1@m")]
+    assert result.meta["replans"] == [
+        {"round": 1, "failed": [2], "subtasks": [3]},
+        {"round": 2, "failed": [3], "subtasks": [4]},
+    ]
+    assert "d.txt" in result.patch and "a.txt" in result.patch
+    assert [r.role for r in result.runs] == ["planner", "worker", "planner", "planner", "worker"]
+
+
+def test_replans_zero_never_asks_the_planner_again(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), plan_json("b again"))
+
+    async def integrate(call):
+        await write(call.workspace, "b.txt", "integrator\n")
+        return "done"
+
+    integrator = FakeHarness(integrate, name="integrator")
+    w1, w2 = titled_worker("w1"), titled_worker("w2", always_fail=True)
+    result, _ = solve(PlanTeam(planner, [w1, w2], integrator, replans=0), repo)
+
+    assert len(planner.calls) == 1 and result.meta["replans"] == []
+    assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "failed"]
+    assert [r.role for r in result.runs] == ["planner", "worker", "integrator"]
+
+
+def test_a_replan_planner_that_fails_is_recorded_and_the_integrator_takes_over(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), "no json here")
+
+    async def integrate(call):
+        await write(call.workspace, "b.txt", "integrator\n")
+        return "done"
+
+    integrator = FakeHarness(integrate, name="integrator")
+    w1, w2 = titled_worker("w1"), titled_worker("w2", always_fail=True)
+    result, _ = solve(PlanTeam(planner, [w1, w2], integrator, replans=3), repo)
+
+    (record,) = result.meta["replans"]  # a failed replan is not retried
+    assert record["round"] == 1 and record["failed"] == [2] and record["subtasks"] == []
+    assert "PlanParseError" in record["error"]
+    planner_failure = next(f for f in result.meta["failures"] if f["role"] == "planner")
+    assert planner_failure["round"] == 1 and planner_failure["error"] == record["error"]
+    assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "failed"]
+    assert [r.role for r in result.runs] == ["planner", "worker", "planner", "integrator"]
+    assert "Subtask 2 (b): MISSING" in integrator.calls[0].prompt and "b.txt" in result.patch
+
+
+def test_a_replan_planner_that_crashes_is_recorded_too(repo):
+    async def script(call):
+        if call.number == 2:
+            raise RuntimeError("planner down")
+        return plan_json("a", "b")
+
+    async def integrate(call):
+        return "done"
+
+    integrator = FakeHarness(integrate, name="integrator")
+    w1, w2 = titled_worker("w1"), titled_worker("w2", always_fail=True)
+    result, _ = solve(PlanTeam(FakeHarness(script, name="planner"), [w1, w2], integrator), repo)
+    assert "planner down" in result.meta["replans"][0]["error"]
+    assert [r.role for r in result.runs] == ["planner", "worker", "integrator"]
+
+
+def test_a_replan_with_no_new_subtasks_means_nothing_is_left(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), json.dumps({"subtasks": []}))
+    integrator = FakeHarness(None, name="integrator")
+    w1, w2 = titled_worker("w1"), titled_worker("w2", always_fail=True)
+    result, _ = solve(PlanTeam(planner, [w1, w2], integrator), repo)
+
+    assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "replanned"]
+    assert result.meta["replans"] == [{"round": 1, "failed": [2], "subtasks": []}]
+    assert not integrator.calls and "a.txt" in result.patch and "b.txt" not in result.patch
+    assert [r.role for r in result.runs] == ["planner", "worker", "planner"]
+
+
+def test_a_worker_that_changed_nothing_is_replanned_with_that_reason(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), plan_json("b again"))
+    w1 = titled_worker("w1")
+
+    async def lazy_then_working(call):
+        if call.number == 1:
+            return "nothing to do"
+        await write(call.workspace, "b.txt", "w2\n")
+        return "done"
+
+    w2 = FakeHarness(lazy_then_working, name="w2")
+    result, _ = solve(PlanTeam(planner, [w1, w2]), repo)
+    assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "replanned", "applied"]
+    assert "- 2. b: its worker produced no changes" in planner.calls[1].prompt
+    assert "b.txt" in result.patch
+
+
+def test_conflicts_are_not_replanned_the_integrator_handles_them(repo):
+    planner, _ = planner_replying(plan_json("p", "q"))
+    conflicting = [worker_writing({"a.txt": "one\n"}, "w1"), worker_writing({"a.txt": "two\n"}, "w2")]
+    result, _ = solve(PlanTeam(planner, conflicting), repo)
+    assert len(planner.calls) == 1 and result.meta["replans"] == []
+    assert result.meta["integration"]["conflicts"] == [2] and result.meta["integration"]["integrator_runs"] == 1
+
+
+def test_subtasks_of_a_replan_are_told_about_each_other_only(repo):
+    planner, _ = planner_replying(plan_json("a", "b", "c"), plan_json("d", "e"))
+    w1, w2 = titled_worker("w1", fail_calls=(1, 2)), titled_worker("w2", fail_calls=(1,))
+    result, _ = solve(PlanTeam(planner, [w1, w2]), repo)
+    # Round-1 workers see two subtasks: "(1 of 2)" and "(2 of 2)" with the other's title, nothing of round 0.
+    prompts = [c.prompt for h in (w1, w2) for c in h.calls if "(1 of 2)" in c.prompt or "(2 of 2)" in c.prompt]
+    assert len(prompts) == 2
+    assert any("(1 of 2): d" in p and "2. e" in p and "1. a" not in p for p in prompts)
+    assert any("(2 of 2): e" in p and "1. d" in p for p in prompts)
+    assert [s["round"] for s in result.meta["subtasks"]] == [0, 0, 0, 1, 1]
+    assert "d.txt" in result.patch and "e.txt" in result.patch
+
+
+def test_the_cli_summary_shows_the_round_of_replanned_work(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), plan_json("a again"))
+    result, _ = solve(PlanTeam(planner, [titled_worker("w1", fail_calls=(1,)), titled_worker("w2")]), repo)
+    out = StringIO()
+    render_summary(
+        Console(file=out, width=200, force_terminal=False),
+        "plan",
+        result,
+        repo=str(repo),
+        patch_path=repo / "final.patch",
+        record_path=repo / "record.json",
+    )
+    lines = out.getvalue().splitlines()
+    assert "subtask 1 [replanned]: a (w1@m)" in lines
+    assert "subtask 2 [applied]: b (w2@m)" in lines
+    assert "subtask 3 [applied] (round 1): a again (w2@m)" in lines
+
+
+# --- per-subtask review -----------------------------------------------------------------------
+
+
+def versioned_coder(name, path):
+    """A worker whose n-th attempt writes ``<name> v<n>`` into ``path``."""
+
+    async def script(call):
+        await write(call.workspace, path, f"{name} v{call.number}\n")
+        return "done"
+
+    return FakeHarness(script, name=name)
+
+
+def test_with_a_reviewer_every_subtask_is_a_review_loop_in_its_own_fork(repo):
+    async def review(call):
+        await write(call.workspace, "reviewer-scratch.txt", "x")  # a reviewer that ignores read-only
+        return verdict_json(9, True) if " v2" in call.prompt else verdict_json(3, False, "needs work")
+
+    reviewer = FakeHarness(review, name="reviewer")
+    w1, w2 = versioned_coder("w1", "a.txt"), versioned_coder("w2", "b.txt")
+    planner = planner_saying(plan_json("a", "b"))
+    result, root = solve(PlanTeam(planner, [w1, w2], reviewer=reviewer, rounds=3), repo)
+
+    assert "w1 v2" in result.patch and "w2 v2" in result.patch and "v1" not in result.patch
+    assert "reviewer-scratch" not in result.patch and "planner-scratch" not in result.patch
+    assert [(r.role, r.harness) for r in result.runs] == [("planner", "planner")] + [
+        (role, name) for name in ("w1", "w2") for role, name in (("coder", name), ("reviewer", "reviewer")) * 2
+    ]
+    first, second = result.meta["subtasks"]
+    assert first["review"] == {"scores": [3, 9], "accepted": True, "best_round": 2}
+    assert second["review"] == {"scores": [3, 9], "accepted": True, "best_round": 2}
+    assert (first["runs"], second["runs"]) == ([1, 2, 3, 4], [5, 6, 7, 8])
+    assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "applied"]
+    assert "needs work" in w1.calls[1].prompt  # the coder revises with the reviewer's feedback
+    # The reviewer judged the subtask (not the whole task) in forks of the workers' forks.
+    assert all("do a" in c.prompt or "do b" in c.prompt for c in reviewer.calls)
+    forks = {*w1.roots, *w2.roots}
+    assert len(forks) == 2 and forks.isdisjoint(reviewer.roots) and root not in reviewer.roots
+    assert not any(os.path.exists(r) for r in [*forks, *reviewer.roots])
+    assert result.meta["integration"]["integrator_runs"] == 0 and "failures" not in result.meta
+
+
+def test_the_best_reviewed_patch_is_merged_not_the_last_attempt(repo):
+    async def review(call):
+        return verdict_json(9, False, "ok") if " v1" in call.prompt else verdict_json(2, False, "worse")
+
+    reviewer = FakeHarness(review, name="reviewer")
+    w1, w2 = versioned_coder("w1", "a.txt"), versioned_coder("w2", "b.txt")
+    result, _ = solve(PlanTeam(planner_saying(plan_json("a", "b")), [w1, w2], reviewer=reviewer, rounds=2), repo)
+
+    assert "w1 v1" in result.patch and "w2 v1" in result.patch and "v2" not in result.patch
+    assert result.meta["subtasks"][0]["review"] == {"scores": [9, 2], "accepted": False, "best_round": 1}
+    assert len(w1.calls) == 2  # the loop ran both rounds; only the first attempt was kept
+
+
+def test_a_reviewer_that_fails_is_recorded_against_its_subtask_and_the_patch_is_kept(repo):
+    async def review(call):
+        raise RuntimeError("reviewer down")
+
+    w1, w2 = versioned_coder("w1", "a.txt"), versioned_coder("w2", "b.txt")
+    team = PlanTeam(
+        planner_saying(plan_json("a", "b")), [w1, w2], reviewer=FakeHarness(review, name="reviewer"), rounds=1
+    )
+    result, _ = solve(team, repo)
+
+    assert "w1 v1" in result.patch and "w2 v1" in result.patch
+    assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "applied"]
+    failures = result.meta["failures"]
+    # the review loop's own round is its attempt: in a plan, `round` is the replan round
+    assert sorted((f["subtask"], f["role"], f["attempt"]) for f in failures) == [(1, "reviewer", 1), (2, "reviewer", 1)]
+    assert all("reviewer down" in f["error"] and "round" not in f for f in failures)
+
+
+def test_a_review_loop_that_crashes_after_paid_runs_still_reports_them(repo):
+    async def break_the_fork(call):
+        await write(call.workspace, "a.txt", "a\n")
+        os.remove(os.path.join(call.workspace.root, ".git"))  # the loop's diff of this fork now raises
+        return "done"
+
+    coder = FakeHarness(break_the_fork, name="w1")
+    reviewer = FakeHarness(None, name="reviewer")
+    team = PlanTeam(
+        planner_saying(plan_json("a", "b")),
+        [coder, worker_writing({"b.txt": "b\n"}, "w2")],
+        integrator=worker_writing({}, "integrator"),
+        replans=0,
+        reviewer=reviewer,
+        rounds=1,
+    )
+    result, _ = solve(team, repo)
+
+    assert [(r.role, r.harness) for r in result.runs][:2] == [("planner", "planner"), ("coder", "w1")]
+    first = result.meta["subtasks"][0]
+    assert first["status"] == "failed" and first["runs"] == [1]
+    assert any(f.get("subtask") == 1 and "Error" in f["error"] for f in result.meta["failures"])
+
+
+def test_a_reviewed_subtask_that_changes_nothing_is_replanned(repo):
+    planner, _ = planner_replying(plan_json("a", "b"), plan_json("a again"))
+
+    async def approve(call):
+        return verdict_json(9, True)
+
+    async def do_nothing(call):
+        return "nothing to do"
+
+    lazy = FakeHarness(do_nothing, name="lazy")
+    w2 = titled_worker("w2")
+    result, _ = solve(PlanTeam(planner, [lazy, w2], reviewer=FakeHarness(approve, name="reviewer")), repo)
+
+    subtasks = result.meta["subtasks"]
+    assert [s["status"] for s in subtasks] == ["replanned", "applied", "applied"]
+    assert subtasks[0]["review"]["scores"][0] == 0  # an empty patch scores 0 without a reviewer run
+    assert [s["round"] for s in subtasks] == [0, 0, 1] and "a again.txt" in result.patch
+    assert "no changes" in planner.calls[1].prompt
+
+
+@pytest.mark.parametrize(
+    "plan,reason",
+    [("no json here", "did not return a valid plan"), (plan_json("only"), "single subtask")],
+)
+def test_the_solo_fallback_becomes_a_review_loop_when_there_is_a_reviewer(repo, plan, reason):
+    async def approve(call):
+        return verdict_json(9, True)
+
+    reviewer = FakeHarness(approve, name="reviewer")
+    w1, w2 = versioned_coder("w1", "all.txt"), versioned_coder("w2", "never.txt")
+    result, _ = solve(PlanTeam(planner_saying(plan), [w1, w2], reviewer=reviewer), repo)
+
+    assert "w1 v1" in result.patch and not w2.calls
+    assert [r.role for r in result.runs] == ["planner", "coder", "reviewer"]
+    fallback = result.meta["fallback"]
+    assert fallback["to"] == "review" and fallback["worker"] == "w1@m" and reason in fallback["reason"]
+    assert fallback["reviewer"] == "reviewer@m"
+    assert result.meta["review"] == {"scores": [9], "accepted": True, "best_round": 1}
+    assert TASK.instruction in reviewer.calls[0].prompt  # the whole task is what gets reviewed
+
+
+def test_a_plan_team_without_a_reviewer_has_no_review_meta(repo):
+    result, _ = solve(PlanTeam(planner_saying("no json"), [worker_writing({"a.txt": "a\n"}, "w1")]), repo)
+    assert result.meta["fallback"]["to"] == "solo" and "review" not in result.meta
+    assert "review" not in PlanTeam(planner_saying(plan_json("a", "b")), [worker_writing({}, "w")]).name
+
+
+# --- options ----------------------------------------------------------------------------------
+
+
+def test_plan_team_names_spell_out_replans_and_the_reviewer():
+    planner, worker, reviewer = FakeHarness(None, name="p"), FakeHarness(None, name="w"), FakeHarness(None, name="r")
+    assert PlanTeam(planner, [worker]).name == "plan:planner=p@m,workers=w@m,integrator=w@m,max_tasks=4,replans=1"
+    team = PlanTeam(planner, [worker], replans=0, reviewer=reviewer, rounds=2)
+    assert team.name == "plan:planner=p@m,workers=w@m,integrator=w@m,max_tasks=4,replans=0,reviewer=r@m,rounds=2"
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{"replans": -1}, {"rounds": 0}, {"reviewer": CheckHarness("true")}],
+)
+def test_invalid_plan_team_options_are_rejected(options):
+    with pytest.raises(ValueError):
+        PlanTeam(FakeHarness(None, name="p"), [FakeHarness(None, name="w")], **options)
+
+
 # --- spec -------------------------------------------------------------------------------------
 
 
 def test_plan_spec_has_a_canonical_name_that_spells_out_the_defaults():
     team = build_team("plan:planner=claude@haiku,workers=claude@haiku+codex@gpt-6-luna")
     assert team.name == (
-        "plan:planner=claude@haiku,workers=claude@haiku+codex@gpt-6-luna,integrator=claude@haiku,max_tasks=4"
+        "plan:planner=claude@haiku,workers=claude@haiku+codex@gpt-6-luna,integrator=claude@haiku,max_tasks=4,"
+        "replans=1"
     )
     assert build_team(team.name).name == team.name
     assert isinstance(team, PlanTeam) and len(team.workers) == 2 and team.max_tasks == 4
@@ -382,7 +799,7 @@ def test_plan_spec_has_a_canonical_name_that_spells_out_the_defaults():
 
 def test_plan_spec_accepts_a_single_worker_integrator_and_max_tasks():
     team = build_team("plan:max_tasks=2,workers=codex,planner=claude,integrator=sdk@gpt-5-mini")
-    assert team.name == "plan:planner=claude,workers=codex,integrator=sdk@gpt-5-mini,max_tasks=2"
+    assert team.name == "plan:planner=claude,workers=codex,integrator=sdk@gpt-5-mini,max_tasks=2,replans=1"
     assert team.max_tasks == 2 and team.integrator.name == "sdk"
     spec = parse_team_spec(team.name)
     assert [str(h) for h in spec.harness_specs] == ["claude", "sdk@gpt-5-mini", "codex"]
@@ -395,7 +812,11 @@ def test_plan_spec_accepts_a_single_worker_integrator_and_max_tasks():
         ("plan:planner=claude", "workers"),
         ("plan:planner=claude,workers=claude,max_tasks=0", "max_tasks"),
         ("plan:planner=claude,workers=claude,max_tasks=x", "max_tasks"),
-        ("plan:planner=claude,workers=claude,rounds=2", "unknown key"),
+        ("plan:planner=claude,workers=claude,rounds=2", "only valid together with reviewer"),
+        ("plan:planner=claude,workers=claude,replans=-1", "replans"),
+        ("plan:planner=claude,workers=claude,replans=x", "replans"),
+        ("plan:planner=claude,workers=claude,reviewer=check", "plan team"),
+        ("plan:planner=claude,workers=claude,reviewer=claude,rounds=0", "rounds"),
         ("plan:planner=gemini,workers=claude", "unknown harness"),
         ("plan:planner=check,workers=claude", "planner"),
         ("plan:planner=claude,workers=claude+check", "worker"),
