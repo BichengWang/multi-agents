@@ -185,7 +185,7 @@ def test_review_team_stops_paying_the_coder_once_the_budget_is_used_up(repo, mon
     assert len(coder.calls) == 1 and len(reviewer.calls) == 1
     assert "attempt 1" in result.patch
     assert budget.spent_usd == pytest.approx(0.02) and budget.exhausted
-    assert [(r["role"], r["harness"]) for r in budget.refused] == [("coder", "coder")]
+    assert [(r["role"], r["harness"]) for r in budget.refused] == [("coder", "coder@m")]  # harness@model
     failures = result.meta["failures"]
     assert [f["role"] for f in failures] == ["coder"] and "BudgetExceeded" in failures[0]["error"]
 

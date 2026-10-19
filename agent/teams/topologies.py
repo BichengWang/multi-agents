@@ -316,8 +316,12 @@ class ReviewTeam:
         )
 
     async def solve(self, task: CodingTask, workspace: Workspace) -> TeamResult:
+        return await self.solve_into(task, workspace, [])
+
+    async def solve_into(self, task: CodingTask, workspace: Workspace, runs: list[HarnessRun]) -> TeamResult:
+        """``solve``, appending each harness run to ``runs`` as it finishes (chronologically, both
+        agents), so a caller that contains a crash of the loop still accounts for every paid run."""
         start = time.perf_counter()
-        runs: list[HarnessRun] = []  # chronological, shared by both agents
         checker = self.check.bind(workspace) if self.check else None
         coder = _Coder(self.coder, workspace, self.timeout, runs=runs)
         reviewer = _Reviewer(self.reviewer, workspace, task, self.timeout, runs=runs, checker=checker)

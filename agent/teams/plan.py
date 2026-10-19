@@ -27,7 +27,8 @@ parts are re-planned, an integrator merges the patches and a check verifies the 
 Every harness run (``planner``, ``worker`` or ``coder``/``reviewer``, ``integrator``) is in
 ``TeamResult.runs``, failed ones included, in this order: planner, the first wave's runs, then per
 replan round the planner and its workers, then the integrator. Failures are in
-``meta["failures"]``; ``meta["subtasks"]`` numbers subtasks 1-based in creation order across rounds
+``meta["failures"]`` (a subtask's carry its ``subtask`` number and, from a review loop, its
+``attempt``; a failed replan its ``round``); ``meta["subtasks"]`` numbers subtasks 1-based in creation order across rounds
 and records each one's ``round`` (0 = the initial plan) and, with a reviewer, its ``review``
 (``scores``, ``accepted``, ``best_round``); ``meta["replans"]`` has one entry per replan round.
 """
@@ -259,6 +260,12 @@ class _SubtaskState:
     notes: list[dict[str, Any]] = field(default_factory=list)  # failures a review loop reported
 
 
+def _attempts(failures: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A review loop's failures with its ``round`` (the attempt) renamed to ``attempt``: in a plan,
+    ``round`` means the replan round."""
+    return [{("attempt" if key == "round" else key): value for key, value in f.items()} for f in failures]
+
+
 def _shown(patch: str, limit: int) -> str:
     if len(patch) <= limit:
         return patch
@@ -393,11 +400,10 @@ class PlanTeam:
             }
             result = await ReviewTeam(
                 self.workers[0], self.reviewer, rounds=self.rounds, timeout=self.timeout
-            ).solve(task, workspace)
-            runs.extend(result.runs)
+            ).solve_into(task, workspace, runs)
             meta["review"] = self._review_meta(result)
             if "failures" in result.meta:
-                meta.setdefault("failures", []).extend(result.meta["failures"])
+                meta.setdefault("failures", []).extend(_attempts(result.meta["failures"]))
             return result.patch
         meta["fallback"] = {"to": "solo", "worker": harness_label(self.workers[0]), "reason": reason}
         run, error = await _run_harness(
@@ -604,13 +610,13 @@ class PlanTeam:
                     state.patch = await fork.diff()
                 else:
                     team = ReviewTeam(state.harness, self.reviewer, rounds=self.rounds, timeout=self.timeout)
-                    result = await team.solve(CodingTask(task.task_id, state.prompt), fork)
-                    state.runs.extend(result.runs)
+                    # The loop appends to state.runs as runs finish, so a crash below still keeps them.
+                    result = await team.solve_into(CodingTask(task.task_id, state.prompt), fork, state.runs)
                     state.patch = result.patch
                     state.review = self._review_meta(result)
-                    state.notes = result.meta.get("failures", [])
+                    state.notes = _attempts(result.meta.get("failures", []))
                     state.error = "; ".join(
-                        f"{f['role']} (round {f['round']}): {f['error']}" for f in state.notes
+                        f"{f['role']} (attempt {f['attempt']}): {f['error']}" for f in state.notes
                     ) or None
             except Exception as exc:
                 note = f"{type(exc).__name__}: {exc}"

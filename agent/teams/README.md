@@ -61,7 +61,8 @@ otherwise the last JSON object in the reply.
 `integration` (`applied`/`conflicts`/`missing` subtask numbers, `integrator_runs`), `check_before_fix`
 (the failing check result, when a fix pass ran) and `fallback`. Its `runs` are in this order: `planner`,
 the first wave's `worker` runs (`coder`/`reviewer` runs with a reviewer), then per replan round the
-`planner` and its workers, then `integrator`.
+`planner` and its workers, then `integrator`. In `failures`, a subtask's entries carry its `subtask`
+number, and with a reviewer the review loop's `attempt`; a failed replan carries its `round`.
 
 ## Checks
 

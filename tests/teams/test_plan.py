@@ -688,8 +688,33 @@ def test_a_reviewer_that_fails_is_recorded_against_its_subtask_and_the_patch_is_
     assert "w1 v1" in result.patch and "w2 v1" in result.patch
     assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "applied"]
     failures = result.meta["failures"]
-    assert sorted((f["subtask"], f["role"], f["round"]) for f in failures) == [(1, "reviewer", 1), (2, "reviewer", 1)]
-    assert all("reviewer down" in f["error"] for f in failures)
+    # the review loop's own round is its attempt: in a plan, `round` is the replan round
+    assert sorted((f["subtask"], f["role"], f["attempt"]) for f in failures) == [(1, "reviewer", 1), (2, "reviewer", 1)]
+    assert all("reviewer down" in f["error"] and "round" not in f for f in failures)
+
+
+def test_a_review_loop_that_crashes_after_paid_runs_still_reports_them(repo):
+    async def break_the_fork(call):
+        await write(call.workspace, "a.txt", "a\n")
+        os.remove(os.path.join(call.workspace.root, ".git"))  # the loop's diff of this fork now raises
+        return "done"
+
+    coder = FakeHarness(break_the_fork, name="w1")
+    reviewer = FakeHarness(None, name="reviewer")
+    team = PlanTeam(
+        planner_saying(plan_json("a", "b")),
+        [coder, worker_writing({"b.txt": "b\n"}, "w2")],
+        integrator=worker_writing({}, "integrator"),
+        replans=0,
+        reviewer=reviewer,
+        rounds=1,
+    )
+    result, _ = solve(team, repo)
+
+    assert [(r.role, r.harness) for r in result.runs][:2] == [("planner", "planner"), ("coder", "w1")]
+    first = result.meta["subtasks"][0]
+    assert first["status"] == "failed" and first["runs"] == [1]
+    assert any(f.get("subtask") == 1 and "Error" in f["error"] for f in result.meta["failures"])
 
 
 def test_a_reviewed_subtask_that_changes_nothing_is_replanned(repo):

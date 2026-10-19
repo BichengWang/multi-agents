@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
-from .types import HarnessRun, Workspace
+from .types import Harness, HarnessRun, Workspace
 
 
 class BudgetExceeded(RuntimeError):
@@ -101,7 +101,7 @@ class BudgetedHarness:
     still cost money); an exception from the inner harness propagates and charges nothing.
     """
 
-    def __init__(self, inner: Any, budget: Budget) -> None:
+    def __init__(self, inner: Harness, budget: Budget) -> None:
         self.inner = inner
         self.budget = budget
 
@@ -118,7 +118,8 @@ class BudgetedHarness:
         return getattr(self.inner, "supports_output_schema", False)
 
     async def run(self, workspace: Workspace, prompt: str, **kwargs: Any) -> HarnessRun:
-        self.budget.admit(self.name, kwargs.get("role", "worker"))
+        label = f"{self.name}@{self.model}" if self.model else self.name
+        self.budget.admit(label, kwargs.get("role", "worker"))
         run = await self.inner.run(workspace, prompt, **kwargs)
         self.budget.charge(run)
         return run
