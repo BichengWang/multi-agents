@@ -3,6 +3,18 @@ name = "multi-agents"
 version = "0.1.0"
 description = "Multi-agent teams for real work: run teams of coding agents and measure them against solo agents"
 requires-python = ">=3.10"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "BichengWang" }]
+keywords = ["agents", "multi-agent", "coding-agents", "benchmark", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development",
+]
 dependencies = [
     "openai-agents==0.23.1",
     "pydantic>=2.0.0",
@@ -11,6 +23,10 @@ dependencies = [
 
 [project.scripts]
 multi-agents = "agent.teams.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/BichengWang/multi-agents"
+Issues = "https://github.com/BichengWang/multi-agents/issues"
 
 [project.optional-dependencies]
 # Fresh-task benchmark (agent.bench): Modal sandboxes plus the public parquet dataset download.
