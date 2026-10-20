@@ -73,7 +73,7 @@ outside your repository (`~/.cache/multi-agents/runs/`).
 `H` is `claude`, `codex` or `sdk`, optionally with `@model`, for example `claude@haiku`,
 `codex@gpt-6-luna` or `sdk@litellm/openrouter/<model>`. `check` (the `--check` command) can be the
 reviewer or the judge: a test-driven loop with no LLM reviewer. Details:
-[team runner guide](agent/teams/README.md).
+[team runner guide](https://github.com/BichengWang/multi-agents/blob/main/agent/teams/README.md).
 
 ```mermaid
 flowchart LR
@@ -141,7 +141,8 @@ pair that pairs the other CLI with the one you are in):
 
 In Codex, ask for the skill by name, for example `Use $multi-agents:multi-agents to make the tests
 pass`. Either way the agent runs the published CLI, shows you the summary and the patch, and applies
-it only after you say so. The skill is in [`plugins/multi-agents`](plugins/multi-agents).
+it only after you say so. The skill is in
+[`plugins/multi-agents`](https://github.com/BichengWang/multi-agents/tree/main/plugins/multi-agents).
 
 ## Safety and cost
 
@@ -173,7 +174,8 @@ uv sync --locked --extra bench
 python -m agent.bench tasks --since 2026-07-01 --limit 5 --seed 7    # no credentials needed
 ```
 
-Setup, methodology, cost estimates and limitations: [benchmark guide](agent/bench/README.md).
+Setup, methodology, cost estimates and limitations:
+[benchmark guide](https://github.com/BichengWang/multi-agents/blob/main/agent/bench/README.md).
 First results will be published here.
 
 ## Status
@@ -187,7 +189,7 @@ First results will be published here.
 | Benchmark | Built and tested offline; the Modal path has not run live yet |
 | Results | Pending the first pilot run |
 
-Plans are in [docs/ROADMAP.md](docs/ROADMAP.md).
+Plans are in [docs/ROADMAP.md](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md).
 
 ## Development
 
@@ -198,9 +200,10 @@ make check    # also the GitHub workflow and attribution tests (Node.js 22+)
 ```
 
 Reusable orchestration patterns (`RefineLoop`, `BestOfN`, `SequentialWorkflow`, `Router`) are in
-[`agent/workflows`](agent/workflows/README.md). Pre-pivot experiments are in this repository's history
-at the [`pre-pivot`](https://github.com/BichengWang/multi-agents/tree/pre-pivot) tag.
+[`agent/workflows`](https://github.com/BichengWang/multi-agents/blob/main/agent/workflows/README.md).
+Pre-pivot experiments are in this repository's history at the
+[`pre-pivot`](https://github.com/BichengWang/multi-agents/tree/pre-pivot) tag.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/BichengWang/multi-agents/blob/main/LICENSE)
