@@ -1,5 +1,6 @@
 [project]
-name = "multi-agents"
+# PyPI rejects "multi-agents" as too similar to the existing "multiagents"; the command stays multi-agents.
+name = "multi-agent"
 version = "0.1.0"
 description = "Multi-agent teams for real work: run teams of coding agents and measure them against solo agents"
 requires-python = ">=3.10"
@@ -12,7 +13,11 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Software Development",
 ]
 dependencies = [
@@ -52,6 +57,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent"]
+
+# The sdist carries the package only; tests, docs, CI and plugin files live in the repository.
+[tool.hatch.build.targets.sdist]
+only-include = ["agent"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

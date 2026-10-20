@@ -28,3 +28,18 @@ jobs:
           uv sync --locked --extra dev
       - name: Run lint and offline tests
         run: make test
+
+  # The release builds the same way; catch packaging and README rendering breaks on the PR.
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build, check the metadata and run the installed CLI
+        run: |
+          python -m pip install uv
+          uv build
+          uvx twine check --strict dist/*
+          uvx --from dist/*.whl multi-agents --help
