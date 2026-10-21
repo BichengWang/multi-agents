@@ -99,6 +99,8 @@ def test_specs_shown_in_the_skill_are_valid():
         build_team(spec, check="true")
 
 
-def test_skill_names_the_published_cli_command():
-    text = SKILL.read_text(encoding="utf-8")
-    assert "uvx --from git+https://github.com/BichengWang/multi-agents multi-agents run" in text
+def test_command_allows_the_cli_invocation_the_skill_runs():
+    # A mismatch makes Claude Code ask for (or deny) the exact command the skill tells it to run.
+    allowed = re.search(r"Bash\((uvx [^:]+):\*\)", frontmatter(COMMAND)["allowed-tools"])
+    assert allowed, "the command does not allow a uvx invocation"
+    assert f"{allowed.group(1)} \\\n" in SKILL.read_text(encoding="utf-8")

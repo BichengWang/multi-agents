@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "multi-agents",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Hand a coding task to a team of coding agents (Claude Code, Codex) in isolated git worktrees and review the patch they return.",
   "author": {
     "name": "BichengWang",

@@ -33,9 +33,11 @@ paired comparisons and cost.
 
 Requirements: Python 3.10+, [uv](https://docs.astral.sh/uv/), git, and at least one logged-in
 coding CLI (`claude` or `codex`). CLI harnesses use your existing login; no API keys needed.
+The package is `multi-agent` on PyPI and the command is `multi-agents`: run it with `uvx` as below,
+or keep it installed with `uv tool install multi-agent` (or `pipx install multi-agent`).
 
 ```bash
-uvx --from git+https://github.com/BichengWang/multi-agents multi-agents run \
+uvx --from multi-agent multi-agents run \
   --repo ~/code/myproject \
   --team 'best:workers=claude@haiku+codex@gpt-6-luna' \
   "Make the tests in test_slug.py pass without editing the tests."
