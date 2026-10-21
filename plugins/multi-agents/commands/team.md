@@ -1,7 +1,7 @@
 ---
 description: Hand a task to a team of coding agents and review the patch they return
 argument-hint: "[spec] <task>"
-allowed-tools: Bash(uvx --from git+https://github.com/BichengWang/multi-agents multi-agents run:*), Bash(git status:*), Bash(command -v:*), Read
+allowed-tools: Bash(uvx --from multi-agent@latest multi-agents run:*), Bash(git status:*), Bash(command -v:*), Read
 ---
 
 Run a team of coding agents on this task, following the `multi-agents` skill from this plugin

@@ -3,11 +3,12 @@ name: Publish to PyPI
 # Trusted publishing: PyPI accepts the upload from this workflow file in the `pypi` environment
 # through OpenID Connect, so no API token is stored in the repository.
 #
-# One-time setup: on PyPI, add a pending trusted publisher for the project name in pyproject.toml
-# (owner BichengWang, repository multi-agents, workflow publish.yml, environment pypi).
+# PyPI project `multi-agent` trusts this workflow (owner BichengWang, repository multi-agents,
+# workflow publish.yml, environment pypi); the `pypi` environment only deploys `v*` tags.
 #
 # Release: bump `version` in pyproject.toml, run `uv lock`, merge, then publish a GitHub release
-# tagged `v<version>`.
+# tagged `v<version>`. The plugin runs `multi-agent@latest` from PyPI, not main: release before
+# the plugin's skill relies on a new flag.
 on:
   release:
     types: [published]

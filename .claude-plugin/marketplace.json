@@ -10,7 +10,7 @@
       "name": "multi-agents",
       "source": "./plugins/multi-agents",
       "description": "Hand a coding task to a team of coding agents (Claude Code, Codex) in isolated git worktrees and review the patch they return.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "development",
       "tags": ["multi-agent", "teams", "code-review"]
     }

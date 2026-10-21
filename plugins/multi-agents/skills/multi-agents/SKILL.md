@@ -78,7 +78,7 @@ Run it from the repository the task is about, with the shell tool. Quote the tas
 task in it, since the workers do not see this conversation:
 
 ```bash
-uvx --from git+https://github.com/BichengWang/multi-agents multi-agents run \
+uvx --from multi-agent@latest multi-agents run \
   --repo . --timeout 600 --team '<spec>' '<task>'
 ```
 
