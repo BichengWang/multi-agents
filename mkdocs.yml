@@ -1,0 +1,57 @@
+site_name: multi-agents
+site_description: Run teams of coding agents and measure them against solo agents on cost and results.
+site_url: https://bichengwang.github.io/multi-agents/
+repo_url: https://github.com/BichengWang/multi-agents
+repo_name: BichengWang/multi-agents
+edit_uri: ""
+
+docs_dir: docs
+exclude_docs: |
+  hooks.py
+  __pycache__/
+hooks:
+  - docs/hooks.py
+
+nav:
+  - Overview: index.md
+  - Team runner: teams.md
+  - Benchmark: bench.md
+  - Roadmap: ROADMAP.md
+  - Agent-company survey: agent-company-survey.md
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+validation:
+  links:
+    not_found: warn
+    anchors: warn

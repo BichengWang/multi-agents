@@ -1,0 +1,59 @@
+name: Docs site
+
+# Builds mkdocs.yml (README, package guides and docs/) and deploys it to GitHub Pages from main:
+# https://bichengwang.github.io/multi-agents/. Pull requests only build, with --strict, so a
+# broken page or link fails before merge. Pages source is "GitHub Actions" (build_type=workflow).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "agent/**/README.md"
+      - "mkdocs.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A deployment in progress is never cancelled; superseded PR builds are.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build the site
+        env:
+          UV_PYTHON: "3.11"
+        run: |
+          python -m pip install uv
+          uv run --locked --only-group docs mkdocs build --strict
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
