@@ -1,8 +1,9 @@
-"""Modal Sandbox implementation of the ``Workspace`` contract.
+"""Sandbox implementation of the ``Workspace`` contract, on Modal or a local Docker daemon.
 
 Agent workspaces run in the instance's own Docker image (the exact environment the dataset's tests
 were validated in) extended with a pinned Node.js and the ``claude`` / ``codex`` CLIs. API keys come
-from a Modal Secret. Grading uses the plain instance image with no CLIs and no secrets.
+from a Modal Secret (``ModalBackend``) or the host environment (``DockerBackend`` in
+``docker_backend.py``). Grading uses the plain instance image with no CLIs and no secrets.
 
 Semantics match ``agent.teams.worktree.LocalWorktree``:
 
@@ -16,8 +17,8 @@ The baseline for ``diff`` is a tree object captured right after the sandbox star
 instance images carry build output and sometimes tracked-file changes from environment setup, and
 those must not show up in the agent's patch.
 
-Nothing here is executed against Modal in the offline test-suite; the tests drive the same code
-through a fake Modal client that runs commands in a local temporary git repository.
+Nothing here is executed against Modal or Docker in the offline test-suite; the tests drive the
+same code through a fake Modal client that runs commands in a local temporary git repository.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ import shlex
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, Protocol
 
 from agent.teams.types import GENERATED_FILES, ExecResult
 
@@ -231,6 +232,28 @@ def load_modal() -> Any:
         raise SandboxError("modal is not installed: uv sync --extra bench") from exc
 
 
+class SandboxBackend(Protocol):
+    """Starts sandboxes from instance images. The sandbox object's ``exec`` returns a process with
+    ``stdin.write/write_eof/drain``, ``stdout.read``, ``stderr.read`` and ``wait`` (``-1`` when
+    the backend killed it at the deadline), and ``terminate`` stops it: Modal's interface."""
+
+    config: SandboxConfig
+    redactor: Redactor
+
+    async def create_sandbox(self, tag: str, *, agent: bool) -> Any: ...
+
+
+def make_backend(kind: str, config: SandboxConfig) -> SandboxBackend:
+    """``modal`` or ``docker``. Construction checks credentials, before any task starts."""
+    if kind == "modal":
+        return ModalBackend(config)
+    if kind == "docker":
+        from .docker_backend import DockerBackend
+
+        return DockerBackend(config)
+    raise ValueError(f"unknown sandbox backend {kind!r}; use modal or docker")
+
+
 class ModalBackend:
     """Owns the Modal app, secret and image definitions shared by all sandboxes of a run."""
 
@@ -297,14 +320,14 @@ def _is_exec_timeout(exc: BaseException) -> bool:
     }
 
 
-class ModalSandboxWorkspace:
-    """A ``Workspace`` backed by one Modal Sandbox created from an instance image."""
+class SandboxWorkspace:
+    """A ``Workspace`` backed by one sandbox started from an instance image."""
 
     def __init__(
         self,
         sandbox: Any,
         *,
-        backend: ModalBackend,
+        backend: SandboxBackend,
         image_tag: str,
         agent: bool,
         root: str,
@@ -329,19 +352,18 @@ class ModalSandboxWorkspace:
         cls,
         image_tag: str,
         *,
-        backend: Optional[ModalBackend] = None,
+        backend: SandboxBackend,
         agent: bool = True,
         expected_commit: Optional[str] = None,
-    ) -> ModalSandboxWorkspace:
+    ) -> SandboxWorkspace:
         """Start a sandbox from ``image_tag``.
 
-        ``agent=True`` adds the pinned CLIs and the API-key secret, finds the git root, strips git
+        ``agent=True`` adds the pinned CLIs and the API keys, finds the git root, strips git
         history (per config), verifies the checkout is ``expected_commit`` and records the
         baseline for ``diff``. ``agent=False`` is the grader: the unmodified instance image, no
         secrets, no setup; ``exec`` runs in ``/testbed`` and the evaluation script locates the
         repository itself, as upstream does.
         """
-        backend = backend or ModalBackend()
         sandbox = await backend.create_sandbox(image_tag, agent=agent)
         if not agent:
             return cls(
@@ -420,8 +442,9 @@ class ModalSandboxWorkspace:
             )
             if stdin is not None:
                 proc.stdin.write(stdin)
-                proc.stdin.write_eof()
-                await _call(proc.stdin.drain)
+            # No input means EOF, as in a local worktree: a CLI that reads stdin must not hang.
+            proc.stdin.write_eof()
+            await _call(proc.stdin.drain)
             # Modal enforces `timeout` remotely; the client-side bound only covers a stuck stream.
             out, err, code = await asyncio.wait_for(
                 asyncio.gather(
@@ -496,7 +519,7 @@ class ModalSandboxWorkspace:
         if code != 0:
             raise SandboxError(f"git apply failed ({code}): {err.decode('utf-8', 'replace').strip()}")
 
-    async def fork(self) -> ModalSandboxWorkspace:
+    async def fork(self) -> SandboxWorkspace:
         return await self.create(
             self.image_tag,
             backend=self._backend,
@@ -522,7 +545,7 @@ class ModalSandboxWorkspace:
             stacklevel=2,
         )
 
-    async def __aenter__(self) -> ModalSandboxWorkspace:
+    async def __aenter__(self) -> SandboxWorkspace:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

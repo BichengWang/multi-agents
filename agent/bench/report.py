@@ -253,6 +253,9 @@ def render(summary: Summary) -> str:
             bits.append(f"tasks created since {meta['since']}")
         if meta.get("seed") is not None:
             bits.append(f"seed {meta['seed']}")
+        if meta.get("backend"):
+            # Wall time depends on it (a local daemon may emulate amd64).
+            bits.append(f"{meta['backend']} sandboxes")
         if bits:
             lines += [", ".join(bits), ""]
     lines.append(

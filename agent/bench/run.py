@@ -41,7 +41,7 @@ from agent.workflows.concurrency import map_concurrently
 from .dataset import SOURCES, BenchTask
 from .evaluate import EvalResult, evaluate_patch
 from .redact import Redactor
-from .sandbox import ModalBackend, ModalSandboxWorkspace, SandboxConfig
+from .sandbox import ModalBackend, SandboxBackend, SandboxWorkspace
 
 RESULTS_FILE = "results.jsonl"
 META_FILE = "meta.json"
@@ -99,7 +99,7 @@ def default_unpriced(spec: str) -> list[str]:
 def required_secret_keys(
     specs: Sequence[str], harnesses: Callable[[str], list[str]] = harness_specs
 ) -> tuple[str, ...]:
-    """Keys the Modal Secret must hold for the CLIs that run *inside* the sandbox.
+    """Keys the agent sandbox needs for the CLIs that run *inside* it (Modal Secret or host env).
 
     ``codex exec`` without a saved login authenticates only with ``CODEX_API_KEY``; it ignores
     ``OPENAI_API_KEY``. ``sdk`` harnesses make their model calls from the host process, so their
@@ -293,7 +293,7 @@ async def run_benchmark(
     unpriced_fn: UnpricedFn = default_unpriced,
     log: Callable[[str], None] = print,
     run_meta: Optional[dict[str, Any]] = None,
-    sandbox_config: Optional[SandboxConfig] = None,
+    backend: Optional[SandboxBackend] = None,
     redactor: Optional[Redactor] = None,
 ) -> RunSummary:
     out = Path(out_dir)
@@ -318,12 +318,12 @@ async def run_benchmark(
         names[spec] = name
 
     if workspace_factory is None or evaluator is None:
-        backend = ModalBackend(sandbox_config)
+        backend = backend or ModalBackend()
         redactor = redactor or backend.redactor
         if workspace_factory is None:
 
             async def workspace_factory(task: BenchTask) -> Workspace:  # noqa: F811
-                return await ModalSandboxWorkspace.create(
+                return await SandboxWorkspace.create(
                     task.image, backend=backend, agent=True, expected_commit=task.base_commit
                 )
 
@@ -535,7 +535,7 @@ async def validate_gold(
     concurrency: int = 4,
     evaluator: Optional[Evaluator] = None,
     log: Callable[[str], None] = print,
-    sandbox_config: Optional[SandboxConfig] = None,
+    backend: Optional[SandboxBackend] = None,
 ) -> list[str]:
     """Grade each task's reference patch; return ids where it resolves.
 
@@ -548,7 +548,7 @@ async def validate_gold(
     path = out / GOLD_FILE
     done = {r["task_id"]: r for r in load_records(path)}
     if evaluator is None:
-        backend = ModalBackend(sandbox_config)
+        backend = backend or ModalBackend()
 
         async def evaluator(task: BenchTask, patch: str) -> EvalResult:  # noqa: F811
             return await evaluate_patch(task, patch, backend=backend)

@@ -21,7 +21,7 @@ from .run import (
     run_benchmark,
     validate_gold,
 )
-from .sandbox import SECRET_HELP, SandboxConfig
+from .sandbox import SECRET_HELP, SandboxBackend, SandboxConfig, SandboxError, make_backend
 
 
 def _add_task_filters(p: argparse.ArgumentParser) -> None:
@@ -46,6 +46,13 @@ def _add_task_filters(p: argparse.ArgumentParser) -> None:
 
 
 def _add_sandbox_options(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--backend",
+        choices=("modal", "docker"),
+        default="modal",
+        help="where sandboxes run: Modal, or the local Docker daemon with API keys from your "
+        "environment (default: %(default)s)",
+    )
     p.add_argument("--app-name", default=SandboxConfig.app_name, help="Modal app (default: %(default)s)")
     p.add_argument(
         "--secret",
@@ -54,9 +61,10 @@ def _add_sandbox_options(p: argparse.ArgumentParser) -> None:
     )
     p.add_argument(
         "--registry-secret",
-        help="Modal Secret with REGISTRY_USERNAME/REGISTRY_PASSWORD for Docker Hub pulls",
+        help="Modal Secret with REGISTRY_USERNAME/REGISTRY_PASSWORD for Docker Hub pulls "
+        "(docker backend: use `docker login`)",
     )
-    p.add_argument("--add-python", help="Python series to inject into images without Python")
+    p.add_argument("--add-python", help="Modal only: Python series to inject into images without Python")
     p.add_argument("--concurrency", type=int, default=4, help="parallel pairs (default: %(default)s)")
 
 
@@ -68,12 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
     _add_task_filters(tasks)
     tasks.add_argument("--json", action="store_true", help="one JSON object per line")
 
-    gold = sub.add_parser("gold", help="check which tasks' reference patch still resolves (Modal)")
+    gold = sub.add_parser("gold", help="check which tasks' reference patch still resolves (sandboxes)")
     _add_task_filters(gold)
     _add_sandbox_options(gold)
     gold.add_argument("--out", required=True, help="directory; writes gold.jsonl")
 
-    run = sub.add_parser("run", help="run team specs on fresh tasks and grade them (Modal)")
+    run = sub.add_parser("run", help="run team specs on fresh tasks and grade them (sandboxes)")
     _add_task_filters(run)
     _add_sandbox_options(run)
     run.add_argument("--team", action="append", required=True, help="team spec; repeatable")
@@ -146,9 +154,11 @@ def _select(args: argparse.Namespace) -> list[BenchTask]:
     return tasks
 
 
-def _sandbox_config(args: argparse.Namespace, teams: Sequence[str] = ()) -> SandboxConfig:
+def _backend(args: argparse.Namespace, teams: Sequence[str] = ()) -> SandboxBackend:
+    if args.backend == "docker" and (args.registry_secret or args.add_python):
+        raise ValueError("--registry-secret and --add-python apply to the modal backend only")
     keys = required_secret_keys(teams) if teams else ()
-    return SandboxConfig(
+    config = SandboxConfig(
         app_name=args.app_name,
         secret_name=args.secret,
         secret_keys=keys,
@@ -157,6 +167,7 @@ def _sandbox_config(args: argparse.Namespace, teams: Sequence[str] = ()) -> Sand
         isolate_history=not getattr(args, "keep_history", False),
         check_base_commit=not getattr(args, "no_check_base_commit", False),
     )
+    return make_backend(args.backend, config)
 
 
 def _cmd_tasks(args: argparse.Namespace) -> int:
@@ -187,9 +198,7 @@ def _cmd_gold(args: argparse.Namespace) -> int:
     args.gold_file = None  # validating gold must not depend on a previous gold file
     tasks = _select(args)
     valid = asyncio.run(
-        validate_gold(
-            tasks, args.out, concurrency=args.concurrency, sandbox_config=_sandbox_config(args)
-        )
+        validate_gold(tasks, args.out, concurrency=args.concurrency, backend=_backend(args))
     )
     print(f"{len(valid)}/{len(tasks)} tasks valid; see {Path(args.out) / GOLD_FILE}")
     return 0
@@ -201,6 +210,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print("no tasks match the filters", file=sys.stderr)
         return 2
     print(f"{len(tasks)} task(s) x {len(args.team)} team(s)", file=sys.stderr)
+    backend = _backend(args, args.team)
     try:
         summary = asyncio.run(
             run_benchmark(
@@ -212,8 +222,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 allow_unpriced=args.allow_unpriced,
                 solve_timeout_s=args.solve_timeout,
                 retry_errors=not args.no_retry_errors,
-                sandbox_config=_sandbox_config(args, args.team),
+                backend=backend,
                 run_meta={
+                    "backend": args.backend,
                     "dataset": args.dataset,
                     "since": args.since,
                     "until": args.until,
@@ -274,6 +285,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "run": _cmd_run,
             "report": _cmd_report,
         }[args.command](args)
-    except ValueError as exc:
+    except (ValueError, SandboxError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
