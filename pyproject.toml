@@ -31,6 +31,7 @@ multi-agents = "agent.teams.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/BichengWang/multi-agents"
+Documentation = "https://bichengwang.github.io/multi-agents/"
 Issues = "https://github.com/BichengWang/multi-agents/issues"
 
 [project.optional-dependencies]
@@ -49,6 +50,12 @@ dev = [
     "ruff==0.15.8",
     # Parquet loader tests; the Modal and Hugging Face clients are faked offline.
     "pyarrow>=17",
+]
+
+[dependency-groups]
+# Documentation site (mkdocs.yml); not part of the package.
+docs = [
+    "mkdocs-material==9.7.7",
 ]
 
 [build-system]

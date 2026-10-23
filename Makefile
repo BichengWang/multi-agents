@@ -21,6 +21,7 @@ help:
 	@echo "  test-ci      - Run offline GitHub workflow and attribution tests (Node.js)"
 	@echo "  check        - Run all offline quality checks"
 	@echo "  test-workflows - Run offline multi-agent workflow tests (no API keys)"
+	@echo "  docs         - Build the docs site with --strict (DOCS=serve to preview locally)"
 	@echo "  clean        - Clean up generated files"
 	@echo "Use FILE_NAME and TEST_NAME to select Python tests; PYTEST_ARGS defaults to -q."
 
@@ -73,6 +74,11 @@ check: test test-ci
 .PHONY: test-workflows
 test-workflows:
 	$(RUN) python -m pytest tests/workflows $(PYTEST_ARGS)
+
+DOCS ?= build --strict
+.PHONY: docs
+docs:
+	$(UV) run --locked --only-group docs mkdocs $(DOCS)
 
 .PHONY: all_test
 all_test: test

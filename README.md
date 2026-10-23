@@ -192,6 +192,8 @@ First results will be published here.
 | Results | Pending the first pilot run |
 
 Plans are in [docs/ROADMAP.md](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md).
+The README, the team runner and benchmark guides, the roadmap and the survey are also published as
+a site: [bichengwang.github.io/multi-agents](https://bichengwang.github.io/multi-agents/).
 
 ## Development
 
@@ -199,6 +201,7 @@ Plans are in [docs/ROADMAP.md](https://github.com/BichengWang/multi-agents/blob/
 uv sync --locked --extra dev
 make test     # ruff + offline tests, no API keys needed
 make check    # also the GitHub workflow and attribution tests (Node.js 22+)
+make docs     # build the docs site with --strict (DOCS=serve to preview it locally)
 ```
 
 Reusable orchestration patterns (`RefineLoop`, `BestOfN`, `SequentialWorkflow`, `Router`) are in
