@@ -54,7 +54,8 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 2. **Team runner** (done) — harness adapters for external coding CLIs and a built-in any-model SDK
    agent; local worktree workspaces; `solo`, `review` and `best` teams; CLI; run records with cost.
 3. **Benchmark** (built; first live run pending) — fresh-task dataset filtered by creation date;
-   remote sandboxes; hidden-test evaluation; report with resolve rate, cost, wall time and
+   remote Modal sandboxes or a local Docker daemon (`--backend docker`, live-tested on gold
+   validation); hidden-test evaluation; report with resolve rate, cost, wall time and
    confidence intervals.
 4. **Pilot results** — 50 fresh tasks × solo and team configurations; publish the table and raw
    trajectories.
@@ -64,8 +65,8 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 
 ## Past stage: teams that finish real work (done)
 
-While the pilot (milestone 4) waits on Modal and API credentials, the runner gained end-to-end
-work features, all merged and smoke-tested with real CLIs:
+While the pilot (milestone 4) waits on API credentials (Modal is now optional), the runner gained
+end-to-end work features, all merged and smoke-tested with real CLIs:
 
 1. **Objective checks** — `--check CMD` runs a command (tests, build, lint) against the final
    patch in a fork and records pass/fail. `check` can be the reviewer (a test-driven loop with no

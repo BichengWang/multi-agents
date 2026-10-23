@@ -165,8 +165,9 @@ it only after you say so. The skill is in
 
 The benchmark runs team specs against solo agents on GitHub issues opened after the models'
 training cutoffs ([SWE-bench-Live MultiLang](https://huggingface.co/datasets/SWE-bench-Live/MultiLang):
-Rust, Java, Go, C/C++, C#, JS/TS), each in a fresh Modal sandbox with git history stripped. Patches
-are graded with the dataset's official hidden tests. The report gives resolve rate with 95%
+Rust, Java, Go, C/C++, C#, JS/TS), each in a fresh sandbox (Modal, or `--backend docker` on your
+own Docker daemon) with git history stripped. Patches are graded with the dataset's official
+hidden tests. The report gives resolve rate with 95%
 confidence intervals, paired wins and losses against the solo baseline on the same tasks (exact
 McNemar test), cost per task and per resolved task, and wall time. Timeouts are graded rather than
 dropped, so slow teams cannot shrink the comparison to the easy tasks.
@@ -188,7 +189,7 @@ First results will be published here.
 | `--check`, `--issue`, `--pr`, plugins for both CLIs | Working; smoke-tested end to end |
 | `--max-cost` run budget; `plan` re-planning (`replans`) and per-subtask review (`reviewer`) | Working; smoke-tested with real CLIs |
 | SDK harness (any model) | Implemented and tested offline; not yet run against a live model |
-| Benchmark | Built and tested offline; the Modal path has not run live yet |
+| Benchmark | Built and tested offline; local Docker grading and agent workspaces run live, a team solve and the Modal path not yet |
 | Results | Pending the first pilot run |
 
 Plans are in [docs/ROADMAP.md](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md).

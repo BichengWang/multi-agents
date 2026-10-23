@@ -3,9 +3,9 @@
 Ported (not re-invented) from ``evaluation/evaluation.py`` in microsoft/SWE-bench-Live at commit
 ``62d02936a0726fbf4597b05bd07b09fb99eddae6`` and the ``apply_patch`` / ``run_parser`` helpers of
 microsoft/RepoLaunch at ``099857f37e87e7bf09a2baa1c78809518c485c53`` (both MIT). The official script
-drives a local Docker daemon through RepoLaunch, which is not available in a Modal sandbox, so the
-container steps are reproduced inside a Modal sandbox started from the same instance image; the
-logic that decides the outcome is the same:
+drives a Docker daemon through RepoLaunch; here the container steps run through the sandbox backend
+(a Modal sandbox or a local Docker container started from the same instance image), and the logic
+that decides the outcome is the same:
 
 1. apply ``test_patch``, then the candidate patch, with ``git apply --reject --whitespace=nowarn``
    (a failed apply does not stop the run, exactly as upstream);
@@ -35,7 +35,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from .dataset import BenchTask, GradingSpec
-from .sandbox import ModalBackend, ModalSandboxWorkspace, SandboxExecTimeout
+from .sandbox import SandboxBackend, SandboxExecTimeout, SandboxWorkspace
 
 # Upstream per-command timeout is 150 minutes.
 TEST_TIMEOUT_S = 150 * 60
@@ -244,7 +244,7 @@ async def evaluate_patch(
     task: BenchTask,
     patch: str,
     *,
-    backend: Optional[ModalBackend] = None,
+    backend: SandboxBackend,
     timeout_s: float = TEST_TIMEOUT_S,
 ) -> EvalResult:
     """Grade ``patch`` against ``task``'s hidden tests in a fresh sandbox of the instance image."""
@@ -254,7 +254,7 @@ async def evaluate_patch(
     spec = task.grading
     loop = asyncio.get_running_loop()
     started = loop.time()
-    workspace = await ModalSandboxWorkspace.create(task.image, backend=backend, agent=False)
+    workspace = await SandboxWorkspace.create(task.image, backend=backend, agent=False)
     try:
         for path, content in (("/tmp/bench-test.diff", spec.test_patch), ("/tmp/bench-pred.diff", patch)):
             written = await workspace.exec(

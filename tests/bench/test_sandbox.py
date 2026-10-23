@@ -7,7 +7,7 @@ from agent.bench.sandbox import (
     CODEX_VERSION,
     NODE_VERSION,
     ModalBackend,
-    ModalSandboxWorkspace,
+    SandboxWorkspace,
     SandboxConfig,
     SandboxError,
     SandboxExecTimeout,
@@ -40,7 +40,7 @@ def test_workspace_satisfies_the_contract_and_diff_has_local_worktree_semantics(
     modal, backend, base, _ = prepare(tmp_path)
 
     async def scenario():
-        ws = await ModalSandboxWorkspace.create("img:1", backend=backend)
+        ws = await SandboxWorkspace.create("img:1", backend=backend)
         assert isinstance(ws, Workspace)
         assert ws.head == base
         # Leftovers from the image build are part of the baseline, not of the agent's patch.
@@ -90,7 +90,7 @@ def test_exec_merges_env_pipes_stdin_returns_exit_codes_and_maps_timeouts(tmp_pa
     _, backend, _, _ = prepare(tmp_path)
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=backend) as ws:
             out = await ws.exec(["sh", "-c", "echo $FOO $IS_SANDBOX"], env={"FOO": "bar"})
             assert out.stdout == "bar 1\n"  # per-call env over the sandbox env
             echoed = await ws.exec(["cat"], stdin="héllo wörld\n" * 1000)
@@ -110,8 +110,8 @@ def test_agent_and_grader_sandboxes_are_configured_differently(tmp_path):
     modal, backend, _, _ = prepare(tmp_path, config=config)
 
     async def scenario():
-        agent = await ModalSandboxWorkspace.create("img:1", backend=backend)
-        grader = await ModalSandboxWorkspace.create("img:1", backend=backend, agent=False)
+        agent = await SandboxWorkspace.create("img:1", backend=backend)
+        grader = await SandboxWorkspace.create("img:1", backend=backend, agent=False)
         await agent.close()
         await grader.close()
 
@@ -150,12 +150,12 @@ def test_git_history_is_stripped_so_the_fix_cannot_be_read(tmp_path):
         return log.split(), tags.split(), branches.split(), has_fix
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=backend) as ws:
             log, tags, branches, has_fix = await history(ws)
             assert log == [base] and tags == [] and not has_fix
             assert [b for b in branches if "fix" in b] == []
             assert await ws.diff() == ""  # still a working baseline after the gc
-        async with await ModalSandboxWorkspace.create("img:1", backend=keep) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=keep) as ws:
             log, tags, _, has_fix = await history(ws)
             assert fix in log and tags == ["v2"] and has_fix
 
@@ -170,7 +170,7 @@ def test_repository_nested_below_testbed_is_found(tmp_path):
     backend = ModalBackend(SandboxConfig(), modal=modal)
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=backend) as ws:
             assert ws.root.endswith("/project")
             await sh(ws, "echo 2 >> a.txt")
             assert "+2" in await ws.diff()
@@ -187,7 +187,7 @@ def test_failed_setup_terminates_the_sandbox(tmp_path):
     backend = ModalBackend(SandboxConfig(), modal=modal)
 
     with pytest.raises(SandboxError):
-        run(ModalSandboxWorkspace.create("img:1", backend=backend))
+        run(SandboxWorkspace.create("img:1", backend=backend))
     assert len(modal.sandboxes) == 1 and modal.sandboxes[0].terminated
 
 
@@ -207,7 +207,7 @@ def test_files_untracked_in_the_image_are_not_attributed_to_the_agent(tmp_path):
     _, backend, _, _ = prepare(tmp_path)
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=backend) as ws:
             await sh(ws, "echo churn >> build/out.bin && rm leftover.txt")
             await sh(ws, "mkdir -p src && echo fresh > src/new.c")
             patch = await ws.diff()
@@ -224,7 +224,7 @@ def test_new_python_bytecode_is_not_part_of_the_patch(tmp_path):
     _, backend, _, _ = prepare(tmp_path)
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=backend) as ws:
             await sh(ws, "mkdir -p pkg/__pycache__ && echo b > pkg/__pycache__/mod.cpython-312.pyc")
             await sh(ws, "echo b > stray.pyc && echo 'X = 2' > pkg/mod.py")
             patch = await ws.diff()
@@ -238,7 +238,7 @@ def test_image_checkout_must_be_the_tasks_base_commit_and_is_recorded(tmp_path):
     modal, backend, base, _ = prepare(tmp_path)
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create(
+        async with await SandboxWorkspace.create(
             "img:1", backend=backend, expected_commit=base
         ) as ws:
             assert ws.head == base and ws.isolate_history is True
@@ -246,10 +246,10 @@ def test_image_checkout_must_be_the_tasks_base_commit_and_is_recorded(tmp_path):
             assert fork.expected_commit == base and fork.head == base
             await fork.close()
         with pytest.raises(SandboxError):
-            await ModalSandboxWorkspace.create("img:1", backend=backend, expected_commit="f" * 40)
+            await SandboxWorkspace.create("img:1", backend=backend, expected_commit="f" * 40)
         assert all(sb.terminated for sb in modal.sandboxes)
         lax = ModalBackend(SandboxConfig(check_base_commit=False), modal=modal)
-        async with await ModalSandboxWorkspace.create(
+        async with await SandboxWorkspace.create(
             "img:1", backend=lax, expected_commit="f" * 40
         ):
             pass
@@ -261,13 +261,13 @@ def test_close_retries_and_only_marks_closed_after_a_successful_terminate(tmp_pa
     modal, backend, _, _ = prepare(tmp_path)
 
     async def scenario():
-        ws = await ModalSandboxWorkspace.create("img:1", backend=backend)
+        ws = await SandboxWorkspace.create("img:1", backend=backend)
         sandbox = modal.sandboxes[0]
         sandbox.terminate_failures = 1  # transient: the built-in retry recovers
         await ws.close()
         assert sandbox.terminated and ws._closed
 
-        stuck = await ModalSandboxWorkspace.create("img:1", backend=backend)
+        stuck = await SandboxWorkspace.create("img:1", backend=backend)
         stuck_sb = modal.sandboxes[1]
         stuck_sb.terminate_failures = 10  # Modal is down for the whole close() call
         with pytest.warns(RuntimeWarning):
@@ -292,13 +292,13 @@ def test_failure_to_prune_history_fails_setup_instead_of_leaking_silently(tmp_pa
     )
     backend = ModalBackend(SandboxConfig(), modal=modal)
     with pytest.raises(SandboxError):
-        run(ModalSandboxWorkspace.create("img:1", backend=backend))
+        run(SandboxWorkspace.create("img:1", backend=backend))
     assert modal.sandboxes[0].terminated
     # Without isolation gc never runs and the same image works.
     keep = ModalBackend(SandboxConfig(isolate_history=False), modal=modal)
 
     async def ok():
-        async with await ModalSandboxWorkspace.create("img:1", backend=keep) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=keep) as ws:
             assert ws.isolate_history is False
 
     run(ok())
@@ -313,9 +313,9 @@ def test_secret_values_in_the_agent_sandbox_environment_are_registered_for_scrub
     backend.redactor = type(backend.redactor)(host_env=False)
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend):
+        async with await SandboxWorkspace.create("img:1", backend=backend):
             pass
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend, agent=False):
+        async with await SandboxWorkspace.create("img:1", backend=backend, agent=False):
             pass
 
     run(scenario())
@@ -327,7 +327,7 @@ def test_exit_codes_are_reported_and_only_modals_swallowed_timeout_becomes_a_tim
     _, backend, _, _ = prepare(tmp_path)
 
     async def scenario():
-        async with await ModalSandboxWorkspace.create("img:1", backend=backend) as ws:
+        async with await SandboxWorkspace.create("img:1", backend=backend) as ws:
             # A command that exits 137 quickly is an ordinary failure, not a timeout...
             killed = await ws.exec(["sh", "-c", "exit 137"], timeout=30)
             assert killed.exit_code == 137

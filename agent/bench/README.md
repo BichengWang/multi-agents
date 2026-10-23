@@ -2,13 +2,15 @@
 
 Runs team specs (`solo`, `review`, `best`, see [`docs/ROADMAP.md`](../../docs/ROADMAP.md)) on GitHub
 issues that were opened *after* the models' training cutoffs, grades the resulting patches with the
-dataset's official hidden-test logic in remote Modal sandboxes, and reports team-vs-solo results:
-resolve rate with confidence intervals, paired significance, cost and wall time.
+dataset's official hidden-test logic in sandboxes (remote Modal sandboxes or containers on your own
+Docker daemon), and reports team-vs-solo results: resolve rate with confidence intervals, paired
+significance, cost and wall time.
 
 ```text
-dataset.py   load + filter + seeded sample of tasks      sandbox.py   Modal Sandbox = Workspace
-evaluate.py  official grading in a fresh sandbox          run.py       task x team -> JSONL (resumable)
-report.py    Markdown report, Wilson / McNemar            cli.py       python -m agent.bench ...
+dataset.py   load + filter + seeded sample of tasks      sandbox.py   sandbox = Workspace; Modal backend
+evaluate.py  official grading in a fresh sandbox          docker_backend.py  local Docker backend
+run.py       task x team -> JSONL (resumable)             report.py    Markdown report, Wilson / McNemar
+cli.py       python -m agent.bench ...
 ```
 
 ## Dataset choice
@@ -73,11 +75,11 @@ Newest-task and per-month figures were measured on the pinned parquet files, not
 5. **Resolved** iff no `PASS_TO_PASS` test failed, no `FAIL_TO_PASS` test failed, and every
    `FAIL_TO_PASS` test passed. Status matching is upstream's: `"pass" in status.lower()` etc.
 
-Deviations, all forced by running on Modal instead of a local Docker daemon:
+Deviations, all forced by running in a sandbox backend instead of RepoLaunch:
 
 - Upstream drives containers through RepoLaunch's Docker runtime; we run the same commands via
-  Modal Sandbox exec. RepoLaunch itself (Python >= 3.12, LangChain stack, Docker SDK) is not
-  installed; grading needs none of it. The decision logic is a line-for-line port.
+  Modal Sandbox exec or `docker exec`. RepoLaunch itself (Python >= 3.12, LangChain stack, Docker
+  SDK) is not installed; grading needs none of it. The decision logic is a line-for-line port.
 - Parser scripts come from the dataset and are executed in an isolated Python subprocess on the
   host (`python -I`, empty environment, 120 s limit), not in the sandbox, because not every instance
   image has Python and because no API key may be reachable by dataset-supplied code.
@@ -125,13 +127,37 @@ uv run --extra bench modal secret create multi-agents-bench \
 - Each sandbox gets 2 Modal cores (= the dataset's recommended 4 CPUs) and 16 GB; a few large C++
   repositories need more (upstream mentions up to 50 GB).
 
+### Local Docker instead of Modal
+
+`--backend docker` (on `gold` and `run`) runs the same images, setup, diff and grading on your own
+Docker daemon; no Modal account is needed.
+
+```bash
+export ANTHROPIC_API_KEY=... CODEX_API_KEY=...       # only the keys your teams need
+python -m agent.bench gold --backend docker --since 2026-07-01 --limit 10 --out runs/gold-local
+```
+
+- API keys come from your environment: `run` names any missing key before starting. They are
+  passed into agent containers by name (not on the command line), never into grading containers.
+- Agent images are built once per instance image (`docker run` + `docker commit`, no builder plugin)
+  and kept as `multi-agents-bench-agent:<hash>`. Images are pulled with your `docker login`.
+- Containers get 4 CPUs and 16 GB as limits (`--cpus` / `--memory`), run `sleep` as PID 1 with
+  `--rm`, and carry the label `multi-agents-bench=1`. A timed-out command is killed with every
+  other process in its container (PID 1 excepted).
+- Instance images are `linux/amd64`. On Apple silicon run the daemon with Rosetta
+  (`colima start --vm-type vz --vz-rosetta`, which needs `softwareupdate --install-rosetta`);
+  under QEMU emulation builds are several times slower and timing-sensitive tests fail.
+  Validate gold on the machine you run teams on, and do not compare wall times across backends
+  (the report names the backend).
+- Disk: instance images are 1 to 5 GB each and agent images add about 1.3 GB.
+
 ## Commands
 
 ```bash
 # 1. No credentials needed: the seeded sample of fresh tasks (downloads the pinned parquet files).
 python -m agent.bench tasks --since 2026-07-01 --limit 50 --seed 7
 
-# 2. Keep only tasks whose gold patch still resolves (Modal, no model cost).
+# 2. Keep only tasks whose gold patch still resolves (sandboxes, no model cost).
 python -m agent.bench gold --since 2026-07-01 --out runs/gold --concurrency 8
 
 # 3. Run teams (resumable; re-run the same command to continue).
@@ -317,16 +343,19 @@ The four configurations together cost roughly **$1,156 to $1,462**.
 
 ## Limitations
 
-- **Not exercised live here.** The Modal sandbox, image build and grading paths are covered by
-  offline tests that drive the same code through a fake Modal client running commands in local
-  temporary git repositories (diff/apply/fork semantics, history stripping, grading order, parser
-  isolation). The fake client mirrors the real client's behaviour at its deadline (exit code -1,
-  streams end, no exception) as read from the SDK source at tag `py/v1.6.0`; it was not observed
-  live. Nothing was run against real Modal, the real instance images or real model APIs. In
-  particular unverified: whether Modal accepts every instance image without Python on `PATH`
-  (use `--add-python 3.12` if not), whether every image is checked out at the task's `base_commit`
-  (the check fails loudly if not; `--no-check-base-commit` is the escape hatch), and wall-clock
-  cost per task.
+- **Live so far: local Docker only, gold and workspace paths.** On 2026-10-23, `gold --backend
+  docker` graded `xroche__httrack-810` end to end (image pull, both patches applied, rebuild,
+  175 tests parsed, `FAIL_TO_PASS` passed) in 6.5 minutes under QEMU on Apple silicon. Four
+  timeout-sensitive `PASS_TO_PASS` tests failed (emulation is the likely cause; not checked on
+  native amd64), so the task was marked invalid, which is what gold validation is for. A
+  throwaway script exercised the agent workspace on the same image: agent image build with the
+  pinned CLIs, history stripping, base-commit check, `diff`, `fork` + `apply`, a 5-second exec
+  timeout and container removal. Not run yet: a team
+  solving a task (needs API keys), and anything on real Modal. The Modal paths are covered by
+  offline tests that drive the same code through a fake Modal client; its deadline behaviour (exit
+  code -1, streams end, no exception) was read from the SDK source at tag `py/v1.6.0`, not
+  observed. Unverified on Modal: whether it accepts every instance image without Python on `PATH`
+  (use `--add-python 3.12` if not) and wall-clock cost per task.
 - Teams come from the separate team runner (`agent.teams.build_team`, imported lazily); the
   benchmark depends only on the frozen contracts in `agent/teams/types.py` plus `build_team`,
   `parse_team_spec` and `is_priced`.
@@ -336,4 +365,4 @@ The four configurations together cost roughly **$1,156 to $1,462**.
   filters the obviously broken ones on the day of the run; remaining label noise lowers every
   team's rate equally.
 - Fresh does not mean unseen by retrieval-augmented agents with web access.
-- Image architecture is `linux/amd64`, as Modal requires.
+- Image architecture is `linux/amd64`, as Modal requires; local Docker on arm64 must emulate it.
