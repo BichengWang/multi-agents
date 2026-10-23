@@ -2,6 +2,9 @@
 
 **Multi-agent teams for real work: measured, not assumed.**
 
+**Docs:** [bichengwang.github.io/multi-agents](https://bichengwang.github.io/multi-agents/) ·
+**PyPI:** [`multi-agent`](https://pypi.org/project/multi-agent/)
+
 Run a team of coding agents on a task in your repository: a single agent, a coder ⇄ reviewer
 loop, or several agents with a judge. Workers are the coding CLIs you already use (Claude Code,
 Codex) or a built-in agent that can use any model through the OpenAI Agents SDK. Each worker
@@ -193,8 +196,6 @@ First results will be published here.
 | Results | Pending the first pilot run |
 
 Plans are in [docs/ROADMAP.md](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md).
-The README, the team runner and benchmark guides, the roadmap and the survey are also published as
-a site: [bichengwang.github.io/multi-agents](https://bichengwang.github.io/multi-agents/).
 
 ## Development
 
