@@ -3,9 +3,18 @@ name: Docs site
 # Builds mkdocs.yml (README, package guides and docs/) and deploys it to GitHub Pages from main:
 # https://bichengwang.github.io/multi-agents/. Pull requests only build, with --strict, so a
 # broken page or link fails before merge. Pages source is "GitHub Actions" (build_type=workflow).
+#
+# The Auto Merge workflow merges with GITHUB_TOKEN, and pushes made with that token start no
+# `push` workflows. So the site also rebuilds from main after every Auto Merge run (the merge has
+# usually happened by then) and once a day for merges that landed later.
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Auto Merge"]
+    types: [completed]
+  schedule:
+    - cron: "23 6 * * *"
   pull_request:
     paths:
       - "README.md"
