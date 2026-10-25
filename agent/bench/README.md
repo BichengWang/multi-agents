@@ -67,19 +67,27 @@ Newest-task and per-month figures were measured on the pinned parquet files, not
 `099857f37e87e7bf09a2baa1c78809518c485c53` (both MIT):
 
 1. In a fresh sandbox of the instance image, apply `test_patch`, then the candidate patch, with
-   `git apply --reject --whitespace=nowarn`. A failed apply does not stop the run (as upstream).
+   `git apply --reject --whitespace=nowarn`. A failed apply does not stop the diagnostic run
+   (as upstream), but cannot produce a resolved result.
 2. In one interactive bash session: `rebuild_cmds`, then `test_cmds`, each joined with ` ; `.
 3. The test log is the output of `print_cmds`. For rows without them (Python), upstream runs the
    tests as `bash run_test.sh > testlog.out 2>&1` and prints `testlog.out`; so do we.
 4. The log is parsed with the row's `log_parser` script (`pytest` selects the built-in parser).
-5. **Resolved** iff no `PASS_TO_PASS` test failed, no `FAIL_TO_PASS` test failed, and every
-   `FAIL_TO_PASS` test passed. Status matching is upstream's: `"pass" in status.lower()` etc.
+5. **Resolved** iff both patches applied fully, no `PASS_TO_PASS` test failed, no `FAIL_TO_PASS`
+   test failed, and every `FAIL_TO_PASS` test passed. Status matching is upstream's:
+   `"pass" in status.lower()` etc.
 
-Deviations, all forced by running in a sandbox backend instead of RepoLaunch:
+Deviations from upstream:
 
 - Upstream drives containers through RepoLaunch's Docker runtime; we run the same commands via
   Modal Sandbox exec or `docker exec`. RepoLaunch itself (Python >= 3.12, LangChain stack, Docker
-  SDK) is not installed; grading needs none of it. The decision logic is a line-for-line port.
+  SDK) is not installed; grading needs none of it. Test-result grading is a line-for-line port.
+- Patch application is an additional success prerequisite: a failed or partially applied
+  candidate counts as unresolved, even when its applied hunks make every test pass. The test-only
+  verdict remains in `report`; `test_patch_applied` and `patch_applied` record apply status.
+  `apply_log` preserves stdout before the test-log marker and script stderr, including git's
+  rejection diagnostics. Hidden-test-patch failure or a missing application marker is a grading
+  error with diagnostics, excluded from statistics and retried on resume.
 - Parser scripts come from the dataset and are executed in an isolated Python subprocess on the
   host (`python -I`, empty environment, 120 s limit), not in the sandbox, because not every instance
   image has Python and because no API key may be reachable by dataset-supplied code.

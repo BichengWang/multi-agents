@@ -5,17 +5,18 @@ Ported (not re-invented) from ``evaluation/evaluation.py`` in microsoft/SWE-benc
 microsoft/RepoLaunch at ``099857f37e87e7bf09a2baa1c78809518c485c53`` (both MIT). The official script
 drives a Docker daemon through RepoLaunch; here the container steps run through the sandbox backend
 (a Modal sandbox or a local Docker container started from the same instance image), and the logic
-that decides the outcome is the same:
+that grades test results is the same, with patch application checked separately:
 
 1. apply ``test_patch``, then the candidate patch, with ``git apply --reject --whitespace=nowarn``
-   (a failed apply does not stop the run, exactly as upstream);
+   (a failed apply does not stop the diagnostic run, as upstream);
 2. run ``rebuild_cmds`` (if any), then ``test_cmds``, joined with `` ; `` in one shell session;
 3. take the output of ``print_cmds`` as the test log (for the Python dataset, which has none, the
    tests run as ``bash run_test.sh > testlog.out 2>&1`` and the log is ``cat testlog.out``);
 4. parse the log into ``{test: pass|fail|skip}`` with the instance's ``log_parser`` script (or the
    built-in pytest parser for ``pytest``);
-5. resolved iff no ``PASS_TO_PASS`` test failed, no ``FAIL_TO_PASS`` test failed, and every
-   ``FAIL_TO_PASS`` test passed.
+5. resolved iff both patches applied fully, no ``PASS_TO_PASS`` test failed, no ``FAIL_TO_PASS``
+   test failed, and every ``FAIL_TO_PASS`` test passed. Hidden-test-patch failure or missing apply
+   status is a grading error; candidate-patch failure is unresolved even if the tests pass.
 
 Hidden fields (``test_patch``, ``FAIL_TO_PASS``, ``PASS_TO_PASS``, commands) exist only in the
 grading sandbox and in this process; an agent never sees them. Dataset parser scripts are executed
@@ -64,7 +65,7 @@ json.dump({str(k): str(v) for k, v in result.items()}, sys.stdout)
 
 
 class GradingError(RuntimeError):
-    """The log could not be parsed or the sandbox failed; the pair is errored, not unresolved."""
+    """Grading setup, parsing or sandbox failure; the pair is errored, not unresolved."""
 
 
 class _TestStatus(Enum):
@@ -218,6 +219,7 @@ class EvalResult:
     empty_patch: bool = False
     duration_s: float = 0.0
     log: str = ""
+    apply_log: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -226,6 +228,7 @@ class EvalResult:
             "timed_out": self.timed_out,
             "test_patch_applied": self.test_patch_applied,
             "patch_applied": self.patch_applied,
+            "apply_log": self.apply_log,
             "duration_s": round(self.duration_s, 3),
             "report": self.report.to_json() if self.report else None,
         }
@@ -284,13 +287,23 @@ async def evaluate_patch(
         )
     log = log.lstrip("\r\n")
     applied = _apply_results(head)
+    apply_log = head + run.stderr
+    missing = {"test_patch", "patch"} - applied.keys()
+    if missing:
+        raise GradingError(
+            f"missing patch application status for {', '.join(sorted(missing))}: "
+            + apply_log[-1500:]
+        )
+    if not applied["test_patch"]:
+        raise GradingError("hidden test patch did not apply: " + apply_log[-1500:])
     status = await asyncio.to_thread(run_log_parser, spec.log_parser, log)
     report = grade(status, spec.fail_to_pass, spec.pass_to_pass)
     return EvalResult(
-        resolved=report.resolved,
+        resolved=applied["patch"] and report.resolved,
         report=report,
         test_patch_applied=applied.get("test_patch"),
         patch_applied=applied.get("patch"),
         duration_s=loop.time() - started,
         log=log,
+        apply_log=apply_log,
     )

@@ -1,11 +1,12 @@
 import asyncio
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from agent.bench.dataset import BenchTask, GradingSpec, load_tasks
-from agent.bench.evaluate import GradingError, evaluate_patch
-from agent.bench.sandbox import ModalBackend, SandboxConfig
+from agent.bench.evaluate import APPLY_MARK, GradingError, evaluate_patch
+from agent.bench.sandbox import ModalBackend, SandboxConfig, SandboxWorkspace
 
 from .fakes import FakeModal
 from .repos import CHECK_RS_SH, CHECK_SH, FIXED, make_patch, make_template
@@ -91,6 +92,57 @@ def test_patch_that_does_not_apply_is_reported_like_upstream(tmp_path):
     result = env.evaluate(garbage)
     assert not result.resolved and result.patch_applied is False and result.test_patch_applied
     assert result.report.fail_to_pass_failure == ["calc::test_add"]
+
+
+@pytest.mark.parametrize("kind", ["python", "multilang"])
+def test_partially_applied_fix_cannot_resolve_even_when_tests_pass(tmp_path, kind):
+    env = Env(tmp_path, kind)
+    partial = make_patch(env.template, {"calc.py": FIXED, "notes.txt": "changed\n"})
+    partial = partial.replace("-keep me\n", "-missing context\n")
+
+    result = env.evaluate(partial)
+
+    assert result.report.resolved  # The fixing hunk applied and all expected tests passed.
+    assert not result.resolved
+    assert result.test_patch_applied is True and result.patch_applied is False
+    payload = result.to_json()
+    assert payload["resolved"] is False and payload["patch_applied"] is False
+    assert "notes.txt" in payload["apply_log"]
+    assert all(sb.terminated for sb in env.modal.sandboxes)
+
+
+def test_hidden_test_patch_failure_is_a_grading_error_even_when_tests_pass(tmp_path):
+    env = Env(tmp_path)
+    bad_tests = make_patch(env.template, {"notes.txt": "hidden tests\n"})
+    env.task = replace(env.task, grading=replace(
+        env.task.grading,
+        test_patch=bad_tests.replace("-keep me\n", "-missing context\n"),
+        test_cmds=("echo 'PASSED calc::test_add'; echo 'PASSED calc::test_keep'",),
+    ))
+
+    with pytest.raises(GradingError) as error:
+        env.evaluate(env.gold)
+    assert "notes.txt" in str(error.value)
+    assert all(sb.terminated for sb in env.modal.sandboxes)
+
+
+@pytest.mark.parametrize("missing", ["test_patch", "patch", "both"])
+def test_missing_apply_status_is_a_grading_error(tmp_path, monkeypatch, missing):
+    env = Env(tmp_path)
+    original_exec = SandboxWorkspace.exec
+
+    async def exec_without_marker(self, argv, **kwargs):
+        run = await original_exec(self, argv, **kwargs)
+        stdout = "\n".join(
+            line for line in run.stdout.splitlines()
+            if not line.startswith(f"{APPLY_MARK} " + ("" if missing == "both" else missing + " "))
+        )
+        return replace(run, stdout=stdout)
+
+    monkeypatch.setattr(SandboxWorkspace, "exec", exec_without_marker)
+    with pytest.raises(GradingError):
+        env.evaluate(env.gold)
+    assert all(sb.terminated for sb in env.modal.sandboxes)
 
 
 def test_tests_that_hang_are_unresolved_not_errors(tmp_path):
