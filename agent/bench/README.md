@@ -202,15 +202,21 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   team's numbers) and are shown in the report's *Timed out* column. Their cost is unknown.
 - **Resume**: finished pairs (timeouts included) are skipped; errored pairs are retried
   (`--no-retry-errors` to keep them). An error in the *grading* stage re-grades the saved patch
-  instead of re-running (and re-paying for) the agents, unless the stored patch had to be scrubbed.
+  instead of re-running (and re-paying for) the agents, unless the stored patch is empty or had to
+  be scrubbed. Grading-only retries carry `resumed_from_error` and reuse the original solve's usage;
+  retries that run the agents again record a new solve. Only the latest attempt determines the
+  pair's reported outcome.
   Before resuming, `run` and `gold` repair a final line torn by an interrupted write in
   `results.jsonl` and `gold.jsonl`: an unparseable final line without a newline is removed, and a
   valid final record without a newline gets one. Any newline-terminated line that is not valid JSON
   stops loading with its file path and line number. `report` skips a torn final line and leaves the
   file as is.
 - **Budget** (`--max-cost-usd X`): no new pair starts once priced spend, including earlier runs in
-  the same `--out`, reaches X; running pairs finish, so spend can exceed X by up to `--concurrency`
-  pairs. A budgeted run refuses to start if a team contains a harness whose cost cannot be priced
+  the same `--out`, reaches X. Spend is rebuilt from all solve attempts in `results.jsonl`, so each
+  paid solve counts even if a later attempt supersedes it; grading-only retries count the original
+  solve exactly once. This also applies to output directories written by earlier versions.
+  Running pairs finish, so spend can exceed X by up to `--concurrency` pairs.
+  A budgeted run refuses to start if a team contains a harness whose cost cannot be priced
   (e.g. `codex` without `@model`) unless `--allow-unpriced`. Without `--allow-unpriced` it also
   stops launching as soon as any record has an unknown cost, **which includes every timed-out or
   crashed solve** (the agents may have spent money the run cannot see; the halt survives a

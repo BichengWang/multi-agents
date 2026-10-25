@@ -1,8 +1,10 @@
 """Benchmark orchestration: task x team pairs -> sandbox -> team -> patch -> hidden tests -> JSONL.
 
-``results.jsonl`` in the output directory holds one record per (task, team) pair. The run is
+``results.jsonl`` in the output directory holds a record for each (task, team) attempt. The run is
 resumable: pairs with a finished record are skipped; pairs that errored are retried (an error in the
-evaluation stage re-grades the saved patch instead of paying for the agents again).
+evaluation stage re-grades the saved patch instead of paying for the agents again, unless the
+patch is empty or redacted). All solve attempts count toward spend; grading-only retries count
+the original solve once.
 
 What counts as an error. Only infrastructure failures: the workspace could not be created
 (``stage="workspace"``, no agent cost incurred), the workspace diff could not be read after the team
@@ -226,9 +228,11 @@ class _Ledger:
         self.latest: dict[tuple[str, str], dict[str, Any]] = {
             (r["task_id"], r["team"]): r for r in self.records
         }
-        self.spent = sum(_cost(r) or 0.0 for r in self.latest.values())
+        # Grading-only retries copy usage from the original solve; every other attempt is new.
+        solves = [r for r in self.records if "resumed_from_error" not in r]
+        self.spent = sum(_cost(r) or 0.0 for r in solves)
         self.halted: Optional[str] = None
-        for r in self.latest.values():
+        for r in solves:
             self._check_unpriced(r)
 
     def _check_unpriced(self, record: dict[str, Any]) -> None:
@@ -258,11 +262,9 @@ class _Ledger:
                 handle.write(json.dumps(stored, ensure_ascii=True) + "\n")
                 handle.flush()
             key = (stored["task_id"], stored["team"])
-            prev = self.latest.get(key)
-            if prev is not None:
-                self.spent -= _cost(prev) or 0.0
             self.latest[key] = stored
-            self.spent += _cost(stored) or 0.0
+            if "resumed_from_error" not in stored:
+                self.spent += _cost(stored) or 0.0
             self._check_unpriced(stored)
         return stored
 
