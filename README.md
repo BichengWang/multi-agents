@@ -206,6 +206,8 @@ make check    # also the GitHub workflow and attribution tests (Node.js 22+)
 make docs     # build the docs site with --strict (DOCS=serve to preview it locally)
 ```
 
+The Python tests ignore your global and system git configuration (hooks, signing, aliases).
+
 Reusable orchestration patterns (`RefineLoop`, `BestOfN`, `SequentialWorkflow`, `Router`) are in
 [`agent/workflows`](https://github.com/BichengWang/multi-agents/blob/main/agent/workflows/README.md).
 Pre-pivot experiments are in this repository's history at the
