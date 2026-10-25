@@ -195,6 +195,11 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
 - **Resume**: finished pairs (timeouts included) are skipped; errored pairs are retried
   (`--no-retry-errors` to keep them). An error in the *grading* stage re-grades the saved patch
   instead of re-running (and re-paying for) the agents, unless the stored patch had to be scrubbed.
+  Before resuming, `run` and `gold` repair a final line torn by an interrupted write in
+  `results.jsonl` and `gold.jsonl`: an unparseable final line without a newline is removed, and a
+  valid final record without a newline gets one. Any newline-terminated line that is not valid JSON
+  stops loading with its file path and line number. `report` skips a torn final line and leaves the
+  file as is.
 - **Budget** (`--max-cost-usd X`): no new pair starts once priced spend, including earlier runs in
   the same `--out`, reaches X; running pairs finish, so spend can exceed X by up to `--concurrency`
   pairs. A budgeted run refuses to start if a team contains a harness whose cost cannot be priced

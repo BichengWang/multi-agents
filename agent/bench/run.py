@@ -141,18 +141,31 @@ def _run_json(run: Any, *, full: bool) -> dict[str, Any]:
     return data
 
 
-def load_records(path: Path) -> list[dict[str, Any]]:
+def load_records(path: Path, *, repair_tail: bool = False) -> list[dict[str, Any]]:
+    """Read JSONL, tolerating only a torn final line (no trailing newline) from an interrupted write.
+
+    Writers emit each record and its newline in one write, so any unterminated line that does not
+    parse is a torn tail; a newline-terminated line that does not parse is corruption and raises.
+    With ``repair_tail`` (writers about to append) the torn tail is truncated, or a valid final
+    record gets its missing newline. Read-only consumers leave the file untouched.
+    """
     if not path.exists():
         return []
     records = []
-    with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if line:
+    with path.open("r+b" if repair_tail else "rb") as handle:
+        for line_number, line in enumerate(handle, 1):
+            if line.strip():
                 try:
                     records.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue  # a torn final line from an interrupted run
+                except json.JSONDecodeError as exc:
+                    if line.endswith(b"\n"):
+                        raise ValueError(f"{path}:{line_number}: {exc.msg}") from exc
+                    if repair_tail:
+                        handle.seek(-len(line), 1)
+                        handle.truncate()
+                    break
+            if repair_tail and not line.endswith(b"\n"):
+                handle.write(b"\n")
     return records
 
 
@@ -207,7 +220,7 @@ class _Ledger:
         self.allow_unpriced = allow_unpriced
         self.redactor = redactor
         self._lock = asyncio.Lock()
-        self.records = load_records(self.path)
+        self.records = load_records(self.path, repair_tail=True)
         # Latest record per pair wins (a retried error is superseded by its retry).
         self.latest: dict[tuple[str, str], dict[str, Any]] = {
             (r["task_id"], r["team"]): r for r in self.records
@@ -546,7 +559,7 @@ async def validate_gold(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     path = out / GOLD_FILE
-    done = {r["task_id"]: r for r in load_records(path)}
+    done = {r["task_id"]: r for r in load_records(path, repair_tail=True)}
     if evaluator is None:
         backend = backend or ModalBackend()
 
