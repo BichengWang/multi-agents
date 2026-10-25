@@ -6,6 +6,7 @@ import pytest
 from agent.teams import SoloTeam
 from agent.teams.budget import BudgetedHarness
 from agent.teams import cli as cli_module
+from agent.teams.spec import parse_team_spec
 
 from .fakes import FakeHarness, git, make_repo, write
 
@@ -25,6 +26,29 @@ def env(tmp_path, monkeypatch):
     harness.script = script
     monkeypatch.setattr(cli_module, "build_team", lambda spec, **kw: SoloTeam(harness, name=spec))
     return repo, harness, tmp_path
+
+
+@pytest.fixture(params=["best", "plan"])
+def long_team(request):
+    worker = "sdk@litellm/openrouter/anthropic/claude-sonnet-5-5"
+    spec = f"{request.param}:workers={'+'.join([worker] * 5)}"
+    if request.param == "plan":
+        spec += f",planner={worker}"
+    team = parse_team_spec(spec).canonical
+    assert len(team) > 255
+    return team
+
+
+def test_long_team_saves_completed_work_after_worktree_cleanup(env, long_team):
+    repo, harness, tmp_path = env
+    assert cli_module.main(["run", "--team", long_team, "make solution.txt"]) == 0
+    record = read_record(tmp_path)
+    assert record["team"] == long_team
+    assert "solution.txt" in record["patch"]
+    (patch_path,) = (tmp_path / "cache" / "multi-agents" / "runs").glob("*/*/final.patch")
+    assert patch_path.read_text() == record["patch"]
+    assert harness.calls and all(not Path(root).exists() for root in harness.roots)
+    assert git(repo, "status", "--porcelain").strip() == ""
 
 
 def test_apply_from_inside_the_repo_applies_the_patch_and_records_outside_the_tree(env):

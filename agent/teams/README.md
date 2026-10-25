@@ -136,6 +136,10 @@ meta) and `final.patch`, prints a Rich summary and the exact command to apply it
 git -C <repo> apply <runs-dir>/<run>/final.patch
 ```
 
+`<team>` is the canonical spec with characters outside `A-Za-z0-9_-` replaced by `-`; a spec too
+long for a 255-byte directory name is cut and suffixed with a hash of the full spec, which
+`record.json` keeps.
+
 Your working tree is never modified unless you pass `--apply` (and then only if `git status` is
 clean). The base is a commit: uncommitted changes in your tree are not visible to the workers.
 Exit code: 0 patch produced, 1 empty patch, 2 usage error, 3 `--apply` refused or failed (or `--pr` delivery failed), 4 the team crashed, 130/143/129 cancelled by SIGINT/SIGTERM/SIGHUP.

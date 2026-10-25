@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import re
 import shlex
@@ -230,9 +231,19 @@ def default_runs_dir(workspace: LocalWorktree) -> str:
     return str(user_cache_dir() / "runs" / repo_key(workspace.repo, workspace.common_dir))
 
 
+NAME_MAX = 255  # bytes per path component on common file systems
+
+
 def save_record(runs_dir: str, record: dict, patch: str) -> tuple[Path, Path]:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    slug = re.sub(r"[^A-Za-z0-9_-]+", "-", str(record["team"])).strip("-") or "run"
+    team = str(record["team"])
+    slug = re.sub(r"[^A-Za-z0-9_-]+", "-", team).strip("-") or "run"
+    room = NAME_MAX - len(stamp) - 1  # the slug is ASCII, so characters are bytes
+    if len(slug) > room:
+        # Long specs (many provider-qualified models) would exceed the file-name limit after the
+        # paid work is done; keep a readable prefix and a hash of the full spec.
+        digest = hashlib.sha256(team.encode("utf-8")).hexdigest()[:12]
+        slug = f"{slug[:room - len(digest) - 1]}-{digest}"
     out = (Path(runs_dir) / f"{stamp}_{slug}").resolve()
     out.mkdir(parents=True, exist_ok=True)
     record_path, patch_path = out / "record.json", out / "final.patch"
