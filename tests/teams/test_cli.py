@@ -123,3 +123,75 @@ def test_max_cost_must_be_positive(budgeted, amount):
     harness, _ = budgeted
     assert cli_module.main(["run", "--team", "solo:worker=claude", "--max-cost", amount, "x"]) == 2
     assert harness.calls == []
+
+
+@pytest.mark.parametrize("value", ["[red]literal[/red]", "[/red]"])
+def test_invalid_team_spec_is_printed_literally(value, capsys):
+    spec = f"solo:worker=claude,wat={value}"
+    assert cli_module.main(["run", "--team", spec, "x"]) == 2
+    assert spec in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("field", ["team", "failure", "filename", "paths", "run"])
+def test_summary_prints_external_text_literally(field):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from agent.teams import HarnessRun, TeamResult, Usage
+
+    literal = "[red]literal[/red][blue]"
+    unmatched = "[/red]"
+    result = TeamResult(patch="diff --git a/file b/file\n@@ -0,0 +1 @@\n+done\n")
+    team, repo = "solo:worker=claude", "/repo"
+    record_path, patch_path = Path("/out/record.json"), Path("/out/final.patch")
+    expected = [literal, unmatched]
+    if field == "team":
+        team = literal + unmatched
+    elif field == "failure":
+        result.meta["failures"] = [{"error": literal + unmatched}]
+    elif field == "filename":
+        result.patch = f"diff --git a/{literal} b/{literal}\n@@ -0,0 +1 @@\n+done\n"
+        expected = [literal]
+    elif field == "paths":
+        repo = f"/repo/{unmatched}"
+        record_path, patch_path = Path(f"/{literal}/record.json"), Path(f"/{literal}/final.patch")
+        expected = [repo, str(record_path), str(patch_path)]
+    else:
+        result.runs = [HarnessRun(literal, unmatched, unmatched, "", 1, Usage(), 0)]
+    output = StringIO()
+    cli_module.render_summary(
+        Console(file=output, width=240), team, result,
+        repo=repo, record_path=record_path, patch_path=patch_path,
+    )
+    for value in expected:
+        assert value in output.getvalue()
+
+
+def test_team_crash_diagnostic_is_printed_literally(env, capsys, monkeypatch):
+    message = "[red]subprocess[/red] [/blue]"
+
+    async def crash(*args):
+        raise RuntimeError(message)
+
+    monkeypatch.setattr(SoloTeam, "solve", crash)
+    assert cli_module.main(["run", "--team", "solo:worker=claude", "x"]) == 4
+    assert message in capsys.readouterr().out
+
+
+def test_run_preserves_brackets_in_filenames_and_output_paths(env, capsys):
+    _, harness, tmp_path = env
+    filename = "[red]solution.txt"
+    runs_dir = tmp_path / "[blue]runs"
+
+    async def script(call):
+        await write(call.workspace, filename, "done\n")
+        return "ok"
+
+    harness.script = script
+    assert cli_module.main(["run", "--team", "solo:worker=claude", "--runs-dir", str(runs_dir), "x"]) == 0
+    output = capsys.readouterr().out
+    (record_path,) = runs_dir.glob("*/record.json")
+    assert filename in output
+    assert str(record_path) in output
+    assert str(record_path.with_name("final.patch")) in output

@@ -148,7 +148,7 @@ def render_summary(
     record_path: Path,
     budget: Optional[Budget] = None,
 ) -> None:
-    console.print(f"Team: {team}", soft_wrap=True)
+    console.print(f"Team: {team}", markup=False, soft_wrap=True)
     table = Table(show_edge=False, pad_edge=False)
     table.add_column("role", no_wrap=True)
     table.add_column("harness@model", no_wrap=True, overflow="ellipsis")
@@ -159,8 +159,8 @@ def render_summary(
         u = run.usage
         failed = run.exit_code != 0
         table.add_row(
-            f"[red]x {run.role}[/red]" if failed else run.role,
-            f"{run.harness}@{run.model}" if run.model else run.harness,
+            f"[red]x {escape(run.role)}[/red]" if failed else escape(run.role),
+            escape(f"{run.harness}@{run.model}" if run.model else run.harness),
             _token_triplet(u.input_tokens, u.cached_input_tokens, u.output_tokens),
             _cost_text(u.cost_usd),
             f"{run.duration_s:.1f}",
@@ -187,7 +187,7 @@ def render_summary(
         console.print(line, highlight=False, soft_wrap=True)
     for key in ("scores", "chosen", "best_round", "accepted"):
         if key in result.meta:
-            console.print(f"{key}: {result.meta[key]}", soft_wrap=True)
+            console.print(f"{key}: {result.meta[key]}", markup=False, soft_wrap=True)
     fallback = result.meta.get("fallback")
     if fallback:
         console.print(f"fallback: {fallback['to']} ({fallback['reason']})", markup=False, soft_wrap=True)
@@ -199,7 +199,7 @@ def render_summary(
             f"subtask {number}{status}{round_note}: {sub['title']}{who}", markup=False, highlight=False, soft_wrap=True
         )
     for failure in result.meta.get("failures", []):
-        console.print(f"[yellow]failure:[/yellow] {failure}", highlight=False, soft_wrap=True)
+        console.print(f"[yellow]failure:[/yellow] {escape(str(failure))}", highlight=False, soft_wrap=True)
     check = result.meta.get("check")
     if check:
         status = "[green]passed[/green]" if check["passed"] else "[red]failed[/red]"
@@ -217,10 +217,11 @@ def render_summary(
     else:
         console.print(f"Files changed: {len(files)}")
         for name, add, rem in files:
-            console.print(f"  {name}  [green]+{add}[/green] [red]-{rem}[/red]")
-        console.print(f"\nRecord: {record_path}\nPatch:  {patch_path}", soft_wrap=True)
+            console.print(f"  {escape(name)}  [green]+{add}[/green] [red]-{rem}[/red]")
+        console.print(f"\nRecord: {record_path}\nPatch:  {patch_path}", markup=False, soft_wrap=True)
         console.print(
             f"Apply:  git -C {shlex.quote(repo)} apply {shlex.quote(str(patch_path))}",
+            markup=False,
             highlight=False,
             soft_wrap=True,
         )
@@ -255,7 +256,7 @@ async def _apply_to_tree(repo: str, patch_path: Path, console: Console) -> int:
         return EXIT_APPLY
     code, _, err = await run_process(["git", "apply", "--binary", str(patch_path)], cwd=repo)
     if code != 0:
-        console.print(f"[red]git apply failed:[/red] {err.decode('utf-8', 'replace').strip()}")
+        console.print(f"[red]git apply failed:[/red] {escape(err.decode('utf-8', 'replace').strip())}")
         return EXIT_APPLY
     console.print("Patch applied to your working tree (not committed).")
     return EXIT_OK
@@ -290,11 +291,11 @@ async def _open_pull_request(
             body_path=record_path.with_name("pr-body.md"),
         )
     except github.PublishError as exc:
-        console.print(f"[red]Pull request not opened:[/red] {exc}", soft_wrap=True, highlight=False)
+        console.print(f"[red]Pull request not opened:[/red] {escape(str(exc))}", soft_wrap=True, highlight=False)
         if exc.branch:
             record["pull_request"] = {"url": None, "branch": exc.branch}
             record_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
-            console.print(f"The commit is kept on local branch {exc.branch}. To finish by hand:")
+            console.print(f"The commit is kept on local branch {exc.branch}. To finish by hand:", markup=False)
         else:
             console.print("To finish by hand:")
         for command in exc.commands:
@@ -302,7 +303,7 @@ async def _open_pull_request(
         return EXIT_PUBLISH
     record["pull_request"] = pub.record()
     record_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
-    console.print(f"Pull request: {pub.url} (branch {pub.branch})", soft_wrap=True, highlight=False)
+    console.print(f"Pull request: {pub.url} (branch {pub.branch})", markup=False, soft_wrap=True, highlight=False)
     return EXIT_OK
 
 
@@ -350,7 +351,7 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
             args.team, permissions=args.permissions, timeout=args.timeout, check=args.check, budget=budget
         )
     except SpecError as exc:
-        console.print(f"[red]Invalid --team:[/red] {exc}")
+        console.print(f"[red]Invalid --team:[/red] {escape(str(exc))}")
         return EXIT_USAGE
     if args.permissions == "safe" and any(h.harness == "sdk" for h in spec.harness_specs):
         console.print(
@@ -370,13 +371,13 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         if args.issue:
             issue = await github.read_issue(args.issue, args.repo)
     except (github.GitHubError, OSError) as exc:
-        console.print(f"[red]GitHub:[/red] {exc}", soft_wrap=True, highlight=False)
+        console.print(f"[red]GitHub:[/red] {escape(str(exc))}", soft_wrap=True, highlight=False)
         return EXIT_USAGE
     instruction = github.issue_instruction(issue, args.instruction) if issue else args.instruction
     try:
         workspace = await LocalWorktree.create(args.repo, target.base_commit if target else args.base)
     except (GitError, OSError) as exc:
-        console.print(f"[red]Cannot create a worktree:[/red] {exc}")
+        console.print(f"[red]Cannot create a worktree:[/red] {escape(str(exc))}")
         return EXIT_USAGE
     repo = workspace.repo
     if args.apply and not await _is_clean(repo, untracked=True):
@@ -388,6 +389,7 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
     started_at = datetime.now(timezone.utc).isoformat()
     console.print(
         f"Team {team.name} on {repo} @ {workspace.base_commit[:12]} (worktree {workspace.root})",
+        markup=False,
         soft_wrap=True,
     )
 
@@ -413,13 +415,13 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
     except asyncio.CancelledError:
         return 128 + received[0] if received else EXIT_CANCELLED
     except Exception as exc:
-        console.print(f"[red]The team failed:[/red] {type(exc).__name__}: {exc}", soft_wrap=True)
+        console.print(f"[red]The team failed:[/red] {type(exc).__name__}: {escape(str(exc))}", soft_wrap=True)
         return EXIT_FAILED
     finally:
         for sig in CANCEL_SIGNALS:
             loop.remove_signal_handler(sig)
         if args.keep_worktrees:
-            console.print(f"Worktree kept at {workspace.root}")
+            console.print(f"Worktree kept at {workspace.root}", markup=False)
         else:
             await workspace.close()
 
@@ -449,7 +451,7 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         console, team.name, result, repo=repo, patch_path=patch_path, record_path=record_path, budget=budget
     )
     if issue:
-        console.print(f"Issue: #{issue.number} {issue.title} ({issue.url})", soft_wrap=True, highlight=False)
+        console.print(f"Issue: #{issue.number} {issue.title} ({issue.url})", markup=False, soft_wrap=True, highlight=False)
     if not result.patch.strip():
         return EXIT_NO_PATCH
     code = EXIT_OK
