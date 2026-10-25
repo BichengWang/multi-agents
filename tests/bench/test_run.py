@@ -172,6 +172,51 @@ def test_resume_skips_finished_pairs_and_retries_only_infrastructure_errors(tmp_
     assert again.attempted == 0
 
 
+@pytest.mark.parametrize("tail", ['{"task_id": "unfinished', '{"usage": {"cost_usd": 1.', '{', ""])
+def test_resume_repairs_results_tail_without_losing_finished_pairs(tmp_path, tail):
+    team = FakeTeam("solo:worker=claude")
+    h = Harness(team)
+    h.run(tmp_path, make_tasks(2))
+    path = tmp_path / "results.jsonl"
+    original = load_records(path)
+    contents = path.read_text()
+    path.write_text(contents + tail if tail else contents.rstrip("\n"))
+    damaged = path.read_bytes()
+    assert load_records(path) == original
+    assert path.read_bytes() == damaged  # read-only consumers do not repair the file
+    team.solved.clear()
+
+    resumed = h.run(tmp_path, make_tasks(3))
+    again = h.run(tmp_path, make_tasks(3))
+
+    assert (resumed.attempted, resumed.skipped_finished) == (1, 2)
+    assert (again.attempted, again.skipped_finished) == (0, 3)
+    assert team.solved == ["o__r-2"]
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    assert records[:2] == original
+    assert [r["task_id"] for r in records] == [t.task_id for t in make_tasks(3)]
+
+
+@pytest.mark.parametrize("filename", ["results.jsonl", "gold.jsonl"])
+@pytest.mark.parametrize("suffix", ['{"task_id":\n', '{"task_id":\n{"task_id": "later"}\n'])
+def test_resume_rejects_malformed_records_before_starting_work(tmp_path, filename, suffix):
+    path = tmp_path / filename
+    contents = '{"task_id": "o__r-0", "team": "solo:worker=claude", "error": null}\n' + suffix
+    path.write_text(contents)
+    h = Harness(FakeTeam("solo:worker=claude"))
+
+    with pytest.raises(ValueError):
+        load_records(path)
+    with pytest.raises(ValueError):
+        if filename == "results.jsonl":
+            h.run(tmp_path, make_tasks(3))
+        else:
+            asyncio.run(validate_gold(make_tasks(3), tmp_path, evaluator=h.evaluator))
+
+    assert h.workspaces == [] and h.eval_calls == 0
+    assert path.read_text() == contents
+
+
 def test_a_crashing_team_is_graded_on_what_it_left_instead_of_dropping_the_task(tmp_path):
     team = FakeTeam("solo:worker=claude", fail_for={"o__r-1"}, partial="diff --git a/partial b/partial\n")
     h = Harness(team)
@@ -432,6 +477,31 @@ def test_gold_validation_lists_instances_whose_reference_patch_resolves(tmp_path
     )
     assert again == valid and len(seen) == 3  # graded ids are not repeated
     assert len(load_records(tmp_path / "gold.jsonl")) == 3
+
+
+@pytest.mark.parametrize("tail", ['{"task_id": "unfinished', '{"resolved": tru', '{', ""])
+def test_gold_resume_repairs_tail_without_repeating_completed_grades(tmp_path, tail):
+    h = Harness()
+
+    def run(tasks):
+        return asyncio.run(
+            validate_gold(tasks, tmp_path, evaluator=h.evaluator, log=lambda m: None)
+        )
+
+    run(make_tasks(2))
+    path = tmp_path / "gold.jsonl"
+    original = load_records(path)
+    contents = path.read_text()
+    path.write_text(contents + tail if tail else contents.rstrip("\n"))
+    h.graded.clear()
+
+    expected = [t.task_id for t in make_tasks(3)]
+    assert run(make_tasks(3)) == expected
+    assert run(make_tasks(3)) == expected
+    assert h.graded == [("o__r-2", "gold-2")]
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    assert records[:2] == original
+    assert [r["task_id"] for r in records] == expected
 
 
 def test_tasks_command_prints_the_seeded_sample_without_credentials(capsys):
