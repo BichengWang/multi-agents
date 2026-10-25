@@ -26,6 +26,7 @@ from .budget import Budget
 from .harnesses.base import PERMISSIONS
 from .spec import SpecError, build_team, is_priced, parse_team_spec
 from .types import CodingTask, TeamResult
+from .validation import validate_positive_finite
 from .worktree import GitError, LocalWorktree, repo_key, run_process, user_cache_dir
 
 EXIT_OK, EXIT_NO_PATCH, EXIT_USAGE, EXIT_APPLY, EXIT_FAILED, EXIT_CANCELLED = 0, 1, 2, 3, 4, 130
@@ -325,9 +326,13 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
     if args.allow_unpriced and args.max_cost is None:
         console.print("[red]--allow-unpriced only applies together with --max-cost.[/red]")
         return EXIT_USAGE
-    if args.max_cost is not None and not args.max_cost > 0:
-        console.print(f"[red]Invalid --max-cost:[/red] must be a positive amount in USD, got {args.max_cost}")
-        return EXIT_USAGE
+    for name, value in (("--max-cost", args.max_cost), ("--timeout", args.timeout)):
+        if value is not None:
+            try:
+                validate_positive_finite(value, name)
+            except ValueError as exc:
+                console.print(f"[red]Invalid limit:[/red] {exc}")
+                return EXIT_USAGE
     budget = None
     if args.max_cost is not None:
         budget = Budget(

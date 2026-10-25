@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from .types import Harness, HarnessRun, Workspace
+from .validation import validate_positive_finite
 
 
 class BudgetExceeded(RuntimeError):
@@ -48,8 +49,7 @@ class Budget:
     warned: bool = False
 
     def __post_init__(self) -> None:
-        if not self.max_cost_usd > 0:
-            raise ValueError(f"max_cost_usd must be positive, got {self.max_cost_usd!r}")
+        validate_positive_finite(self.max_cost_usd, "max_cost_usd")
 
     @property
     def exhausted(self) -> bool:

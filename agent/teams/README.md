@@ -119,7 +119,7 @@ multi-agents run --team review:coder=codex,reviewer=claude@haiku,rounds=2 \
 |---|---|
 | `--team SPEC` | required, see above |
 | `--repo PATH` | repository (default: current directory); `--base REF` base ref (default `HEAD`) |
-| `--timeout S` | seconds allowed per harness run (not for the whole team) |
+| `--timeout S` | finite positive seconds allowed per harness run (not for the whole team) |
 | `--permissions safe\|bypass` | see Safety (default `safe`) |
 | `--runs-dir DIR` | where records go (default `$XDG_CACHE_HOME/multi-agents/runs/<repo>-<hash>/`, i.e. never inside your repository; the path is printed) |
 | `--keep-worktrees` | keep the main worktree for inspection (forks made by teams are always removed) |

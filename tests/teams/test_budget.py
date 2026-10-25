@@ -49,10 +49,10 @@ def solve(team, repo):
     return run(go())
 
 
-def test_the_limit_must_be_positive():
-    for bad in (0, -1.0):
-        with pytest.raises(ValueError):
-            Budget(bad)
+@pytest.mark.parametrize("bad", [0, -1.0, float("nan"), float("inf"), -float("inf")])
+def test_the_limit_must_be_positive_and_finite(bad):
+    with pytest.raises(ValueError, match="max_cost_usd"):
+        Budget(bad)
 
 
 def test_runs_are_refused_once_the_limit_is_reached_and_the_refusal_is_recorded():

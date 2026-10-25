@@ -10,6 +10,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Optional
 
+from agent.teams.validation import validate_positive_finite
+
 from .dataset import DEFAULT_DATASET, SOURCES, BenchTask, load_tasks
 from .report import build_report
 from .run import (
@@ -205,6 +207,9 @@ def _cmd_gold(args: argparse.Namespace) -> int:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
+    if args.max_cost_usd is not None:
+        validate_positive_finite(args.max_cost_usd, "--max-cost-usd")
+    validate_positive_finite(args.solve_timeout, "--solve-timeout")
     tasks = _select(args)
     if not tasks:
         print("no tasks match the filters", file=sys.stderr)

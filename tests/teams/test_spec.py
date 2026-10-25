@@ -106,3 +106,20 @@ def test_is_priced_follows_the_price_table():
     assert not is_priced("codex")  # effective model unknown until run time
     assert not is_priced("codex@some-unlisted-model")
     assert is_priced("sdk@gpt-5-mini-2025-08-07")
+
+
+@pytest.mark.parametrize("timeout", [0, -1.0, float("nan"), float("inf"), -float("inf")])
+def test_build_team_rejects_invalid_timeout_before_building_harnesses(monkeypatch, timeout):
+    from agent.teams import spec as spec_module
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("invalid timeouts must not build harnesses")
+
+    monkeypatch.setattr(spec_module, "build_harness", unexpected)
+    with pytest.raises(ValueError, match="timeout"):
+        build_team("solo:worker=claude", timeout=timeout)
+
+
+@pytest.mark.parametrize("timeout", [None, 0.25])
+def test_build_team_accepts_optional_positive_fractional_timeout(timeout):
+    assert build_team("solo:worker=claude", timeout=timeout).timeout == timeout
