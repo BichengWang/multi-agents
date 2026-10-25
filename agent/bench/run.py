@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from agent.teams.types import Team, TeamResult, Workspace
+from agent.teams.validation import validate_positive_finite
 from agent.workflows.concurrency import map_concurrently
 
 from .dataset import SOURCES, BenchTask
@@ -309,6 +310,10 @@ async def run_benchmark(
     backend: Optional[SandboxBackend] = None,
     redactor: Optional[Redactor] = None,
 ) -> RunSummary:
+    if max_cost_usd is not None:
+        validate_positive_finite(max_cost_usd, "max_cost_usd")
+    if solve_timeout_s is not None:
+        validate_positive_finite(solve_timeout_s, "solve_timeout_s")
     out = Path(out_dir)
     if not team_specs:
         raise ValueError("at least one team spec is required")
