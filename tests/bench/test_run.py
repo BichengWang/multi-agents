@@ -240,6 +240,11 @@ def test_grading_errors_regrade_the_saved_patch_without_paying_for_the_agents_ag
     assert record["stage"] == "evaluate" and record["error"].startswith("evaluate: RuntimeError")
     assert record["patch"]
 
+    team.solved.clear()
+    failed_retry = h.run(tmp_path, make_tasks(1))
+    assert failed_retry.errored == 1 and failed_retry.spent_usd == 2.0
+    assert team.solved == []
+
     h.eval_fail.clear()
     team.solved.clear()
     second = h.run(tmp_path, make_tasks(1))
@@ -249,6 +254,9 @@ def test_grading_errors_regrade_the_saved_patch_without_paying_for_the_agents_ag
     assert final["usage"]["cost_usd"] == 2.0 and final["resumed_from_error"].startswith("evaluate:")
     assert final["isolate_history"] is True and final["image_head"] == "a" * 40
     assert second.spent_usd == pytest.approx(2.0)  # counted once, not twice
+
+    restarted = h.run(tmp_path, make_tasks(1))
+    assert restarted.attempted == 0 and restarted.spent_usd == pytest.approx(2.0)
 
 
 def test_budget_guard_stops_launching_pairs_once_priced_spend_reaches_the_cap(tmp_path):
@@ -415,17 +423,53 @@ def test_secrets_are_scrubbed_from_every_file_the_run_writes_but_grading_sees_or
     assert clean.records[0]["redacted"] is False and clean.records[0]["patch_redacted"] is False
 
 
-def test_a_redacted_patch_is_never_reused_for_regrading(tmp_path):
+@pytest.mark.parametrize("patch", ["", "+opaque-sandbox-key-abcdefgh\n"])
+def test_unusable_saved_patches_require_another_paid_solve(tmp_path, patch):
     secret = "opaque-sandbox-key-abcdefgh"
-    team = FakeTeam("solo:worker=claude", patch=lambda t: f"+{secret}\n")
+    team = FakeTeam("solo:worker=claude", cost=2.0, patch=lambda t: patch)
     redactor = Redactor([secret], host_env=False)
     h = Harness(team, eval_fail={"o__r-0"})
-    h.run(tmp_path, make_tasks(1), redactor=redactor)
+    first = h.run(tmp_path, make_tasks(1), redactor=redactor, max_cost_usd=4)
+    assert first.spent_usd == 2.0
     h.eval_fail.clear()
     team.solved.clear()
-    h.run(tmp_path, make_tasks(1), redactor=redactor)
-    assert team.solved == ["o__r-0"]  # stored patch was scrubbed, so the agents run again
+    second = h.run(tmp_path, make_tasks(3), redactor=redactor, max_cost_usd=4, concurrency=1)
+    assert team.solved == ["o__r-0"]  # an empty or scrubbed patch cannot be reused
     assert load_records(tmp_path / "results.jsonl")[-1]["resolved"] is True
+    assert second.spent_usd == 4.0 and second.skipped_budget == 2
+
+    restarted = h.run(tmp_path, make_tasks(3), redactor=redactor, max_cost_usd=4, concurrency=1)
+    assert restarted.spent_usd == 4.0 and restarted.skipped_budget == 2
+    assert restarted.attempted == 0 and restarted.skipped_finished == 1
+
+
+def test_a_workspace_error_on_retry_does_not_erase_previous_solve_spend(tmp_path):
+    team = FakeTeam("solo:worker=claude", cost=2.0, patch=lambda t: "")
+    h = Harness(team, eval_fail={"o__r-0"})
+    h.run(tmp_path, make_tasks(1))
+    h.workspace_fail.add("o__r-0")
+    failed_retry = h.run(tmp_path, make_tasks(1))
+    assert failed_retry.errored == 1 and failed_retry.spent_usd == 2.0
+
+    h.workspace_fail.clear()
+    team.solved.clear()
+    restarted = h.run(tmp_path, make_tasks(2), max_cost_usd=2, concurrency=1)
+    assert restarted.spent_usd == 2.0 and restarted.skipped_budget == 2
+    assert team.solved == []
+
+
+def test_unknown_solve_cost_still_halts_the_budget_after_a_priced_retry(tmp_path):
+    team = FakeTeam("solo:worker=claude", cost=None, patch=lambda t: "")
+    h = Harness(team, eval_fail={"o__r-0"})
+    h.run(tmp_path, make_tasks(1))
+    team.cost = 2.0
+    h.eval_fail.clear()
+    h.run(tmp_path, make_tasks(1))
+
+    team.solved.clear()
+    restarted = h.run(tmp_path, make_tasks(2), max_cost_usd=4, concurrency=1)
+    assert restarted.spent_usd == 2.0 and restarted.skipped_budget == 1
+    assert restarted.halted and team.solved == []
 
 
 def test_report_command_covers_only_the_latest_run_of_a_reused_output_dir(tmp_path, capsys):
