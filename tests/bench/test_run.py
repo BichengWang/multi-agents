@@ -560,3 +560,42 @@ def test_tasks_command_prints_the_seeded_sample_without_credentials(capsys):
     rows = [json.loads(line) for line in first.splitlines()]
     assert len(rows) == 2 and all(r["created_at"] >= "2025-01-01" for r in rows)
     assert set(rows[0]) >= {"task_id", "repo", "language", "image", "f2p", "p2p"}
+
+
+@pytest.mark.parametrize("option", ["max_cost_usd", "solve_timeout_s"])
+@pytest.mark.parametrize("value", [0, -1.0, float("nan"), float("inf"), -float("inf")])
+def test_invalid_limits_fail_before_factories_or_output(tmp_path, option, value):
+    def unexpected(*args, **kwargs):
+        pytest.fail("invalid limits must not call factories")
+
+    out = tmp_path / "out"
+    with pytest.raises(ValueError, match=option):
+        asyncio.run(run_benchmark(
+            make_tasks(1), ["solo:worker=claude"], out,
+            team_factory=unexpected, unpriced_fn=unexpected, **{option: value},
+        ))
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("option", ["--max-cost-usd", "--solve-timeout"])
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf"])
+def test_cli_rejects_invalid_limits_before_loading_tasks_or_backend(tmp_path, monkeypatch, option, value):
+    from agent.bench import cli
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("invalid limits must not load tasks or create a backend")
+
+    monkeypatch.setattr(cli, "_select", unexpected)
+    monkeypatch.setattr(cli, "_backend", unexpected)
+    out = tmp_path / "out"
+    assert main(["run", "--team", "solo:worker=claude", "--out", str(out), f"{option}={value}"]) == 2
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("value", [None, 0.25])
+def test_optional_positive_fractional_limits_are_accepted(tmp_path, value):
+    team = FakeTeam("solo:worker=claude")
+    h = Harness(team)
+    summary = h.run(tmp_path, make_tasks(1), max_cost_usd=value, solve_timeout_s=value)
+    assert summary.attempted == 1 and summary.errored == 0
+    assert len(team.solved) == 1 and len(h.graded) == 1

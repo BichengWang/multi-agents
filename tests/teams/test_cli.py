@@ -142,11 +142,18 @@ def test_allow_unpriced_without_max_cost_is_a_usage_error(budgeted):
     assert harness.calls == []
 
 
-@pytest.mark.parametrize("amount", ["0", "-3"])
-def test_max_cost_must_be_positive(budgeted, amount):
-    harness, _ = budgeted
-    assert cli_module.main(["run", "--team", "solo:worker=claude", "--max-cost", amount, "x"]) == 2
+@pytest.mark.parametrize("option", ["--max-cost", "--timeout"])
+@pytest.mark.parametrize("amount", ["0", "-3", "nan", "inf", "-inf"])
+def test_limits_must_be_positive_and_finite(budgeted, monkeypatch, option, amount):
+    harness, tmp_path = budgeted
+
+    async def unexpected(*args, **kwargs):
+        pytest.fail("invalid limits must not create a worktree")
+
+    monkeypatch.setattr(cli_module.LocalWorktree, "create", unexpected)
+    assert cli_module.main(["run", "--team", "solo:worker=claude", f"{option}={amount}", "x"]) == 2
     assert harness.calls == []
+    assert not (tmp_path / "cache").exists()
 
 
 @pytest.mark.parametrize("value", ["[red]literal[/red]", "[/red]"])

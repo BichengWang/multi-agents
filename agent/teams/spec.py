@@ -33,6 +33,7 @@ from .pricing import lookup_price
 from .plan import DEFAULT_MAX_TASKS, DEFAULT_REPLANS, PlanTeam
 from .topologies import DEFAULT_ROUNDS, BestTeam, ReviewTeam, SoloTeam
 from .types import Harness, Team
+from .validation import validate_positive_finite
 
 HARNESSES = ("claude", "codex", "sdk")
 CHECK = "check"  # pseudo-harness: the --check command acting as reviewer or judge
@@ -303,6 +304,8 @@ def build_team(
     harness except ``check`` (a shell command that costs $0) is wrapped in a ``BudgetedHarness``
     sharing it, so runs are refused with ``BudgetExceeded`` once it is used up.
     """
+    if timeout is not None:
+        validate_positive_finite(timeout, "timeout")
     parsed = parse_team_spec(spec)
     if check is not None and not check.strip():
         raise SpecError("the check command is empty")
