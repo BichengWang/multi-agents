@@ -20,6 +20,10 @@ jobs:
   automerge:
     if: github.event.pull_request.merged == false
     runs-on: ubuntu-latest
+    # Opening a labeled PR can trigger both opened and labeled runs.
+    concurrency:
+      group: automerge-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     steps:
       - name: Check if PR is mergeable and has "auto-merge" label
         id: check
@@ -38,10 +42,15 @@ jobs:
               core.setOutput('should_automerge', 'false');
               return;
             }
-            for (let attempt = 0; pr.data.mergeable === null && attempt < 5; attempt++) {
+            for (let attempt = 0; pr.data.state === 'open' && pr.data.mergeable === null && attempt < 5; attempt++) {
               core.info('Mergeability is pending. Retrying in 3 seconds.');
               await new Promise(resolve => setTimeout(resolve, 3000));
               pr = await github.rest.pulls.get(params);
+            }
+            if (pr.data.state !== 'open') {
+              core.info(`PR is ${pr.data.merged ? 'already merged' : 'closed'}. Skipping automerge.`);
+              core.setOutput('should_automerge', 'false');
+              return;
             }
             if (!pr.data.labels.some(label => label.name === 'auto-merge')) {
               core.info('The "auto-merge" label was removed. Skipping automerge.');
@@ -56,15 +65,25 @@ jobs:
               core.setFailed('PR is not mergeable.');
               return;
             }
-            if (pr.data.state !== 'open') {
-              core.setFailed('PR is not open.');
-              return;
-            }
             core.setOutput('should_automerge', 'true')
 
       - name: Enable automerge
         if: steps.check.outputs.should_automerge == 'true'
         shell: bash
-        run: gh pr merge -R "${{ github.repository }}" --auto --squash ${{ github.event.pull_request.number }} --delete-branch
+        run: |
+          for attempt in {1..5}; do
+            if out=$(gh pr merge -R "${{ github.repository }}" --auto --squash ${{ github.event.pull_request.number }} --delete-branch 2>&1); then
+              echo "$out"
+              exit 0
+            fi
+            echo "$out"
+            if grep -qiE 'merge already in progress|already merged' <<<"$out"; then
+              exit 0
+            fi
+            if ! grep -qi 'base branch was modified' <<<"$out" || [ "$attempt" -eq 5 ]; then
+              exit 1
+            fi
+            sleep 3
+          done
         env:
           GH_TOKEN: ${{ github.token }}

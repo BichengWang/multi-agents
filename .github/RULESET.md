@@ -75,3 +75,7 @@ an additional attribution-guard rule.
 
 Automatic merging remains opt-in through the `auto-merge` label. The mergeability polling step
 rechecks the latest labels before enabling it, so removing the label during polling stops opt-in.
+Runs are serialized per PR; a run that finds the PR closed or merged skips it. Enabling auto-merge
+retries a base-branch modification up to five attempts, waiting three seconds between attempts.
+An already merged PR or a merge already in progress counts as success; other errors fail the run
+with the command output.
