@@ -165,7 +165,8 @@ class SdkHarness:
                 timeout,
             )
         except asyncio.TimeoutError:
-            return self._failed(role, name, f"timed out after {timeout:g}s", TIMEOUT_EXIT_CODE, start, sid)
+            message = f"timed out after {timeout:g}s" if timeout is not None else "timed out"
+            return self._failed(role, name, message, TIMEOUT_EXIT_CODE, start, sid)
         except RuntimeError as exc:
             if "litellm extra" in str(exc):
                 raise
