@@ -148,3 +148,21 @@ def test_repeated_event_loops_can_create_forks_concurrently(repo):
 
     run(go())
     run(go())  # a second loop must not trip over locks bound to the first
+
+
+def test_diff_round_trips_files_with_a_text_conversion_filter(repo):
+    (repo / ".gitattributes").write_text("a.txt diff=hex\n")
+    git(repo, "add", ".gitattributes")
+    git(repo, "commit", "-qm", "configure text conversion")
+    git(repo, "config", "diff.hex.textconv", "od -An -tx1")
+
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            await ws.exec(["sh", "-c", "echo changed > a.txt"])
+            patch = await ws.diff()
+            async with await ws.fork() as fork:
+                await fork.apply(patch)
+                assert (await fork.exec(["cat", "a.txt"])).stdout == "changed\n"
+                assert await fork.diff() == patch
+
+    run(go())

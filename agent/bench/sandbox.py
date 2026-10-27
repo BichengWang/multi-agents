@@ -212,7 +212,7 @@ for list in "$GITDIR/bench-untracked" "$GEN"; do
     git update-index --force-remove -z --stdin < "$list"
   fi
 done
-git diff --cached --binary --full-index --no-color --no-ext-diff --no-renames "$TREE"
+git diff --cached --binary --full-index --no-color --no-ext-diff --no-textconv --no-renames "$TREE"
 """
 
 

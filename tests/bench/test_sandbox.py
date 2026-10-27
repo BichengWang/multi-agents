@@ -234,6 +234,24 @@ def test_new_python_bytecode_is_not_part_of_the_patch(tmp_path):
     run(scenario())
 
 
+def test_diff_round_trips_files_with_a_text_conversion_filter(tmp_path):
+    modal, backend, _, _ = prepare(tmp_path)
+
+    async def scenario():
+        async with await SandboxWorkspace.create("img:1", backend=backend) as ws:
+            await sh(ws, "echo 'notes.txt diff=hex' > .git/info/attributes")
+            await sh(ws, "git config diff.hex.textconv 'od -An -tx1'")
+            await sh(ws, "echo changed > notes.txt")
+            patch = await ws.diff()
+            async with await ws.fork() as fork:
+                await fork.apply(patch)
+                assert (await fork.exec(["cat", "notes.txt"])).stdout == "changed\n"
+                assert await fork.diff() == patch
+
+    run(scenario())
+    assert all(sb.terminated for sb in modal.sandboxes)
+
+
 def test_image_checkout_must_be_the_tasks_base_commit_and_is_recorded(tmp_path):
     modal, backend, base, _ = prepare(tmp_path)
 

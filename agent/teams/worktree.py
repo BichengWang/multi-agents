@@ -271,6 +271,7 @@ class LocalWorktree:
                 "--full-index",
                 "--no-color",
                 "--no-ext-diff",
+                "--no-textconv",
                 "--no-renames",
                 # Pin the prefixes: diff.noprefix / mnemonicPrefix / srcPrefix in the user's git
                 # config would otherwise change the header and break `git apply`.
