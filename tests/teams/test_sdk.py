@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import pytest
@@ -97,6 +98,24 @@ def test_sdk_run_failure_is_a_failed_run_not_an_exception(tmp_path, monkeypatch)
 
     result = run(go())
     assert result.exit_code == 1 and "no network" in result.final_message
+
+
+@pytest.mark.parametrize("timeout", [None, 30.0])
+def test_sdk_provider_timeout_is_a_failed_run(tmp_path, monkeypatch, timeout):
+    class TimedOut(ScriptedModel):
+        async def get_response(self, *args, **kwargs):
+            raise asyncio.TimeoutError("provider timed out")
+
+    monkeypatch.setenv("MULTI_AGENTS_WORKTREE_DIR", str(tmp_path / "worktrees"))
+    repo = make_repo(tmp_path / "repo")
+
+    async def go():
+        async with await LocalWorktree.create(repo) as ws:
+            return await SdkHarness(TimedOut([])).run(ws, "x", timeout=timeout)
+
+    result = run(go())
+    assert result.exit_code == 124
+    assert "timed out" in result.final_message
 
 
 def test_litellm_models_need_the_litellm_extra(tmp_path, monkeypatch):
