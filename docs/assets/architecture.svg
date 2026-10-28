@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 790" width="1200" height="790" role="img" aria-labelledby="title desc">
+  <title id="title">multi-agents architecture and north star</title>
+  <desc id="desc">Entry points (CLI, coding-agent plugins, GitHub issue, Python API, benchmark runner) feed the team runner. A team spec picks a topology (solo, review, best, plan) run by harnesses (Claude Code, Codex, SDK agent, check) in isolated workspaces (local git worktree or remote sandbox), under a cost budget. Outputs are one patch, a run record with tokens, cost and seconds, a check result and an optional draft pull request. The benchmark runs teams against solo agents on fresh tasks to answer the north star: did the team beat a single agent on the same task, and what did the extra agents cost?</desc>
+  <defs>
+    <style>
+      .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+      .h { font-size: 12px; font-weight: 700; letter-spacing: 1.6px; }
+      .t { font-size: 15px; font-weight: 650; fill: #e6edf3; }
+      .s { font-size: 12px; fill: #9aa7c2; }
+      .c { font-size: 12px; fill: #c9d4ea; }
+      .card { fill: #131b2e; stroke: #27324d; stroke-width: 1; }
+      .glyph { fill: #0f1626; stroke-width: 1.5; }
+      .gl { font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    </style>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#0e1426"/>
+    </linearGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3a2d0c"/>
+      <stop offset="0.55" stop-color="#1c1a16"/>
+      <stop offset="1" stop-color="#151a28"/>
+    </linearGradient>
+    <linearGradient id="runner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f2a2a"/>
+      <stop offset="1" stop-color="#0f1729"/>
+    </linearGradient>
+    <marker id="a-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7895"/></marker>
+    <marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2dd4bf"/></marker>
+    <marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4ade80"/></marker>
+    <marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#fb923c"/></marker>
+    <marker id="a-gold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f5c451"/></marker>
+    <marker id="a-small" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2dd4bf"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="790" rx="20" fill="url(#bg)"/>
+  <text x="40" y="38" class="sans mono" font-size="13" fill="#6b7895">multi-agents · how it works</text>
+
+  <!-- North star -->
+  <rect x="40" y="56" width="1120" height="100" rx="14" fill="url(#star)" stroke="#f5c451" stroke-opacity="0.65"/>
+  <path transform="translate(78,106)" d="M0,-20 L5.9,-8.1 L19,-6.2 L9.5,3.1 L11.8,16.2 L0,10 L-11.8,16.2 L-9.5,3.1 L-19,-6.2 L-5.9,-8.1 Z" fill="#f5c451"/>
+  <text x="112" y="86" class="sans h" fill="#f5c451">NORTH STAR</text>
+  <text x="112" y="115" class="sans" font-size="22" font-weight="700" fill="#fff7e0">Did the team beat a single agent on the same task, and what did the extra agents cost?</text>
+  <text x="112" y="140" class="sans s">Measured, not assumed: fresh post-cutoff tasks · paired against a solo baseline · resolve rate, dollars and seconds for every agent call</text>
+
+  <!-- Entry points -->
+  <text x="40" y="198" class="sans h" fill="#9aa7c2">ENTRY POINTS</text>
+  <g class="sans">
+    <rect x="40" y="212" width="220" height="58" rx="10" class="card"/>
+    <text x="56" y="236" class="t">CLI</text>
+    <text x="56" y="256" class="mono c">multi-agents run</text>
+
+    <rect x="40" y="282" width="220" height="58" rx="10" class="card"/>
+    <text x="56" y="306" class="t">Coding-agent plugins</text>
+    <text x="56" y="326" class="mono c">/multi-agents:team</text>
+
+    <rect x="40" y="352" width="220" height="58" rx="10" class="card"/>
+    <text x="56" y="376" class="t">GitHub issue</text>
+    <text x="56" y="396" class="mono c">--issue 42 --pr</text>
+
+    <rect x="40" y="422" width="220" height="58" rx="10" class="card"/>
+    <text x="56" y="446" class="t">Python API</text>
+    <text x="56" y="466" class="mono c">agent.teams</text>
+
+    <rect x="40" y="492" width="220" height="58" rx="10" fill="#21160d" stroke="#fb923c" stroke-opacity="0.7"/>
+    <text x="56" y="516" class="t">Benchmark runner</text>
+    <text x="56" y="536" class="mono c">python -m agent.bench</text>
+  </g>
+  <g fill="none" stroke="#6b7895" stroke-width="1.5">
+    <path d="M260,241 H280 M260,311 H280 M260,381 H280 M260,451 H280 M260,521 H280 M280,241 V521"/>
+    <path d="M280,381 H297" marker-end="url(#a-muted)"/>
+  </g>
+
+  <!-- Team runner -->
+  <rect x="300" y="182" width="560" height="398" rx="16" fill="url(#runner)" stroke="#2dd4bf" stroke-opacity="0.55"/>
+  <text x="318" y="208" class="sans h" fill="#2dd4bf">TEAM RUNNER</text>
+  <text x="842" y="208" class="mono" font-size="12" fill="#7fe6d6" text-anchor="end">--team 'best:workers=claude+codex'</text>
+
+  <g class="sans">
+    <!-- solo -->
+    <rect x="316" y="220" width="125" height="108" rx="10" class="card"/>
+    <text x="328" y="242" class="mono" font-size="14" font-weight="700" fill="#e6edf3">solo</text>
+    <circle cx="378" cy="278" r="12" class="glyph" stroke="#2dd4bf"/>
+    <text x="378" y="278" class="gl" fill="#2dd4bf">W</text>
+    <text x="378" y="315" class="s" text-anchor="middle">one agent: baseline</text>
+
+    <!-- review -->
+    <rect x="451" y="220" width="125" height="108" rx="10" class="card"/>
+    <text x="463" y="242" class="mono" font-size="14" font-weight="700" fill="#e6edf3">review</text>
+    <circle cx="491" cy="278" r="12" class="glyph" stroke="#2dd4bf"/>
+    <text x="491" y="278" class="gl" fill="#2dd4bf">C</text>
+    <circle cx="537" cy="278" r="12" class="glyph" stroke="#2dd4bf"/>
+    <text x="537" y="278" class="gl" fill="#2dd4bf">R</text>
+    <path d="M500,268 Q514,258 527,268" fill="none" stroke="#2dd4bf" stroke-width="1.3" marker-end="url(#a-small)"/>
+    <path d="M528,288 Q514,298 501,288" fill="none" stroke="#2dd4bf" stroke-width="1.3" marker-end="url(#a-small)"/>
+    <text x="513" y="315" class="s" text-anchor="middle">coder ⇄ reviewer</text>
+
+    <!-- best -->
+    <rect x="586" y="220" width="125" height="108" rx="10" class="card"/>
+    <text x="598" y="242" class="mono" font-size="14" font-weight="700" fill="#e6edf3">best</text>
+    <g stroke="#2dd4bf" stroke-width="1.2" fill="none">
+      <path d="M626,262 L666,276 M626,278 L665,278 M626,294 L666,280"/>
+    </g>
+    <circle cx="620" cy="262" r="7" class="glyph" stroke="#2dd4bf"/>
+    <circle cx="620" cy="278" r="7" class="glyph" stroke="#2dd4bf"/>
+    <circle cx="620" cy="294" r="7" class="glyph" stroke="#2dd4bf"/>
+    <circle cx="676" cy="278" r="12" class="glyph" stroke="#f5c451"/>
+    <text x="676" y="278" class="gl" fill="#f5c451">J</text>
+    <text x="648" y="315" class="s" text-anchor="middle">N workers, judge picks</text>
+
+    <!-- plan -->
+    <rect x="721" y="220" width="125" height="108" rx="10" class="card"/>
+    <text x="733" y="242" class="mono" font-size="14" font-weight="700" fill="#e6edf3">plan</text>
+    <g stroke="#2dd4bf" stroke-width="1.2" fill="none">
+      <path d="M752,278 L783,263 M752,278 L783,278 M752,278 L783,293 M783,263 L814,278 M783,278 L814,278 M783,293 L814,278"/>
+    </g>
+    <circle cx="745" cy="278" r="10" class="glyph" stroke="#2dd4bf"/>
+    <text x="745" y="278" class="gl" fill="#2dd4bf">P</text>
+    <circle cx="783" cy="263" r="6" class="glyph" stroke="#2dd4bf"/>
+    <circle cx="783" cy="278" r="6" class="glyph" stroke="#2dd4bf"/>
+    <circle cx="783" cy="293" r="6" class="glyph" stroke="#2dd4bf"/>
+    <circle cx="821" cy="278" r="10" class="glyph" stroke="#2dd4bf"/>
+    <text x="821" y="278" class="gl" fill="#2dd4bf">I</text>
+    <text x="783" y="315" class="s" text-anchor="middle">split, solve, merge</text>
+  </g>
+
+  <!-- Budget -->
+  <rect x="316" y="340" width="530" height="30" rx="8" fill="#1f1a0e" stroke="#f5c451" stroke-opacity="0.55" stroke-dasharray="5 4"/>
+  <text x="330" y="360" class="sans" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f5c451">BUDGET</text>
+  <text x="396" y="360" class="sans c"><tspan class="mono">--max-cost USD</tspan>  stops new agent runs once the limit is spent</text>
+
+  <!-- Harnesses -->
+  <text x="318" y="394" class="sans h" fill="#a78bfa">HARNESSES  <tspan class="mono" font-weight="400" letter-spacing="0" fill="#9aa7c2">harness@model</tspan></text>
+  <g class="sans">
+    <rect x="316" y="402" width="125" height="54" rx="10" class="card" stroke="#4c3f7a"/>
+    <text x="328" y="424" class="t" font-size="14">Claude Code</text>
+    <text x="328" y="443" class="mono s">claude@haiku</text>
+    <rect x="451" y="402" width="125" height="54" rx="10" class="card" stroke="#4c3f7a"/>
+    <text x="463" y="424" class="t" font-size="14">Codex</text>
+    <text x="463" y="443" class="mono s">codex@gpt-6-luna</text>
+    <rect x="586" y="402" width="125" height="54" rx="10" class="card" stroke="#4c3f7a"/>
+    <text x="598" y="424" class="t" font-size="14">SDK agent</text>
+    <text x="598" y="443" class="mono s">sdk@any model</text>
+    <rect x="721" y="402" width="125" height="54" rx="10" class="card" stroke="#4c3f7a"/>
+    <text x="733" y="424" class="t" font-size="14">check</text>
+    <text x="733" y="443" class="mono s">--check 'tests'</text>
+  </g>
+
+  <!-- Workspaces -->
+  <path d="M581,458 V476" stroke="#60a5fa" stroke-width="1.5" fill="none" marker-end="url(#a-muted)"/>
+  <text x="590" y="471" class="mono" font-size="11" fill="#60a5fa">Workspace.exec</text>
+  <text x="318" y="494" class="sans h" fill="#60a5fa">WORKSPACES  <tspan font-weight="400" letter-spacing="0" fill="#9aa7c2">one isolated checkout per agent</tspan></text>
+  <g class="sans">
+    <rect x="316" y="502" width="260" height="62" rx="10" class="card" stroke="#2c4a75"/>
+    <text x="330" y="526" class="t" font-size="14">Local git worktree</text>
+    <text x="330" y="546" class="s">your checkout untouched unless --apply</text>
+    <rect x="586" y="502" width="260" height="62" rx="10" class="card" stroke="#2c4a75"/>
+    <text x="600" y="526" class="t" font-size="14">Remote sandbox</text>
+    <text x="600" y="546" class="s">Modal or Docker, for the benchmark</text>
+  </g>
+
+  <!-- Outputs -->
+  <path d="M860,381 H897" stroke="#4ade80" stroke-width="1.5" fill="none" marker-end="url(#a-green)"/>
+  <text x="900" y="198" class="sans h" fill="#4ade80">OUTPUTS</text>
+  <g class="sans">
+    <rect x="900" y="212" width="260" height="76" rx="10" class="card" stroke="#245c3c"/>
+    <text x="916" y="238" class="t">One patch</text>
+    <text x="916" y="258" class="s">the best-scoring candidate, ready</text>
+    <text x="916" y="275" class="s">for <tspan class="mono">git apply</tspan> or <tspan class="mono">--apply</tspan></text>
+
+    <rect x="900" y="298" width="260" height="76" rx="10" class="card" stroke="#245c3c"/>
+    <text x="916" y="324" class="t">Run record</text>
+    <text x="916" y="344" class="s">tokens · cost · seconds per agent call</text>
+    <text x="916" y="361" class="mono s">~/.cache/multi-agents/runs</text>
+
+    <rect x="900" y="384" width="260" height="76" rx="10" class="card" stroke="#245c3c"/>
+    <text x="916" y="410" class="t">Check result</text>
+    <text x="916" y="430" class="s">tests, build or lint on the final patch:</text>
+    <text x="916" y="447" class="s">pass or fail, failing candidates rank lower</text>
+
+    <rect x="900" y="470" width="260" height="76" rx="10" class="card" stroke="#245c3c"/>
+    <text x="916" y="496" class="t">Draft pull request</text>
+    <text x="916" y="516" class="s">with <tspan class="mono">--pr</tspan>: a new branch plus the</text>
+    <text x="916" y="533" class="s">run summary, checkout untouched</text>
+  </g>
+
+  <!-- Benchmark -->
+  <path d="M150,550 V602" stroke="#fb923c" stroke-width="1.5" fill="none" stroke-dasharray="4 4" marker-end="url(#a-orange)"/>
+  <rect x="40" y="606" width="1120" height="160" rx="16" fill="#1a130c" stroke="#fb923c" stroke-opacity="0.55"/>
+  <text x="60" y="633" class="sans h" fill="#fb923c">BENCHMARK  <tspan font-weight="400" letter-spacing="0" fill="#c9a98a">teams against solo agents, same tasks, same sandbox</tspan></text>
+  <g class="sans">
+    <rect x="60" y="648" width="240" height="96" rx="10" class="card" stroke="#5c3a1c"/>
+    <text x="76" y="674" class="t">Fresh tasks</text>
+    <text x="76" y="696" class="s">SWE-bench-Live MultiLang issues</text>
+    <text x="76" y="714" class="s">opened after model training cutoffs</text>
+    <text x="76" y="732" class="s">Rust · Java · Go · C/C++ · C# · JS/TS</text>
+
+    <rect x="338" y="648" width="240" height="96" rx="10" class="card" stroke="#5c3a1c"/>
+    <text x="354" y="674" class="t">Team vs. solo</text>
+    <text x="354" y="696" class="s">every team spec and the solo baseline</text>
+    <text x="354" y="714" class="s">in a fresh sandbox per task,</text>
+    <text x="354" y="732" class="s">git history stripped</text>
+
+    <rect x="616" y="648" width="240" height="96" rx="10" class="card" stroke="#5c3a1c"/>
+    <text x="632" y="674" class="t">Hidden-test grading</text>
+    <text x="632" y="696" class="s">the dataset's official tests</text>
+    <text x="632" y="714" class="s">timeouts graded, not dropped,</text>
+    <text x="632" y="732" class="s">so slow teams can't skip hard tasks</text>
+
+    <rect x="894" y="648" width="246" height="96" rx="10" fill="#241a0c" stroke="#f5c451" stroke-opacity="0.7"/>
+    <text x="910" y="674" class="t">Report</text>
+    <text x="910" y="696" class="s">resolve rate with 95% CI</text>
+    <text x="910" y="714" class="s">paired wins/losses (McNemar)</text>
+    <text x="910" y="732" class="s">cost per resolved task · wall time</text>
+  </g>
+  <g stroke="#fb923c" stroke-width="1.5" fill="none">
+    <path d="M300,696 H335" marker-end="url(#a-orange)"/>
+    <path d="M578,696 H613" marker-end="url(#a-orange)"/>
+    <path d="M856,696 H891" marker-end="url(#a-orange)"/>
+  </g>
+  <!-- Report answers the north star -->
+  <path d="M1140,696 H1180 V106 H1163" stroke="#f5c451" stroke-width="1.6" fill="none" stroke-dasharray="6 5" marker-end="url(#a-gold)"/>
+  <text transform="translate(1192,400) rotate(90)" class="sans" font-size="11" font-weight="700" letter-spacing="1.4" fill="#f5c451" text-anchor="middle">ANSWERS THE NORTH STAR</text>
+</svg>

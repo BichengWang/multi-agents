@@ -1,18 +1,32 @@
+<div align="center" markdown="1">
+
 # multi-agents
 
 **Multi-agent teams for real work: measured, not assumed.**
 
-**Docs:** [bichengwang.github.io/multi-agents](https://bichengwang.github.io/multi-agents/) ·
-**PyPI:** [`multi-agent`](https://pypi.org/project/multi-agent/)
+[![PyPI](https://img.shields.io/pypi/v/multi-agent?color=2dd4bf&label=PyPI)](https://pypi.org/project/multi-agent/)
+[![Python](https://img.shields.io/pypi/pyversions/multi-agent?color=60a5fa)](https://pypi.org/project/multi-agent/)
+[![Docs](https://img.shields.io/badge/docs-site-a78bfa)](https://bichengwang.github.io/multi-agents/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4ade80)](https://github.com/BichengWang/multi-agents/blob/main/LICENSE)
+
+[Docs](https://bichengwang.github.io/multi-agents/) ·
+[Quickstart](#quickstart) ·
+[Teams](#teams) ·
+[Benchmark](#benchmark) ·
+[Roadmap](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md)
+
+<img src="https://raw.githubusercontent.com/BichengWang/multi-agents/main/docs/assets/architecture.svg" alt="multi-agents architecture: entry points feed a team runner (solo, review, best, plan topologies; Claude Code, Codex, SDK and check harnesses; isolated workspaces; cost budget) that returns a patch and a run record, and a benchmark that runs teams against solo agents to answer the north star" width="100%">
+
+</div>
+
+> **North star:** most agent orchestrators skip one question, and the benchmark here answers it:
+> **did the team beat a single agent on the same task, and what did the extra agents cost?**
 
 Run a team of coding agents on a task in your repository: a single agent, a coder ⇄ reviewer
 loop, or several agents with a judge. Workers are the coding CLIs you already use (Claude Code,
 Codex) or a built-in agent that can use any model through the OpenAI Agents SDK. Each worker
 gets its own git worktree. You get one patch back, plus an itemized record of every agent call:
 tokens, cost and seconds. Your working tree is untouched unless you pass `--apply`.
-
-The benchmark then answers the question most agent orchestrators skip: **did the team beat a
-single agent on the same task, and what did the extra agents cost?**
 
 ## Why measure
 
@@ -79,18 +93,6 @@ outside your repository (`~/.cache/multi-agents/runs/`).
 `codex@gpt-6-luna` or `sdk@litellm/openrouter/<model>`. `check` (the `--check` command) can be the
 reviewer or the judge: a test-driven loop with no LLM reviewer. Details:
 [team runner guide](https://github.com/BichengWang/multi-agents/blob/main/agent/teams/README.md).
-
-```mermaid
-flowchart LR
-  T["Task"] --> Team["Team: solo / review / best / plan"]
-  Team --> H1["Claude Code"]
-  Team --> H2["Codex"]
-  Team --> H3["SDK agent (any model)"]
-  H1 --> W1["Worktree 1"]
-  H2 --> W2["Worktree 2"]
-  H3 --> W3["Worktree 3"]
-  Team --> R["Patch + record: runs, tokens, cost, time"]
-```
 
 ## From issue to pull request
 
@@ -188,12 +190,12 @@ First results will be published here.
 
 | Area | State |
 |---|---|
-| Team runner (`solo`, `review`, `best`, `plan`), Claude Code and Codex harnesses | Working; smoke-tested with real CLIs |
-| `--check`, `--issue`, `--pr`, plugins for both CLIs | Working; smoke-tested end to end |
-| `--max-cost` run budget; `plan` re-planning (`replans`) and per-subtask review (`reviewer`) | Working; smoke-tested with real CLIs |
-| SDK harness (any model) | Implemented and tested offline; not yet run against a live model |
-| Benchmark | Built and tested offline; local Docker grading and agent workspaces run live, a team solve and the Modal path not yet |
-| Results | Pending the first pilot run |
+| Team runner (`solo`, `review`, `best`, `plan`), Claude Code and Codex harnesses | ✅ Working; smoke-tested with real CLIs |
+| `--check`, `--issue`, `--pr`, plugins for both CLIs | ✅ Working; smoke-tested end to end |
+| `--max-cost` run budget; `plan` re-planning (`replans`) and per-subtask review (`reviewer`) | ✅ Working; smoke-tested with real CLIs |
+| SDK harness (any model) | 🧪 Implemented and tested offline; not yet run against a live model |
+| Benchmark | 🧪 Built and tested offline; local Docker grading and agent workspaces run live, a team solve and the Modal path not yet |
+| Results | ⏳ Pending the first pilot run |
 
 Plans are in [docs/ROADMAP.md](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md).
 
