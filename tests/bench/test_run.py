@@ -15,7 +15,7 @@ from agent.bench.run import (
     run_benchmark,
     validate_gold,
 )
-from agent.teams.types import CodingTask
+from agent.teams.types import CodingTask, HarnessRun, TeamResult, Usage
 
 from .fakes import FakeTeam, MemoryWorkspace
 
@@ -174,6 +174,26 @@ def test_a_pair_with_a_timed_out_agent_command_is_graded_with_unknown_cost(tmp_p
     assert summary.errored == 0 and len(h.graded) == 1 and rec["stage"] == "done"
     assert rec["usage"]["cost_usd"] is None
     assert rec["meta"]["lost_execs"] == ["command timed out after 60s: claude"]
+
+
+def test_a_pair_whose_agent_never_reached_the_model_is_errored_not_graded(tmp_path):
+    class RefusedTeam(FakeTeam):
+        async def solve(self, task, workspace):
+            refused = HarnessRun(
+                harness="claude", model="m", role="worker", exit_code=1, usage=Usage(cost_usd=0.0),
+                final_message="API Error: 400 You have reached your specified API usage limits.",
+                duration_s=2.0,
+            )
+            return TeamResult(patch="", runs=[refused], duration_s=2.0)
+
+    h = Harness(RefusedTeam("solo:worker=claude"))
+    summary = h.run(tmp_path, make_tasks(1))
+    (rec,) = load_records(tmp_path / "results.jsonl")
+    assert summary.errored == 1 and h.graded == [] and rec["resolved"] is None
+    assert rec["error"] == (
+        "solve: claude never reached the model (exit 1): "
+        "API Error: 400 You have reached your specified API usage limits."
+    )
 
 
 def test_resume_skips_finished_pairs_and_retries_only_infrastructure_errors(tmp_path):
