@@ -142,6 +142,40 @@ def test_agents_receive_only_the_visible_task_never_hidden_tests(tmp_path):
         assert not hasattr(seen, "grading")
 
 
+class _LossyTeam(FakeTeam):
+    """A team whose harness commands raised inside the sandbox; the team still returns a result."""
+
+    def __init__(self, name, *, lost=(), timeouts=()):
+        super().__init__(name, cost=1.0)
+        self.lost, self.timeouts = list(lost), list(timeouts)
+
+    async def solve(self, task, workspace):
+        workspace.exec_errors, workspace.exec_timeouts = self.lost, self.timeouts
+        return await super().solve(task, workspace)
+
+
+def test_a_pair_whose_agent_command_was_lost_is_errored_with_unknown_cost(tmp_path):
+    team = _LossyTeam("solo:worker=claude", lost=["ConflictError: exec not found"])
+    h = Harness(team)
+    summary = h.run(tmp_path, make_tasks(1), allow_unpriced=True, max_cost_usd=10)
+    (rec,) = load_records(tmp_path / "results.jsonl")
+    assert summary.errored == 1 and h.graded == []
+    assert rec["error"] == "solve: agent command lost to the sandbox: ConflictError: exec not found"
+    assert rec["usage"]["cost_usd"] is None and rec["patch"]  # kept for audit, retried on resume
+    team.lost = []
+    h.run(tmp_path, make_tasks(1), allow_unpriced=True, max_cost_usd=10)
+    assert [r["error"] for r in load_records(tmp_path / "results.jsonl")] == [rec["error"], None]
+
+
+def test_a_pair_with_a_timed_out_agent_command_is_graded_with_unknown_cost(tmp_path):
+    h = Harness(_LossyTeam("solo:worker=claude", timeouts=["command timed out after 60s: claude"]))
+    summary = h.run(tmp_path, make_tasks(1))
+    (rec,) = load_records(tmp_path / "results.jsonl")
+    assert summary.errored == 0 and len(h.graded) == 1 and rec["stage"] == "done"
+    assert rec["usage"]["cost_usd"] is None
+    assert rec["meta"]["lost_execs"] == ["command timed out after 60s: claude"]
+
+
 def test_resume_skips_finished_pairs_and_retries_only_infrastructure_errors(tmp_path):
     team = FakeTeam("solo:worker=claude")
     h = Harness(team)
@@ -605,6 +639,26 @@ def test_cli_rejects_invalid_limits_before_loading_tasks_or_backend(tmp_path, mo
     out = tmp_path / "out"
     assert main(["run", "--team", "solo:worker=claude", "--out", str(out), f"{option}={value}"]) == 2
     assert not out.exists()
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["report", "runs/x"],
+        ["run", "--team", "solo:worker=claude", "--out", "/abs/out"],
+        ["run", "--team", "solo:worker=claude", "--out", "o", "--gold-file", "/abs/gold.jsonl"],
+        ["gold", "--out", "g", "--backend", "docker"],
+    ],
+)
+def test_remote_rejects_commands_it_cannot_run_before_starting_anything(monkeypatch, argv):
+    import sys
+    import types
+
+    stub = types.ModuleType("agent.bench.remote")
+    stub.VOLUME = "v"
+    stub.launch = lambda argv: pytest.fail("an invalid remote command must not be launched")
+    monkeypatch.setitem(sys.modules, "agent.bench.remote", stub)
+    assert main(["remote", *argv]) == 2
 
 
 @pytest.mark.parametrize("value", [None, 0.25])

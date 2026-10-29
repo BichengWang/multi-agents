@@ -352,6 +352,11 @@ class SandboxWorkspace:
         self.isolate_history = isolate_history
         self.expected_commit = expected_commit
         self._closed = False
+        # Agent commands that raised instead of returning, shared with every fork. A harness run
+        # lost this way may have spent money the team cannot report; `run` uses these to mark the
+        # pair's cost unknown, and errors a pair whose run was lost to the sandbox (not a timeout).
+        self.exec_errors: list[str] = []
+        self.exec_timeouts: list[str] = []
 
     @classmethod
     async def create(
@@ -480,15 +485,22 @@ class SandboxWorkspace:
         timeout: Optional[float] = None,
         stdin: Optional[str] = None,
     ) -> ExecResult:
-        code, out, err = await self._raw_exec(
-            self._sandbox,
-            self._backend.config,
-            argv,
-            workdir=self.root,
-            env=env,
-            timeout=timeout,
-            stdin=stdin.encode("utf-8", "surrogateescape") if stdin is not None else None,
-        )
+        try:
+            code, out, err = await self._raw_exec(
+                self._sandbox,
+                self._backend.config,
+                argv,
+                workdir=self.root,
+                env=env,
+                timeout=timeout,
+                stdin=stdin.encode("utf-8", "surrogateescape") if stdin is not None else None,
+            )
+        except SandboxExecTimeout as exc:
+            self.exec_timeouts.append(str(exc))
+            raise
+        except Exception as exc:
+            self.exec_errors.append(f"{type(exc).__name__}: {exc}"[:500])
+            raise
         return ExecResult(code, out.decode("utf-8", "replace"), err.decode("utf-8", "replace"))
 
     async def _git_script(
@@ -526,12 +538,18 @@ class SandboxWorkspace:
             raise SandboxError(f"git apply failed ({code}): {err.decode('utf-8', 'replace').strip()}")
 
     async def fork(self) -> SandboxWorkspace:
-        return await self.create(
-            self.image_tag,
-            backend=self._backend,
-            agent=self.agent,
-            expected_commit=self.expected_commit,
-        )
+        try:
+            forked = await self.create(
+                self.image_tag,
+                backend=self._backend,
+                agent=self.agent,
+                expected_commit=self.expected_commit,
+            )
+        except Exception as exc:
+            self.exec_errors.append(f"fork: {type(exc).__name__}: {exc}"[:500])
+            raise
+        forked.exec_errors, forked.exec_timeouts = self.exec_errors, self.exec_timeouts
+        return forked
 
     async def close(self) -> None:
         """Terminate the sandbox. ``_closed`` is set only once termination succeeded, so a failed

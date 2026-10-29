@@ -505,6 +505,19 @@ async def _run_pair(
                 usage = _usage_json(result.usage)
                 duration = result.duration_s or wall
                 runs = [_run_json(r, full=False) for r in result.runs]
+                lost = list(getattr(workspace, "exec_errors", ()))
+                timeouts = list(getattr(workspace, "exec_timeouts", ()))
+                if lost or timeouts:
+                    # A harness run that raised reported no usage: the team's total is too low.
+                    usage["cost_usd"] = None
+                    meta["lost_execs"] = lost + timeouts
+                if lost:
+                    # The sandbox, not the agent, ended a run: the team's work is incomplete.
+                    record.update(
+                        patch=patch, usage=usage, duration_s=round(duration, 3), runs=runs, meta=meta
+                    )
+                    record["error"] = f"solve: agent command lost to the sandbox: {lost[0]}"[:2000]
+                    return record, result, ""
             else:
                 # Out of time or crashed: grade whatever the team left in the workspace. Its cost
                 # is unknown, which a budgeted run treats as unpriced.

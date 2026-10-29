@@ -174,6 +174,29 @@ python -m agent.bench gold --backend docker --since 2026-07-01 --limit 10 --out 
   8.8.8.8\n" > /etc/resolv.conf'` fixes it until the next restart.
 - Disk: instance images are 1 to 5 GB each and agent images add about 1.3 GB.
 
+### Detached runs on Modal
+
+The client holds every sandbox command open while it runs, and Modal keeps a finished command's
+output for 10 minutes only. If this machine sleeps or loses its connection for longer, the work is
+lost (`exec not found`, `Connection lost`): from a laptop that slept overnight, 33 of 70 gold
+validations errored that way. `remote` runs the same `gold` or `run` command as a detached Modal
+function instead, which keeps going whatever happens here:
+
+```bash
+modal volume create multi-agents-bench-runs                      # once
+modal volume put multi-agents-bench-runs runs/gold/gold.jsonl runs/gold/gold.jsonl  # inputs
+python -m agent.bench remote run --since 2026-07-01 --limit 50 --seed 7 \
+    --gold-file runs/gold/gold.jsonl --add-python 3.12 --team ... --out runs/pilot
+modal app logs <app id>                                           # follow (printed on start)
+modal volume get multi-agents-bench-runs runs/pilot runs/pilot    # fetch, also while running
+```
+
+Relative `--out` and `--gold-file` paths are in the Modal Volume `multi-agents-bench-runs`; the
+volume is committed every minute and on exit. The function runs for at most 24 hours; to continue
+after that, start the same command again: it resumes from the volume. To stop a run early,
+`modal app stop <app id>`, then `modal app stop multi-agents-bench` to terminate the sandboxes it
+left (the next run recreates that app).
+
 ## Commands
 
 ```bash
@@ -210,11 +233,14 @@ at. Setup refuses an image whose checkout is not the task's `base_commit` (a dat
 would otherwise be graded silently); `--no-check-base-commit` turns that off.
 
 - **Errors vs. timeouts.** Only infrastructure failures are *errored* pairs: the workspace could not
-  be created (nothing was spent), the workspace could not be read after the team stopped, or
-  grading failed. A team that exceeds `--solve-timeout`, or crashes, is **graded on whatever it left
+  be created (nothing was spent), an agent command or fork was lost to the sandbox (the exec raised,
+  e.g. Modal's `exec not found`; the team's work is incomplete and its cost unknown), the workspace
+  could not be read after the team stopped, or grading failed. A team that exceeds
+  `--solve-timeout`, or crashes, is **graded on whatever it left
   in the workspace** and recorded with `meta.timed_out` / `meta.solve_error`; those pairs stay in
   the statistics (dropping them would remove the hardest tasks for the slowest topologies from every
-  team's numbers) and are shown in the report's *Timed out* column. Their cost is unknown.
+  team's numbers) and are shown in the report's *Timed out* column. Their cost is unknown, as is
+  the cost of a pair where a single agent command hit its own timeout (`meta.lost_execs`).
 - **Resume**: finished pairs (timeouts included) are skipped; errored pairs are retried
   (`--no-retry-errors` to keep them). An error in the *grading* stage re-grades the saved patch
   instead of re-running (and re-paying for) the agents, unless the stored patch is empty or had to
@@ -234,9 +260,10 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   A budgeted run refuses to start if a team contains a harness whose cost cannot be priced
   (e.g. `codex` without `@model`) unless `--allow-unpriced`. Without `--allow-unpriced` it also
   stops launching as soon as any record has an unknown cost, **which includes every timed-out or
-  crashed solve** (the agents may have spent money the run cannot see; the halt survives a
-  restart). Size `--solve-timeout` so timeouts are rare, or pass `--allow-unpriced` to accept that
-  the budget then counts priced spend only. The budget covers model spend, not Modal compute.
+  crashed solve and every lost agent command** (the agents may have spent money the run cannot
+  see; the halt survives a restart). Size `--solve-timeout` so timeouts are rare, or pass
+  `--allow-unpriced` to accept that the budget then counts priced spend only. The budget covers
+  model spend, not Modal compute.
 - **Cancellation**: Ctrl-C cancels in-flight pairs and terminates their sandboxes.
 - `--solve-timeout` (default 3600 s) bounds one team solve. Grading has one 150-minute budget for
   apply + rebuild + tests (upstream allows 150 minutes per command); a run that hits it is

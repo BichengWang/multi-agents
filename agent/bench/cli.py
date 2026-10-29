@@ -1,4 +1,4 @@
-"""``python -m agent.bench`` command line: tasks | gold | run | report."""
+"""``python -m agent.bench`` command line: tasks | gold | run | report | remote."""
 
 from __future__ import annotations
 
@@ -128,6 +128,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="count errored pairs as unresolved instead of excluding them",
     )
     report.add_argument("--out", help="also write the report to this file")
+
+    remote = sub.add_parser(
+        "remote",
+        help="run `gold ...` or `run ...` as a detached Modal function (survives this machine "
+        "sleeping); relative paths are in the Modal Volume multi-agents-bench-runs",
+    )
+    remote.add_argument("argv", nargs=argparse.REMAINDER, help="a gold or run command line")
     return parser
 
 
@@ -281,6 +288,28 @@ def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_remote(args: argparse.Namespace) -> int:
+    argv = list(args.argv)
+    if not argv or argv[0] not in ("gold", "run"):
+        raise ValueError("remote runs a `gold ...` or `run ...` command")
+    inner = build_parser().parse_args(argv)  # fail here, not after the remote start
+    for flag in ("out", "gold_file"):
+        value = getattr(inner, flag, None)
+        if value and Path(value).is_absolute():
+            raise ValueError(f"--{flag.replace('_', '-')} must be relative to the volume root")
+    if inner.backend != "modal":
+        raise ValueError("remote runs use the modal backend")
+    from .remote import VOLUME, launch
+
+    app_id, call_id = launch(argv)
+    print(
+        f"started {call_id} in app {app_id}\n"
+        f"  follow:  modal app logs {app_id}\n"
+        f"  fetch:   modal volume get {VOLUME} {inner.out} <local dir>"
+    )
+    return 0
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -289,6 +318,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "gold": _cmd_gold,
             "run": _cmd_run,
             "report": _cmd_report,
+            "remote": _cmd_remote,
         }[args.command](args)
     except (ValueError, SandboxError) as exc:
         print(f"error: {exc}", file=sys.stderr)
