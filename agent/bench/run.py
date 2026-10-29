@@ -600,7 +600,11 @@ async def validate_gold(
             done[task.task_id] = record
             with path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(record) + "\n")
-        log(f"gold {task.task_id}: {'valid' if record['resolved'] else 'INVALID'}")
+        if record["error"]:
+            verdict = f"ERROR, retried on the next run: {record['error'].splitlines()[0]}"
+        else:
+            verdict = "valid" if record["resolved"] else "INVALID"
+        log(f"gold {task.task_id}: {verdict}")
 
     await map_concurrently(list(tasks), one, max_concurrency=concurrency)
     return [t.task_id for t in tasks if done.get(t.task_id, {}).get("resolved")]

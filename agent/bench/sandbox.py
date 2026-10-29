@@ -24,10 +24,10 @@ same code through a fake Modal client that runs commands in a local temporary gi
 from __future__ import annotations
 
 import asyncio
+import base64
 import importlib
 import inspect
 import math
-import shlex
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -283,7 +283,13 @@ class ModalBackend:
             )
         image = self.modal.Image.from_registry(tag, **kwargs)
         if agent_tools:
-            image = image.run_commands(f"sh -c {shlex.quote(install_script(self.config))}")
+            # Modal turns this into a Dockerfile RUN line, which cannot hold the script's newlines:
+            # ship it base64-encoded and run it from a file (stdin stays free for its commands).
+            encoded = base64.b64encode(install_script(self.config).encode()).decode()
+            image = image.run_commands(
+                f"printf %s {encoded} | base64 -d > /tmp/mab-install.sh"
+                " && sh /tmp/mab-install.sh && rm -f /tmp/mab-install.sh"
+            )
         return image
 
     async def create_sandbox(self, tag: str, *, agent: bool) -> Any:

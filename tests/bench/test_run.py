@@ -524,6 +524,20 @@ def test_gold_validation_lists_instances_whose_reference_patch_resolves(tmp_path
     assert (tmp_path / "artifacts" / "o__r-1" / "eval.log").read_text() == "log of o__r-1"
 
 
+def test_gold_reports_a_grading_error_as_error_not_invalid(tmp_path):
+    async def evaluator(task, patch):
+        if task.task_id == "o__r-1":
+            raise RuntimeError("Image build failed.\nView the build logs")
+        return EvalResult(resolved=False)
+
+    lines: list[str] = []
+    asyncio.run(validate_gold(make_tasks(2), tmp_path, evaluator=evaluator, log=lines.append))
+    assert sorted(lines) == [
+        "gold o__r-0: INVALID",
+        "gold o__r-1: ERROR, retried on the next run: RuntimeError: Image build failed.",
+    ]
+
+
 @pytest.mark.parametrize("tail", ['{"task_id": "unfinished', '{"resolved": tru', '{', ""])
 def test_gold_resume_repairs_tail_without_repeating_completed_grades(tmp_path, tail):
     h = Harness()
