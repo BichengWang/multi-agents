@@ -584,6 +584,13 @@ async def validate_gold(
             result = await evaluator(task, task.grading.gold_patch)
             record["resolved"] = result.resolved
             record["eval"] = result.to_json()
+            if result.log:
+                # Without the test log an INVALID verdict cannot be told apart from a broken run.
+                directory = out / ARTIFACTS_DIR / slug(task.task_id)
+                directory.mkdir(parents=True, exist_ok=True)
+                (directory / "eval.log").write_text(
+                    redactor.text(result.log), encoding="utf-8", errors="replace"
+                )
         except asyncio.CancelledError:
             raise
         except Exception as exc:

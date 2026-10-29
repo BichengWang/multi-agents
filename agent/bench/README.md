@@ -99,7 +99,10 @@ Deviations from upstream:
 
 Upstream recommends validating instances with the gold patch before benchmarking: tests rot, and
 results should use only instances whose reference patch resolves on your machine and day.
-`python -m agent.bench gold` does exactly that and `run --gold-file` keeps only valid ones.
+`python -m agent.bench gold` does exactly that and `run --gold-file` keeps only valid ones. It
+writes one record per task to `gold.jsonl` and the full test log to `artifacts/<task>/eval.log`, so
+an INVALID verdict can be traced to failing tests, a crashed toolchain or a run that printed no
+results.
 
 ## Setup
 
