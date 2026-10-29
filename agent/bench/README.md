@@ -129,7 +129,7 @@ uv run --extra bench modal secret create multi-agents-bench \
 - Images are pulled from Docker Hub by Modal. If pulls are rate limited, create a secret with
   `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` and pass `--registry-secret NAME`.
 - Agent sandboxes extend the instance image with Node.js 24.21.0 (tarball checksum-verified against
-  `SHASUMS256.txt`), `@anthropic-ai/claude-code@2.1.287` and `@openai/codex@0.162.1` (pins in
+  `SHASUMS256.txt`), `@anthropic-ai/claude-code@2.1.310` and `@openai/codex@0.162.1` (pins in
   `sandbox.py`). The layer is cached by Modal per instance image; the first run pays the build.
   Instance images must be glibc-based (Debian/Ubuntu-style; the Node tarball is glibc).
 - Each sandbox gets 2 Modal cores (= the dataset's recommended 4 CPUs) and 16 GB; a few large C++
@@ -147,6 +147,10 @@ python -m agent.bench gold --backend docker --since 2026-07-01 --limit 10 --out 
 
 - API keys come from your environment: `run` names any missing key before starting. They are
   passed into agent containers by name (not on the command line), never into grading containers.
+  For `claude` teams a Claude subscription works instead of an API key: export
+  `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) and leave `ANTHROPIC_API_KEY` unset; an
+  API key wins when both are set. Claude Code still reports `total_cost_usd` at API list prices,
+  so recorded cost and `--max-cost-usd` are API-equivalent, not what the subscription bills.
 - Agent images are built once per instance image (`docker run` + `docker commit`, no builder plugin)
   and kept as `multi-agents-bench-agent:<hash>`. Images are pulled with your `docker login`.
 - Containers get 4 CPUs and 16 GB as limits (`--cpus` / `--memory`), run `sleep` as PID 1 with
@@ -157,6 +161,14 @@ python -m agent.bench gold --backend docker --since 2026-07-01 --limit 10 --out 
   under QEMU emulation builds are several times slower and timing-sensitive tests fail.
   Validate gold on the machine you run teams on, and do not compare wall times across backends
   (the report names the backend).
+- Claude Code's `linux-x64` build needs AVX, which Rosetta lacks: it segfaults in amd64
+  containers. On an arm64 daemon the agent image therefore also installs the pinned
+  `@anthropic-ai/claude-code-linux-arm64-musl` binary with the musl loader from a digest-pinned
+  Alpine image, and `claude` runs natively on the arm64 kernel while the tools it calls stay amd64.
+  `codex` (`linux-x64`) runs under Rosetta as is.
+- If containers cannot resolve hosts on Colima (`Could not resolve host`), the VM's resolver at
+  `192.168.5.3` is not answering; `colima ssh -p <profile> -- sudo sh -c 'printf "nameserver
+  8.8.8.8\n" > /etc/resolv.conf'` fixes it until the next restart.
 - Disk: instance images are 1 to 5 GB each and agent images add about 1.3 GB.
 
 ## Commands
@@ -362,15 +374,16 @@ The four configurations together cost roughly **$1,156 to $1,462**.
 
 ## Limitations
 
-- **Live so far: local Docker only, gold and workspace paths.** On 2026-10-23, `gold --backend
-  docker` graded `xroche__httrack-810` end to end (image pull, both patches applied, rebuild,
-  175 tests parsed, `FAIL_TO_PASS` passed) in 6.5 minutes under QEMU on Apple silicon. Four
-  timeout-sensitive `PASS_TO_PASS` tests failed (emulation is the likely cause; not checked on
-  native amd64), so the task was marked invalid, which is what gold validation is for. A
-  throwaway script exercised the agent workspace on the same image: agent image build with the
-  pinned CLIs, history stripping, base-commit check, `diff`, `fork` + `apply`, a 5-second exec
-  timeout and container removal. Not run yet: a team
-  solving a task (needs API keys), and anything on real Modal. The Modal paths are covered by
+- **Live so far: local Docker on Apple silicon (Colima, Rosetta).** On 2026-10-28 a team solved a
+  task end to end: `run --backend docker --instance-id xroche__httrack-810 --team
+  solo:worker=claude@claude-haiku-5-5` built the agent image (arm64 Claude Code, see above), ran
+  Claude Code 2.1.310 on a Claude subscription for 15.4 minutes (13.8M input tokens, 97% cached;
+  $0.48 API-equivalent), produced a 3 KB patch to `src/htsftp.c` and graded it in 12.3 minutes:
+  unresolved, because the `FAIL_TO_PASS` test's Python FTP server segfaulted under Rosetta and six
+  timing-sensitive `PASS_TO_PASS` tests failed, which gold validation filters out. Earlier
+  (2026-10-23, QEMU) `gold` graded the same task and a throwaway script exercised the agent
+  workspace (history stripping, base-commit check, `diff`, `fork` + `apply`, exec timeout).
+  Nothing has run on real Modal. The Modal paths are covered by
   offline tests that drive the same code through a fake Modal client; its deadline behaviour (exit
   code -1, streams end, no exception) was read from the SDK source at tag `py/v1.6.0`, not
   observed. Unverified on Modal: whether it accepts every instance image without Python on `PATH`
@@ -384,4 +397,5 @@ The four configurations together cost roughly **$1,156 to $1,462**.
   filters the obviously broken ones on the day of the run; remaining label noise lowers every
   team's rate equally.
 - Fresh does not mean unseen by retrieval-augmented agents with web access.
-- Image architecture is `linux/amd64`, as Modal requires; local Docker on arm64 must emulate it.
+- Image architecture is `linux/amd64`, as Modal requires; local Docker on arm64 must emulate it
+  (only the agent's own `claude` binary runs natively).

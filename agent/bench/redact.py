@@ -28,6 +28,7 @@ _MIN_VALUE_LEN = 8
 # Host variables that hold credentials relevant to this project.
 HOST_VARS = (
     "ANTHROPIC_API_KEY",
+    "CLAUDE_CODE_OAUTH_TOKEN",
     "OPENAI_API_KEY",
     "CODEX_API_KEY",
     "OPENROUTER_API_KEY",
