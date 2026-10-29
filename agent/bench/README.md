@@ -404,7 +404,7 @@ The four configurations together cost roughly **$1,156 to $1,462**.
 
 ## Limitations
 
-- **Live so far: local Docker on Apple silicon (Colima, Rosetta).** On 2026-10-28 a team solved a
+- **Live so far.** On local Docker on Apple silicon (Colima, Rosetta), on 2026-10-28 a team solved a
   task end to end: `run --backend docker --instance-id xroche__httrack-810 --team
   solo:worker=claude@claude-haiku-5-5` built the agent image (arm64 Claude Code, see above), ran
   Claude Code 2.1.310 on a Claude subscription for 15.4 minutes (13.8M input tokens, 97% cached;
@@ -413,11 +413,15 @@ The four configurations together cost roughly **$1,156 to $1,462**.
   timing-sensitive `PASS_TO_PASS` tests failed, which gold validation filters out. Earlier
   (2026-10-23, QEMU) `gold` graded the same task and a throwaway script exercised the agent
   workspace (history stripping, base-commit check, `diff`, `fork` + `apply`, exec timeout).
-  Nothing has run on real Modal. The Modal paths are covered by
-  offline tests that drive the same code through a fake Modal client; its deadline behaviour (exit
-  code -1, streams end, no exception) was read from the SDK source at tag `py/v1.6.0`, not
-  observed. Unverified on Modal: whether it accepts every instance image without Python on `PATH`
-  (use `--add-python 3.12` if not) and wall-clock cost per task.
+  **On Modal (2026-10-29):** images without Python fail Modal's image build (`python: not
+  found`), so pass `--add-python 3.12`. Gold validation of the 70-task seed-7 sample ran as a
+  detached `remote` job; at the time of writing 35 tasks are valid, 13 invalid (for example
+  c-ares' IPv6 tests, which fail in Modal sandboxes) and 22 are being retried after the earlier
+  laptop-sleep errors. The same tasks fail gold under Rosetta, where .NET's MSBuild crashes and
+  timing tests flake (0 of 7 valid), so use Modal or an amd64 host for numbers. Haiku 5.5 teams
+  solved and were graded on Modal at $0.01 to $0.02 per pair. The deadline behaviour of Modal's
+  client (exit code -1, streams end, no exception) was read from the SDK source at tag
+  `py/v1.6.0`, not observed.
 - Teams come from the separate team runner (`agent.teams.build_team`, imported lazily); the
   benchmark depends only on the frozen contracts in `agent/teams/types.py` plus `build_team`,
   `parse_team_spec` and `is_priced`.
