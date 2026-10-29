@@ -199,7 +199,8 @@ def _pct(x: float) -> str:
 
 
 def _money(x: float) -> str:
-    return f"${x:,.2f}"
+    # Cheap models cost fractions of a cent per task; two decimals would print them as $0.00.
+    return f"${x:,.3f}" if 0 < abs(x) < 0.1 else f"${x:,.2f}"
 
 
 def _mean_cost(values: list[Optional[float]]) -> str:
