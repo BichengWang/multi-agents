@@ -174,6 +174,29 @@ python -m agent.bench gold --backend docker --since 2026-07-01 --limit 10 --out 
   8.8.8.8\n" > /etc/resolv.conf'` fixes it until the next restart.
 - Disk: instance images are 1 to 5 GB each and agent images add about 1.3 GB.
 
+### Detached runs on Modal
+
+The client holds every sandbox command open while it runs, and Modal keeps a finished command's
+output for 10 minutes only. If this machine sleeps or loses its connection for longer, the work is
+lost (`exec not found`, `Connection lost`): from a laptop that slept overnight, 33 of 70 gold
+validations errored that way. `remote` runs the same `gold` or `run` command as a detached Modal
+function instead, which keeps going whatever happens here:
+
+```bash
+modal volume create multi-agents-bench-runs                      # once
+modal volume put multi-agents-bench-runs runs/gold/gold.jsonl runs/gold/gold.jsonl  # inputs
+python -m agent.bench remote run --since 2026-07-01 --limit 50 --seed 7 \
+    --gold-file runs/gold/gold.jsonl --add-python 3.12 --team ... --out runs/pilot
+modal app logs <app id>                                           # follow (printed on start)
+modal volume get multi-agents-bench-runs runs/pilot runs/pilot    # fetch, also while running
+```
+
+Relative `--out` and `--gold-file` paths are in the Modal Volume `multi-agents-bench-runs`; the
+volume is committed every minute and on exit. The function runs for at most 24 hours; to continue
+after that, start the same command again: it resumes from the volume. To stop a run early,
+`modal app stop <app id>`, then `modal app stop multi-agents-bench` to terminate the sandboxes it
+left (the next run recreates that app).
+
 ## Commands
 
 ```bash
@@ -210,11 +233,14 @@ at. Setup refuses an image whose checkout is not the task's `base_commit` (a dat
 would otherwise be graded silently); `--no-check-base-commit` turns that off.
 
 - **Errors vs. timeouts.** Only infrastructure failures are *errored* pairs: the workspace could not
-  be created (nothing was spent), the workspace could not be read after the team stopped, or
-  grading failed. A team that exceeds `--solve-timeout`, or crashes, is **graded on whatever it left
+  be created (nothing was spent), an agent command or fork was lost to the sandbox (the exec raised,
+  e.g. Modal's `exec not found`; the team's work is incomplete and its cost unknown), the workspace
+  could not be read after the team stopped, or grading failed. A team that exceeds
+  `--solve-timeout`, or crashes, is **graded on whatever it left
   in the workspace** and recorded with `meta.timed_out` / `meta.solve_error`; those pairs stay in
   the statistics (dropping them would remove the hardest tasks for the slowest topologies from every
-  team's numbers) and are shown in the report's *Timed out* column. Their cost is unknown.
+  team's numbers) and are shown in the report's *Timed out* column. Their cost is unknown, as is
+  the cost of a pair where a single agent command hit its own timeout (`meta.lost_execs`).
 - **Resume**: finished pairs (timeouts included) are skipped; errored pairs are retried
   (`--no-retry-errors` to keep them). An error in the *grading* stage re-grades the saved patch
   instead of re-running (and re-paying for) the agents, unless the stored patch is empty or had to
@@ -234,9 +260,10 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   A budgeted run refuses to start if a team contains a harness whose cost cannot be priced
   (e.g. `codex` without `@model`) unless `--allow-unpriced`. Without `--allow-unpriced` it also
   stops launching as soon as any record has an unknown cost, **which includes every timed-out or
-  crashed solve** (the agents may have spent money the run cannot see; the halt survives a
-  restart). Size `--solve-timeout` so timeouts are rare, or pass `--allow-unpriced` to accept that
-  the budget then counts priced spend only. The budget covers model spend, not Modal compute.
+  crashed solve and every lost agent command** (the agents may have spent money the run cannot
+  see; the halt survives a restart). Size `--solve-timeout` so timeouts are rare, or pass
+  `--allow-unpriced` to accept that the budget then counts priced spend only. The budget covers
+  model spend, not Modal compute.
 - **Cancellation**: Ctrl-C cancels in-flight pairs and terminates their sandboxes.
 - `--solve-timeout` (default 3600 s) bounds one team solve. Grading has one 150-minute budget for
   apply + rebuild + tests (upstream allows 150 minutes per command); a run that hits it is
@@ -377,7 +404,7 @@ The four configurations together cost roughly **$1,156 to $1,462**.
 
 ## Limitations
 
-- **Live so far: local Docker on Apple silicon (Colima, Rosetta).** On 2026-10-28 a team solved a
+- **Live so far.** On local Docker on Apple silicon (Colima, Rosetta), on 2026-10-28 a team solved a
   task end to end: `run --backend docker --instance-id xroche__httrack-810 --team
   solo:worker=claude@claude-haiku-5-5` built the agent image (arm64 Claude Code, see above), ran
   Claude Code 2.1.310 on a Claude subscription for 15.4 minutes (13.8M input tokens, 97% cached;
@@ -386,11 +413,15 @@ The four configurations together cost roughly **$1,156 to $1,462**.
   timing-sensitive `PASS_TO_PASS` tests failed, which gold validation filters out. Earlier
   (2026-10-23, QEMU) `gold` graded the same task and a throwaway script exercised the agent
   workspace (history stripping, base-commit check, `diff`, `fork` + `apply`, exec timeout).
-  Nothing has run on real Modal. The Modal paths are covered by
-  offline tests that drive the same code through a fake Modal client; its deadline behaviour (exit
-  code -1, streams end, no exception) was read from the SDK source at tag `py/v1.6.0`, not
-  observed. Unverified on Modal: whether it accepts every instance image without Python on `PATH`
-  (use `--add-python 3.12` if not) and wall-clock cost per task.
+  **On Modal (2026-10-29):** images without Python fail Modal's image build (`python: not
+  found`), so pass `--add-python 3.12`. Gold validation of the 70-task seed-7 sample ran as a
+  detached `remote` job; at the time of writing 35 tasks are valid, 13 invalid (for example
+  c-ares' IPv6 tests, which fail in Modal sandboxes) and 22 are being retried after the earlier
+  laptop-sleep errors. The same tasks fail gold under Rosetta, where .NET's MSBuild crashes and
+  timing tests flake (0 of 7 valid), so use Modal or an amd64 host for numbers. Haiku 5.5 teams
+  solved and were graded on Modal at $0.01 to $0.02 per pair. The deadline behaviour of Modal's
+  client (exit code -1, streams end, no exception) was read from the SDK source at tag
+  `py/v1.6.0`, not observed.
 - Teams come from the separate team runner (`agent.teams.build_team`, imported lazily); the
   benchmark depends only on the frozen contracts in `agent/teams/types.py` plus `build_team`,
   `parse_team_spec` and `is_priced`.

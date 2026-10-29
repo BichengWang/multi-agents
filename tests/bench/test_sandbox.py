@@ -1,4 +1,5 @@
 import asyncio
+import base64
 
 import pytest
 
@@ -11,6 +12,7 @@ from agent.bench.sandbox import (
     SandboxConfig,
     SandboxError,
     SandboxExecTimeout,
+    install_script,
 )
 from agent.teams.types import Workspace
 
@@ -124,6 +126,10 @@ def test_agent_and_grader_sandboxes_are_configured_differently(tmp_path):
     image = agent_call["image"]
     assert image.tag == "img:1" and len(image.commands) == 1
     (install,) = image.commands
+    # Modal writes the command into a Dockerfile RUN line, which cannot contain newlines.
+    assert "\n" not in install
+    script = base64.b64decode(install.split()[2]).decode()
+    assert script == install_script(config)
     for pinned in (
         f"NODE={NODE_VERSION}\n",
         "node-v$NODE-linux-x64.tar.gz",
@@ -131,7 +137,7 @@ def test_agent_and_grader_sandboxes_are_configured_differently(tmp_path):
         f"@openai/codex@{CODEX_VERSION}",
         "sha256sum -c",
     ):
-        assert pinned in install
+        assert pinned in script
     # Grading uses the unmodified instance image and never sees API keys.
     assert grader_call["image"].commands == []
     assert "secrets" not in grader_call or not grader_call["secrets"]

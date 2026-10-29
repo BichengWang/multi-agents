@@ -505,6 +505,19 @@ async def _run_pair(
                 usage = _usage_json(result.usage)
                 duration = result.duration_s or wall
                 runs = [_run_json(r, full=False) for r in result.runs]
+                lost = list(getattr(workspace, "exec_errors", ()))
+                timeouts = list(getattr(workspace, "exec_timeouts", ()))
+                if lost or timeouts:
+                    # A harness run that raised reported no usage: the team's total is too low.
+                    usage["cost_usd"] = None
+                    meta["lost_execs"] = lost + timeouts
+                if lost:
+                    # The sandbox, not the agent, ended a run: the team's work is incomplete.
+                    record.update(
+                        patch=patch, usage=usage, duration_s=round(duration, 3), runs=runs, meta=meta
+                    )
+                    record["error"] = f"solve: agent command lost to the sandbox: {lost[0]}"[:2000]
+                    return record, result, ""
             else:
                 # Out of time or crashed: grade whatever the team left in the workspace. Its cost
                 # is unknown, which a budgeted run treats as unpriced.
@@ -600,7 +613,11 @@ async def validate_gold(
             done[task.task_id] = record
             with path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(record) + "\n")
-        log(f"gold {task.task_id}: {'valid' if record['resolved'] else 'INVALID'}")
+        if record["error"]:
+            verdict = f"ERROR, retried on the next run: {record['error'].splitlines()[0]}"
+        else:
+            verdict = "valid" if record["resolved"] else "INVALID"
+        log(f"gold {task.task_id}: {verdict}")
 
     await map_concurrently(list(tasks), one, max_concurrency=concurrency)
     return [t.task_id for t in tasks if done.get(t.task_id, {}).get("resolved")]
