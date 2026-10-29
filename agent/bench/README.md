@@ -234,8 +234,10 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
 
 - **Errors vs. timeouts.** Only infrastructure failures are *errored* pairs: the workspace could not
   be created (nothing was spent), an agent command or fork was lost to the sandbox (the exec raised,
-  e.g. Modal's `exec not found`; the team's work is incomplete and its cost unknown), the workspace
-  could not be read after the team stopped, or grading failed. A team that exceeds
+  e.g. Modal's `exec not found`; the team's work is incomplete and its cost unknown), an agent run
+  failed without using a single token (it never reached the model: usage or rate limits, exhausted
+  credits, a bad key), the workspace could not be read after the team stopped, or grading failed.
+  A team that exceeds
   `--solve-timeout`, or crashes, is **graded on whatever it left
   in the workspace** and recorded with `meta.timed_out` / `meta.solve_error`; those pairs stay in
   the statistics (dropping them would remove the hardest tasks for the slowest topologies from every

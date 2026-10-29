@@ -511,12 +511,26 @@ async def _run_pair(
                     # A harness run that raised reported no usage: the team's total is too low.
                     usage["cost_usd"] = None
                     meta["lost_execs"] = lost + timeouts
-                if lost:
-                    # The sandbox, not the agent, ended a run: the team's work is incomplete.
+                # A failed run that used no tokens never reached the model (exhausted credits,
+                # rate or usage limits, a bad key): grading it would score the provider, not the team.
+                unreached = [
+                    r for r in result.runs
+                    if r.exit_code != 0 and r.usage.input_tokens == 0 and r.usage.output_tokens == 0
+                ]
+                if lost or unreached:
+                    # The sandbox or the provider, not the agent, ended a run: the work is incomplete.
                     record.update(
                         patch=patch, usage=usage, duration_s=round(duration, 3), runs=runs, meta=meta
                     )
-                    record["error"] = f"solve: agent command lost to the sandbox: {lost[0]}"[:2000]
+                    if lost:
+                        reason = f"agent command lost to the sandbox: {lost[0]}"
+                    else:
+                        first = (unreached[0].final_message or "").strip().splitlines()
+                        reason = (
+                            f"{unreached[0].harness} never reached the model "
+                            f"(exit {unreached[0].exit_code}): {first[0] if first else 'no output'}"
+                        )
+                    record["error"] = f"solve: {reason}"[:2000]
                     return record, result, ""
             else:
                 # Out of time or crashed: grade whatever the team left in the workspace. Its cost
