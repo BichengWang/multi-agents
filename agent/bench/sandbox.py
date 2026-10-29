@@ -40,7 +40,7 @@ from .redact import Redactor
 # Pinned toolchain baked into the derived image. Bump deliberately; the Modal image cache key
 # includes these strings, so a bump rebuilds every instance image once.
 NODE_VERSION = "24.21.0"
-CLAUDE_CODE_VERSION = "2.1.287"
+CLAUDE_CODE_VERSION = "2.1.310"
 CODEX_VERSION = "0.162.1"
 
 SECRET_HELP = (

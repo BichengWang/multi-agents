@@ -53,10 +53,11 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
    `pre-pivot` tag).
 2. **Team runner** (done) — harness adapters for external coding CLIs and a built-in any-model SDK
    agent; local worktree workspaces; `solo`, `review` and `best` teams; CLI; run records with cost.
-3. **Benchmark** (built; first live run pending) — fresh-task dataset filtered by creation date;
-   remote Modal sandboxes or a local Docker daemon (`--backend docker`, live-tested on gold
-   validation); hidden-test evaluation; report with resolve rate, cost, wall time and
-   confidence intervals.
+3. **Benchmark** (done; Modal unverified) — fresh-task dataset filtered by creation date;
+   remote Modal sandboxes or a local Docker daemon (`--backend docker`); hidden-test evaluation;
+   report with resolve rate, cost, wall time and confidence intervals. First live run on
+   2026-10-28: a Claude Code team solved and was graded on local Docker (Apple silicon, Claude
+   subscription), details in [the benchmark README](../agent/bench/README.md#limitations).
 4. **Pilot results** — 50 fresh tasks × solo and team configurations; publish the table and raw
    trajectories.
 5. **Launch** — README led by the results, terminal demo, launch posts.
