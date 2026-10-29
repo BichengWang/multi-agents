@@ -509,7 +509,7 @@ def test_gold_validation_lists_instances_whose_reference_patch_resolves(tmp_path
 
     async def evaluator(task, patch):
         seen.append(patch)
-        return EvalResult(resolved=task.task_id != "o__r-1")
+        return EvalResult(resolved=task.task_id != "o__r-1", log=f"log of {task.task_id}")
 
     tasks = make_tasks(3)
     valid = asyncio.run(
@@ -521,6 +521,7 @@ def test_gold_validation_lists_instances_whose_reference_patch_resolves(tmp_path
     )
     assert again == valid and len(seen) == 3  # graded ids are not repeated
     assert len(load_records(tmp_path / "gold.jsonl")) == 3
+    assert (tmp_path / "artifacts" / "o__r-1" / "eval.log").read_text() == "log of o__r-1"
 
 
 @pytest.mark.parametrize("tail", ['{"task_id": "unfinished', '{"resolved": tru', '{', ""])
