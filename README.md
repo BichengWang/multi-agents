@@ -184,7 +184,12 @@ python -m agent.bench tasks --since 2026-07-01 --limit 5 --seed 7    # no creden
 
 Setup, methodology, cost estimates and limitations:
 [benchmark guide](https://github.com/BichengWang/multi-agents/blob/main/agent/bench/README.md).
-First results will be published here.
+
+**First results (partial, October 2026):** on the 11 fresh tasks every team finished before the
+API key's usage limit stopped the pilot, Claude Haiku 5.5 resolved 2/11 solo, 3/11 with a
+reviewer and 2/11 as best of 3, at $0.062, $0.057 and $0.18 per task. That is far too few tasks to
+tell the teams apart (p = 1.0). Table, data and raw trajectories:
+[pilot results](https://github.com/BichengWang/multi-agents/blob/main/docs/pilot-2026-10.md).
 
 ## Status
 
@@ -194,8 +199,8 @@ First results will be published here.
 | `--check`, `--issue`, `--pr`, plugins for both CLIs | ✅ Working; smoke-tested end to end |
 | `--max-cost` run budget; `plan` re-planning (`replans`) and per-subtask review (`reviewer`) | ✅ Working; smoke-tested with real CLIs |
 | SDK harness (any model) | 🧪 Implemented and tested offline; not yet run against a live model |
-| Benchmark | 🧪 Built and tested offline; local Docker grading and agent workspaces run live, a team solve and the Modal path not yet |
-| Results | ⏳ Pending the first pilot run |
+| Benchmark | ✅ Runs live on Modal (also detached, `remote`) and on local Docker |
+| Results | 🧪 [Partial pilot](https://github.com/BichengWang/multi-agents/blob/main/docs/pilot-2026-10.md): 11 of 48 tasks; resumes when the API limit resets |
 
 Plans are in [docs/ROADMAP.md](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md).
 

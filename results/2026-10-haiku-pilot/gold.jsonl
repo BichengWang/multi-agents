@@ -1,0 +1,70 @@
+{"task_id": "JasperFx__wolverine-3513", "valid": false, "error": "GradingError: hidden test patch did not apply: KIP]", "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "JasperFx__wolverine-3582", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "JasperFx__wolverine-3608", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "JasperFx__wolverine-3642", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "JasperFx__wolverine-3695", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "NVlabs__cuda-oxide-381", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "Ombi-app__Ombi-5444", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "OrchardCMS__OrchardCore-19492", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "SubtitleEdit__subtitleedit-12895", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "agentgateway__agentgateway-2452", "valid": false, "error": null, "fail_to_pass_failed": 1, "pass_to_pass_failed": 2}
+{"task_id": "agentscope-ai__agentscope-java-2189", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "agentscope-ai__agentscope-java-2257", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "angularsen__UnitsNet-1699", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "apache__paimon-8536", "valid": false, "error": "GradingError: evaluation script did not reach the test log: bash: cannot set terminal process group (-1): Inappropriate ioctl for device", "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "apache__parquet-java-3642", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "apache__parquet-java-3669", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "apache__rocketmq-10614", "valid": false, "error": null, "fail_to_pass_failed": 13, "pass_to_pass_failed": 1}
+{"task_id": "biomejs__biome-10853", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "biomejs__biome-10875", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "btraceio__btrace-897", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "btraceio__btrace-899", "valid": false, "error": null, "fail_to_pass_failed": 198, "pass_to_pass_failed": 0}
+{"task_id": "c-ares__c-ares-1189", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 403}
+{"task_id": "c-ares__c-ares-1190", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 403}
+{"task_id": "colbymchenry__codegraph-1313", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "duckdb__duckdb-23634", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "duckdb__duckdb-24074", "valid": false, "error": "ConflictError: Failed to read exec stdio stream: exec not found. If the exec already completed, its output and exit status were discarded; exec state is retained for 10 minutes after the exec completes. Read exec output promptly after completion.", "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "duckdb__duckdb-24101", "valid": false, "error": "ConflictError: Failed to read exec stdio stream: exec not found. If the exec already completed, its output and exit status were discarded; exec state is retained for 10 minutes after the exec completes. Read exec output promptly after completion.", "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "duckdb__duckdb-24150", "valid": false, "error": "ConflictError: Failed to read exec stdio stream: exec not found. If the exec already completed, its output and exit status were discarded; exec state is retained for 10 minutes after the exec completes. Read exec output promptly after completion.", "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "floci-io__floci-1838", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "floci-io__floci-1870", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "floci-io__floci-1908", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "gitbutlerapp__gitbutler-14920", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 1}
+{"task_id": "gleam-lang__gleam-6030", "valid": false, "error": null, "fail_to_pass_failed": 2492, "pass_to_pass_failed": 1}
+{"task_id": "gleam-lang__gleam-6049", "valid": false, "error": null, "fail_to_pass_failed": 2491, "pass_to_pass_failed": 1}
+{"task_id": "h4ckf0r0day__obscura-390", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 1}
+{"task_id": "h4ckf0r0day__obscura-412", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 1}
+{"task_id": "h4ckf0r0day__obscura-440", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 1}
+{"task_id": "h4ckf0r0day__obscura-479", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 1}
+{"task_id": "lance-format__lance-7565", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "lance-format__lance-7835", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5792", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5799", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5806", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5809", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5817", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5847", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5848", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5850", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5864", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "langchain4j__langchain4j-5869", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "luau-lang__luau-2506", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "modelcontextprotocol__rust-sdk-1005", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "notionnext-org__NotionNext-4290", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "notionnext-org__NotionNext-4338", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "nunit__nunit-5351", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "open-gsd__gsd-core-2233", "valid": false, "error": "ConflictError: Failed to read exec stdio stream: exec not found. If the exec already completed, its output and exit status were discarded; exec state is retained for 10 minutes after the exec completes. Read exec output promptly after completion.", "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "playcanvas__engine-9002", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "prefix-dev__pixi-6529", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "rust-lang__rust-bindgen-3391", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-584", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-599", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-610", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-789", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-803", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-810", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-817", "valid": true, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-851", "valid": false, "error": null, "fail_to_pass_failed": 1, "pass_to_pass_failed": 0}
+{"task_id": "xroche__httrack-876", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 1}
+{"task_id": "yvgude__lean-ctx-1179", "valid": false, "error": null, "fail_to_pass_failed": 0, "pass_to_pass_failed": 3}
+{"task_id": "yvgude__lean-ctx-816", "valid": false, "error": null, "fail_to_pass_failed": 1, "pass_to_pass_failed": 0}

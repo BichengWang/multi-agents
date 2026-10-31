@@ -416,12 +416,12 @@ The four configurations together cost roughly **$1,156 to $1,462**.
   (2026-10-23, QEMU) `gold` graded the same task and a throwaway script exercised the agent
   workspace (history stripping, base-commit check, `diff`, `fork` + `apply`, exec timeout).
   **On Modal (2026-10-29):** images without Python fail Modal's image build (`python: not
-  found`), so pass `--add-python 3.12`. Gold validation of the 70-task seed-7 sample ran as a
-  detached `remote` job; at the time of writing 35 tasks are valid, 13 invalid (for example
-  c-ares' IPv6 tests, which fail in Modal sandboxes) and 22 are being retried after the earlier
-  laptop-sleep errors. The same tasks fail gold under Rosetta, where .NET's MSBuild crashes and
-  timing tests flake (0 of 7 valid), so use Modal or an amd64 host for numbers. Haiku 5.5 teams
-  solved and were graded on Modal at $0.01 to $0.02 per pair. The deadline behaviour of Modal's
+  found`), so pass `--add-python 3.12`. Gold validation of the 70-task seed-7 sample, finished as a
+  detached `remote` job: 48 valid, 16 invalid (for example c-ares' IPv6 tests, which fail in Modal
+  sandboxes), 6 grading errors. The same tasks fail gold under Rosetta, where .NET's MSBuild
+  crashes and timing tests flake (0 of 7 valid), so use Modal or an amd64 host for numbers. The
+  first pilot ran on Modal ([partial results](../../docs/pilot-2026-10.md)); a Haiku 5.5 pair cost
+  $0.005 to $1.04, median $0.04. The deadline behaviour of Modal's
   client (exit code -1, streams end, no exception) was read from the SDK source at tag
   `py/v1.6.0`, not observed.
 - Teams come from the separate team runner (`agent.teams.build_team`, imported lazily); the
