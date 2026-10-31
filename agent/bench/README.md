@@ -420,8 +420,8 @@ The four configurations together cost roughly **$1,156 to $1,462**.
   detached `remote` job: 48 valid, 16 invalid (for example c-ares' IPv6 tests, which fail in Modal
   sandboxes), 6 grading errors. The same tasks fail gold under Rosetta, where .NET's MSBuild
   crashes and timing tests flake (0 of 7 valid), so use Modal or an amd64 host for numbers. The
-  first pilot ran on Modal ([partial results](../../docs/pilot-2026-10.md)); a Haiku 5.5 pair cost
-  $0.005 to $1.04, median $0.04. The deadline behaviour of Modal's
+  first pilot ran on Modal ([results](../../docs/pilot-2026-10.md)): 144 Haiku 5.5 pairs at $0.004
+  to $1.39 each, median $0.03, none errored or timed out. The deadline behaviour of Modal's
   client (exit code -1, streams end, no exception) was read from the SDK source at tag
   `py/v1.6.0`, not observed.
 - Teams come from the separate team runner (`agent.teams.build_team`, imported lazily); the

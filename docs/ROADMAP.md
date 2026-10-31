@@ -57,9 +57,9 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
    (also as a detached Modal run) or a local Docker daemon (`--backend docker`); hidden-test
    evaluation; report with resolve rate, cost, wall time and confidence intervals. Live on local
    Docker since 2026-10-28 and on Modal since 2026-10-29.
-4. **Pilot results** (in progress) — 50 fresh tasks × solo and team configurations; publish the
-   table and raw trajectories. A partial run (Haiku 5.5, 11 of 48 tasks before the API key's usage
-   limit) is [published](pilot-2026-10.md); it resumes when the limit resets.
+4. **Pilot results** (done for one model tier) — 48 fresh tasks × solo, review and best of 3 on
+   Claude Haiku 5.5; table, analysis and raw trajectories [published](pilot-2026-10.md). Neither
+   team beat solo. Next: a frontier tier, and `--check` as reviewer/judge.
 5. **Launch** — README led by the results, terminal demo, launch posts.
 6. **Growth loop** — monthly refresh on newly created tasks, more harnesses, community-submitted
    team topologies.
