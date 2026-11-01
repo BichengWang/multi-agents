@@ -417,8 +417,8 @@ The four configurations together cost roughly **$1,156 to $1,462**.
   workspace (history stripping, base-commit check, `diff`, `fork` + `apply`, exec timeout).
   **On Modal (2026-10-29):** images without Python fail Modal's image build (`python: not
   found`), so pass `--add-python 3.12`. Gold validation of the 70-task seed-7 sample, finished as a
-  detached `remote` job: 48 valid, 16 invalid (for example c-ares' IPv6 tests, which fail in Modal
-  sandboxes), 6 grading errors. The same tasks fail gold under Rosetta, where .NET's MSBuild
+  detached `remote` job: 48 valid, 21 invalid (for example c-ares' IPv6 tests, which fail in Modal
+  sandboxes), 1 grading error. The same tasks fail gold under Rosetta, where .NET's MSBuild
   crashes and timing tests flake (0 of 7 valid), so use Modal or an amd64 host for numbers. The
   first pilot ran on Modal ([results](../../docs/pilot-2026-10.md)): 144 Haiku 5.5 pairs at $0.004
   to $1.39 each, median $0.03, none errored or timed out. The deadline behaviour of Modal's
