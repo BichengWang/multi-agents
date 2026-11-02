@@ -14,9 +14,11 @@ that grades test results is the same, with patch application checked separately:
    tests run as ``bash run_test.sh > testlog.out 2>&1`` and the log is ``cat testlog.out``);
 4. parse the log into ``{test: pass|fail|skip}`` with the instance's ``log_parser`` script (or the
    built-in pytest parser for ``pytest``);
-5. resolved iff both patches applied fully, no ``PASS_TO_PASS`` test failed, no ``FAIL_TO_PASS``
-   test failed, and every ``FAIL_TO_PASS`` test passed. Hidden-test-patch failure or missing apply
-   status is a grading error; candidate-patch failure is unresolved even if the tests pass.
+5. resolved iff no ``PASS_TO_PASS`` test failed, no ``FAIL_TO_PASS`` test failed, every
+   ``FAIL_TO_PASS`` test passed, and the candidate patch applied, except for hunks rejected in
+   files the hidden test patch changes (those files belong to the hidden tests). Hidden-test-patch
+   failure or missing apply status is a grading error; any other rejected hunk is unresolved even
+   if the tests pass.
 
 Hidden fields (``test_patch``, ``FAIL_TO_PASS``, ``PASS_TO_PASS``, commands) exist only in the
 grading sandbox and in this process; an agent never sees them. Dataset parser scripts are executed
@@ -29,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -220,6 +223,7 @@ class EvalResult:
     duration_s: float = 0.0
     log: str = ""
     apply_log: str = ""
+    patch_rejected_files: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -228,10 +232,41 @@ class EvalResult:
             "timed_out": self.timed_out,
             "test_patch_applied": self.test_patch_applied,
             "patch_applied": self.patch_applied,
+            "patch_rejected_files": self.patch_rejected_files,
             "apply_log": self.apply_log,
             "duration_s": round(self.duration_s, 3),
             "report": self.report.to_json() if self.report else None,
         }
+
+
+# `git apply --reject` names each file it could not patch fully, or at all.
+_REJECTED = re.compile(
+    r"^(?:Applying patch (?P<a>\S+) with \d+ rejects?\.\.\."
+    r"|error: (?P<b>\S+): (?:already exists in working directory|does not exist in index"
+    r"|No such file or directory|patch does not apply))\r?$",
+    re.MULTILINE,
+)
+_DIFF_FILES = re.compile(r"^diff --git a/(\S+) b/(\S+)\r?$", re.MULTILINE)
+
+
+def rejected_files(apply_log: str) -> set[str]:
+    """Files ``git apply --reject`` could not patch fully. The hidden test patch is applied first
+    and must apply cleanly before a log is graded, so every rejection in a graded log belongs to
+    the candidate patch."""
+    return {m.group("a") or m.group("b") for m in _REJECTED.finditer(apply_log)}
+
+
+def patch_counts(applied: bool, rejected: list[str], test_patch: str) -> bool:
+    """Whether the candidate patch's application allows a resolved verdict.
+
+    Hunks rejected in files the hidden test patch changes do not count against it: the hidden
+    tests own those files (agents often add their own tests there), and upstream grades such a
+    patch on the tests alone. A rejection anywhere else, or a failure that names no file, does.
+    """
+    if applied:
+        return True
+    owned = {path for pair in _DIFF_FILES.findall(test_patch) for path in pair}
+    return bool(rejected) and set(rejected) <= owned
 
 
 def _apply_results(output: str) -> dict[str, bool]:
@@ -298,11 +333,13 @@ async def evaluate_patch(
         raise GradingError("hidden test patch did not apply: " + apply_log[-1500:])
     status = await asyncio.to_thread(run_log_parser, spec.log_parser, log)
     report = grade(status, spec.fail_to_pass, spec.pass_to_pass)
+    rejected = sorted(rejected_files(apply_log))
     return EvalResult(
-        resolved=applied["patch"] and report.resolved,
+        resolved=report.resolved and patch_counts(applied["patch"], rejected, spec.test_patch),
         report=report,
         test_patch_applied=applied.get("test_patch"),
         patch_applied=applied.get("patch"),
+        patch_rejected_files=rejected,
         duration_s=loop.time() - started,
         log=log,
         apply_log=apply_log,

@@ -111,6 +111,22 @@ def test_partially_applied_fix_cannot_resolve_even_when_tests_pass(tmp_path, kin
     assert all(sb.terminated for sb in env.modal.sandboxes)
 
 
+@pytest.mark.parametrize("kind", ["python", "multilang"])
+def test_rejected_hunks_in_hidden_test_files_leave_the_verdict_to_the_tests(tmp_path, kind):
+    env = Env(tmp_path, kind)
+    test_file = "check.sh" if kind == "python" else "check_rs.sh"
+    # The agent fixed the bug and also wrote its own version of a file the hidden tests add.
+    fix_with_own_test = make_patch(env.template, {"calc.py": FIXED, test_file: "echo mine\n"})
+
+    result = env.evaluate(fix_with_own_test)
+
+    assert result.patch_applied is False and result.patch_rejected_files == [test_file]
+    assert result.report.resolved and result.resolved
+    wrong = env.evaluate(make_patch(env.template, {"calc.py": "def add(a, b):\n    return a * b\n",
+                                                    test_file: "echo mine\n"}))
+    assert wrong.patch_rejected_files == [test_file] and not wrong.resolved
+
+
 def test_hidden_test_patch_failure_is_a_grading_error_even_when_tests_pass(tmp_path):
     env = Env(tmp_path)
     bad_tests = make_patch(env.template, {"notes.txt": "hidden tests\n"})
