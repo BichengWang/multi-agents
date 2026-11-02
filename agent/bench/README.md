@@ -88,7 +88,7 @@ Deviations from upstream:
   count: the hidden tests own those files, and agents often add their own tests there, which then
   conflict. Upstream grades both cases on the tests alone. The test-only verdict remains in
   `report`; `test_patch_applied`, `patch_applied` and `patch_rejected_files` record apply status.
-  Until 2026-11-02 every rejection counted, which cost 7 to 11 of 48 resolved tasks per team in
+  Until 2026-11-01 every rejection counted, which cost 7 to 11 of 48 resolved tasks per team in
   the first pilot (49 patches, all rejected only in hidden-test files); its published results
   were re-graded from the stored logs with this rule.
   `apply_log` preserves stdout before the test-log marker and script stderr, including git's
