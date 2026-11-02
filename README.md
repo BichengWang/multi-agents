@@ -185,10 +185,10 @@ python -m agent.bench tasks --since 2026-07-01 --limit 5 --seed 7    # no creden
 Setup, methodology, cost estimates and limitations:
 [benchmark guide](https://github.com/BichengWang/multi-agents/blob/main/agent/bench/README.md).
 
-**First results (October 2026):** on 48 fresh tasks, Claude Haiku 5.5 resolved 20 solo, 19 with a
-reviewer and 17 as best of 3, at $0.061, $0.098 and $0.18 per task. Neither team beat the single
-agent (paired p = 1.0 and 0.45): the reviewer approved 29 patches that fail the hidden tests, and
-the judge's top scores were tied on 32 of 48 tasks. Table, analysis, data and raw trajectories:
+**First results (October 2026):** on 48 fresh tasks, Claude Haiku 5.5 resolved 27 solo, 29 with a
+reviewer and 28 as best of 3, at $0.061, $0.098 and $0.17 per task. The teams' one or two extra
+tasks are not significant (paired p = 0.5 and 1.0): the reviewer approved 47 of 48 final patches,
+and the judge's top scores were tied on 32 of 48 tasks. Table, analysis, data and raw trajectories:
 [pilot results](https://github.com/BichengWang/multi-agents/blob/main/docs/pilot-2026-10.md).
 
 ## Status
