@@ -15,6 +15,8 @@
 [Benchmark](#benchmark) ·
 [Roadmap](https://github.com/BichengWang/multi-agents/blob/main/docs/ROADMAP.md)
 
+Featured in Tech Forum: [Does a Team of AI Coding Agents Beat One?](https://techforum.ca/articles/bicheng-kenneth-wang-multi-agents-coding-agent-teams)
+
 <img src="https://raw.githubusercontent.com/BichengWang/multi-agents/main/docs/assets/architecture.svg" alt="multi-agents architecture: entry points feed a team runner (solo, review, best, plan topologies; Claude Code, Codex, SDK and check harnesses; isolated workspaces; cost budget) that returns a patch and a run record, and a benchmark that runs teams against solo agents to answer the north star" width="100%">
 
 </div>
