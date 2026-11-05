@@ -101,7 +101,6 @@ class _DockerProcess:
         self._proc = proc
         self._container = container
         self._timeout = timeout
-        self._code: Optional[int] = None
         self._waiter: Optional[asyncio.Future[int]] = None
         self.stdin = proc.stdin
         self.stdout = proc.stdout

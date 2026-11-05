@@ -67,8 +67,8 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 
 ## Past stage: teams that finish real work (done)
 
-While the pilot (milestone 4) waits on API credentials (Modal is now optional), the runner gained
-end-to-end work features, all merged and smoke-tested with real CLIs:
+While the pilot (milestone 4) waited on API credentials, the runner gained end-to-end work
+features, all merged and smoke-tested with real CLIs:
 
 1. **Objective checks** — `--check CMD` runs a command (tests, build, lint) against the final
    patch in a fork and records pass/fail. `check` can be the reviewer (a test-driven loop with no
@@ -82,7 +82,7 @@ end-to-end work features, all merged and smoke-tested with real CLIs:
 4. **Issue to pull request** — `--issue N|URL` takes the task from a GitHub issue; `--pr` commits the
    result to a new branch and opens a draft pull request with the run summary.
 
-## Current stage: agent-company governance (done)
+## Past stage: agent-company governance (done)
 
 [agent-company-survey.md](agent-company-survey.md) compares the most-starred multi-agent
 "company" projects with this runner and lists three gaps. Each is closed in code, tested offline and

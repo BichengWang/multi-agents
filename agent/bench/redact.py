@@ -58,7 +58,6 @@ class Redactor:
     def __init__(self, values: Iterable[str] = (), *, host_env: bool = True) -> None:
         self._lock = threading.Lock()
         self._values: list[str] = []
-        self.count = 0
         if host_env:
             for name in HOST_VARS:
                 self.add(os.environ.get(name))
@@ -97,8 +96,6 @@ class Redactor:
                 out = out.replace(secret, REDACTED)
         for pattern in _PATTERNS:
             out = pattern.sub(REDACTED, out)
-        if out != value:
-            self.count += 1
         return out
 
     def obj(self, value: Any) -> Any:
