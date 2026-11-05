@@ -50,12 +50,6 @@ update-deps:
 lock:
 	$(UV) lock
 
-.PHONY: compile
-compile: lock
-
-.PHONY: env
-env: venv
-
 .PHONY: lint
 lint:
 	$(RUN) ruff check agent tests
@@ -80,11 +74,8 @@ DOCS ?= build --strict
 docs:
 	$(UV) run --locked --only-group docs mkdocs $(DOCS)
 
-.PHONY: all_test
-all_test: test
-
 .PHONY: clean
 clean:
-	@find agent tests -type d -name __pycache__ -prune -exec rm -rf {} +
-	@rm -rf .pytest_cache .ruff_cache htmlcov coverage
+	@find agent tests docs -type d -name __pycache__ -prune -exec rm -rf {} +
+	@rm -rf .pytest_cache .ruff_cache htmlcov coverage site
 	@rm -f .coverage .coverage.* coverage.xml junit.xml
