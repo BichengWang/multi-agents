@@ -22,6 +22,9 @@ launching as soon as any record has an unknown cost, which includes every timed-
 solve: the agents may have spent money the run cannot see, so the budget can no longer be enforced.
 With ``allow_unpriced`` the budget counts priced spend only.
 
+Teams whose spec uses ``check`` as reviewer or judge get the task's own test suite as their check
+(``check.py``); every other team gets none.
+
 Everything written to disk is passed through a ``Redactor`` first; grading uses the originals.
 """
 
@@ -37,10 +40,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from agent.teams.harnesses.check import Check
 from agent.teams.types import Team, TeamResult, Workspace
 from agent.teams.validation import validate_positive_finite
 from agent.workflows.concurrency import map_concurrently
 
+from .check import SUITE_CHECK, SuiteChecks
 from .dataset import SOURCES, BenchTask
 from .evaluate import EvalResult, evaluate_patch
 from .redact import Redactor
@@ -52,7 +57,9 @@ ARTIFACTS_DIR = "artifacts"
 GOLD_FILE = "gold.jsonl"
 FINAL_MESSAGE_CHARS = 1000
 
-TeamFactory = Callable[[str], Team]
+# Called as factory(spec), or factory(spec, check=...) for a spec that uses the check harness.
+TeamFactory = Callable[..., Team]
+CheckFactory = Callable[[BenchTask], Check]
 WorkspaceFactory = Callable[[BenchTask], Awaitable[Workspace]]
 Evaluator = Callable[[BenchTask, str], Awaitable[EvalResult]]
 UnpricedFn = Callable[[str], list[str]]
@@ -73,11 +80,11 @@ def slug(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9._+=@,-]+", "_", text).strip("_") or "x"
 
 
-def default_team_factory(spec: str) -> Team:
+def default_team_factory(spec: str, check: Optional[Check] = None) -> Team:
     from agent.teams import build_team  # lazy: keeps agent.bench importable on its own
 
     # The sandbox is the isolation boundary, so CLIs run with permissions bypassed.
-    return build_team(spec, permissions="bypass")
+    return build_team(spec, permissions="bypass", check=check)
 
 
 def harness_specs(spec: str) -> list[str]:
@@ -85,6 +92,15 @@ def harness_specs(spec: str) -> list[str]:
     from agent.teams import parse_team_spec
 
     return [str(h) for h in parse_team_spec(spec).harness_specs]
+
+
+def uses_check(spec: str) -> bool:
+    """Whether the spec has ``check`` as reviewer or judge (it then needs the task's suite check)."""
+    return any(h.partition("@")[0] == "check" for h in harness_specs(spec))
+
+
+def _make_team(team_factory: TeamFactory, spec: str, check: Optional[Check]) -> Team:
+    return team_factory(spec) if check is None else team_factory(spec, check=check)
 
 
 def canonical_team(spec: str) -> str:
@@ -306,6 +322,7 @@ async def run_benchmark(
     team_factory: TeamFactory = default_team_factory,
     workspace_factory: Optional[WorkspaceFactory] = None,
     evaluator: Optional[Evaluator] = None,
+    check_factory: Optional[CheckFactory] = None,
     unpriced_fn: UnpricedFn = default_unpriced,
     log: Callable[[str], None] = print,
     run_meta: Optional[dict[str, Any]] = None,
@@ -331,15 +348,18 @@ async def run_benchmark(
 
     # Canonical names (the runner validates the spec); fail before any sandbox exists.
     names: dict[str, str] = {}
+    checked = {spec for spec in team_specs if uses_check(spec)}
     for spec in team_specs:
-        name = team_factory(spec).name
+        name = _make_team(team_factory, spec, Check(SUITE_CHECK) if spec in checked else None).name
         if name in names.values():
             raise ValueError(f"duplicate team after canonicalisation: {name}")
         names[spec] = name
 
-    if workspace_factory is None or evaluator is None:
+    if workspace_factory is None or evaluator is None or (checked and check_factory is None):
         backend = backend or ModalBackend()
         redactor = redactor or backend.redactor
+        if check_factory is None:
+            check_factory = SuiteChecks(backend).for_task
         if workspace_factory is None:
 
             async def workspace_factory(task: BenchTask) -> Workspace:  # noqa: F811
@@ -383,8 +403,9 @@ async def run_benchmark(
             summary.skipped_budget += 1
             return
         summary.attempted += 1
+        check = check_factory(task) if spec in checked and check_factory is not None else None
         record, result, eval_log = await _run_pair(
-            task, spec, name, prev, solve_timeout_s, team_factory, workspace_factory, evaluator
+            task, spec, name, prev, solve_timeout_s, team_factory, check, workspace_factory, evaluator
         )
         stored = await ledger.append(record)
         if record["patch"] or result is not None:
@@ -448,6 +469,7 @@ async def _run_pair(
     prev: Optional[dict[str, Any]],
     solve_timeout_s: Optional[float],
     team_factory: TeamFactory,
+    check: Optional[Check],
     workspace_factory: WorkspaceFactory,
     evaluator: Evaluator,
 ) -> tuple[dict[str, Any], Optional[TeamResult], str]:
@@ -485,7 +507,7 @@ async def _run_pair(
         record["resumed_from_error"] = prev["error"]
     else:
         try:
-            team = team_factory(spec)
+            team = _make_team(team_factory, spec, check)
             workspace = await workspace_factory(task)
         except asyncio.CancelledError:
             raise

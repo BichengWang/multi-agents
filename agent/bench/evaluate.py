@@ -38,6 +38,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
+from agent.teams.types import ExecResult
+
 from .dataset import BenchTask, GradingSpec
 from .sandbox import SandboxBackend, SandboxExecTimeout, SandboxWorkspace
 
@@ -178,8 +180,12 @@ def grade(
     )
 
 
-def build_eval_script(spec: GradingSpec, *, test_patch_path: str, patch_path: Optional[str]) -> str:
-    """The upstream command sequence as one interactive-bash script (shell state is shared)."""
+def build_eval_script(
+    spec: GradingSpec, *, test_patch_path: Optional[str], patch_path: Optional[str]
+) -> str:
+    """The upstream command sequence as one interactive-bash script (shell state is shared).
+
+    Without ``test_patch_path`` it runs the visible test suite only (the benchmark's ``check``)."""
     rebuild = " ; ".join(spec.rebuild_cmds)
     test_cmd = " ; ".join(spec.test_cmds)
     print_cmd = " ; ".join(spec.print_cmds)
@@ -188,9 +194,12 @@ def build_eval_script(spec: GradingSpec, *, test_patch_path: str, patch_path: Op
         # Some images keep the project one level below /testbed.
         '[ -d .git ] || { g=$(find . -maxdepth 2 -mindepth 2 -type d -name .git -print -quit); '
         '[ -n "$g" ] && cd "${g%/.git}"; } ;',
-        f"git apply --reject --whitespace=nowarn {test_patch_path}; "
-        f'echo "{APPLY_MARK} test_patch exit=$?"',
     ]
+    if test_patch_path:
+        lines.append(
+            f"git apply --reject --whitespace=nowarn {test_patch_path}; "
+            f'echo "{APPLY_MARK} test_patch exit=$?"'
+        )
     if patch_path:
         lines.append(
             f"git apply --reject --whitespace=nowarn {patch_path}; "
@@ -278,6 +287,39 @@ def _apply_results(output: str) -> dict[str, bool]:
     return out
 
 
+async def run_script(
+    task: BenchTask, files: dict[str, str], script: str, *, backend: SandboxBackend, timeout_s: float
+) -> Optional[ExecResult]:
+    """Write ``files``, then run ``script`` in a fresh grading sandbox of ``task``'s instance image
+    (unmodified image, no secrets). None if the script timed out."""
+    workspace = await SandboxWorkspace.create(task.image, backend=backend, agent=False)
+    try:
+        for path, content in files.items():
+            written = await workspace.exec(
+                ["sh", "-c", f"cat > {path}"], stdin=content if content.endswith("\n") else content + "\n"
+            )
+            if written.exit_code != 0:
+                raise GradingError(f"could not stage {path}: {written.stderr.strip()[-500:]}")
+        try:
+            return await workspace.exec(
+                ["bash", "-ic", script], env={"TERM": "xterm-mono"}, timeout=timeout_s
+            )
+        except SandboxExecTimeout:
+            return None
+    finally:
+        await workspace.close()
+
+
+def split_log(run: ExecResult) -> tuple[str, str]:
+    """(everything before the test log, the test log) of an evaluation script's output."""
+    head, marker, log = run.stdout.partition(LOG_BEGIN)
+    if not marker:
+        raise GradingError(
+            "evaluation script did not reach the test log: " + (run.stderr or run.stdout)[-1500:]
+        )
+    return head, log.lstrip("\r\n")
+
+
 async def evaluate_patch(
     task: BenchTask,
     patch: str,
@@ -292,35 +334,23 @@ async def evaluate_patch(
     spec = task.grading
     loop = asyncio.get_running_loop()
     started = loop.time()
-    workspace = await SandboxWorkspace.create(task.image, backend=backend, agent=False)
-    try:
-        for path, content in (("/tmp/bench-test.diff", spec.test_patch), ("/tmp/bench-pred.diff", patch)):
-            written = await workspace.exec(
-                ["sh", "-c", f"cat > {path}"], stdin=content if content.endswith("\n") else content + "\n"
-            )
-            if written.exit_code != 0:
-                raise GradingError(f"could not stage {path}: {written.stderr.strip()[-500:]}")
-        script = build_eval_script(
-            spec, test_patch_path="/tmp/bench-test.diff", patch_path="/tmp/bench-pred.diff"
+    script = build_eval_script(
+        spec, test_patch_path="/tmp/bench-test.diff", patch_path="/tmp/bench-pred.diff"
+    )
+    run = await run_script(
+        task,
+        {"/tmp/bench-test.diff": spec.test_patch, "/tmp/bench-pred.diff": patch},
+        script,
+        backend=backend,
+        timeout_s=timeout_s,
+    )
+    if run is None:
+        return EvalResult(
+            resolved=False, timed_out=True, duration_s=loop.time() - started,
+            log="evaluation timed out",
         )
-        try:
-            run = await workspace.exec(
-                ["bash", "-ic", script], env={"TERM": "xterm-mono"}, timeout=timeout_s
-            )
-        except SandboxExecTimeout:
-            return EvalResult(
-                resolved=False, timed_out=True, duration_s=loop.time() - started,
-                log="evaluation timed out",
-            )
-    finally:
-        await workspace.close()
 
-    head, marker, log = run.stdout.partition(LOG_BEGIN)
-    if not marker:
-        raise GradingError(
-            "evaluation script did not reach the test log: " + (run.stderr or run.stdout)[-1500:]
-        )
-    log = log.lstrip("\r\n")
+    head, log = split_log(run)
     applied = _apply_results(head)
     apply_log = head + run.stderr
     missing = {"test_patch", "patch"} - applied.keys()

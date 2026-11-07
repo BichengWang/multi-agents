@@ -60,10 +60,35 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
 4. **Pilot results** (done for one model tier) — 48 fresh tasks × solo, review and best of 3 on
    Claude Haiku 5.5; table, analysis and raw trajectories [published](pilot-2026-10.md). The teams
    resolved one or two more tasks than solo, not significant, at 1.6× and 2.7× the cost. Next: a
-   frontier tier, and `--check` as reviewer/judge.
+   frontier tier, and `--check` as reviewer/judge (current stage, below).
 5. **Launch** — README led by the results, terminal demo, launch posts.
 6. **Growth loop** — monthly refresh on newly created tasks, more harnesses, community-submitted
    team topologies.
+
+## Current stage: second pilot (objective checks, frontier tier)
+
+The Haiku pilot's teams failed in their judgment: the reviewer approved 47 of 48 final patches,
+19 of them wrong, and the judge tied on 32 of 48 tasks. This stage tests whether an objective check
+fixes that, and whether a stronger model changes the picture.
+
+1. **The task's test suite as `check` in the benchmark** (code done, tested offline) —
+   `reviewer=check` / `judge=check` in a benchmark team runs the task's visible test suite, without
+   the hidden tests, in a clean sandbox and passes a patch iff nothing fails that passed at the base
+   commit ([benchmark guide](../agent/bench/README.md#methodology)).
+2. **Live smoke test** — one task on Modal with `review:coder=claude@claude-haiku-5-5,reviewer=check`
+   and `best:...,judge=check`: checks that each task's parser reads its own suite at the base commit
+   and that the timings match the estimate (cents of model cost, about an hour of sandbox time).
+3. **Check teams on the pilot's 48 tasks (Haiku 5.5)** — `review` with `reviewer=check` and `best` of
+   3 with `judge=check`, compared with the published solo baseline on the same tasks. Model cost is
+   about the coder's alone ($0.06 to $0.18 per task, under $15 in all); sandbox time dominates.
+   Re-run solo too if Claude Code's version has changed since the pilot (2.1.310).
+4. **Frontier tier** — the same 48 tasks with Claude Sonnet 5.5: solo, review and best of 3, plus the
+   better check team. Sonnet 5.5's list price is 4× to 20× Haiku 5.5's (by Haiku's prompt tier),
+   so the Haiku pilot's $15.67 scales to about $63 to $313 for the three LLM teams; measure 5 tasks
+   first (`--limit 5`) and set `--max-cost-usd` from that.
+5. **Publish** — a results page like [pilot-2026-10.md](pilot-2026-10.md), then milestone 5.
+
+Steps 2 to 4 spend money on the Anthropic API and Modal, so each one starts only after sign-off.
 
 ## Past stage: teams that finish real work (done)
 

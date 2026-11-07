@@ -688,3 +688,34 @@ def test_optional_positive_fractional_limits_are_accepted(tmp_path, value):
     summary = h.run(tmp_path, make_tasks(1), max_cost_usd=value, solve_timeout_s=value)
     assert summary.attempted == 1 and summary.errored == 0
     assert len(team.solved) == 1 and len(h.graded) == 1
+
+
+def test_only_teams_with_a_check_reviewer_or_judge_get_the_tasks_suite_check(tmp_path):
+    from agent.teams.harnesses.check import Check
+
+    solo = FakeTeam("solo:worker=claude")
+    checked = FakeTeam("review:coder=claude,reviewer=check,rounds=3")
+    h = Harness(solo, checked)
+    built = []
+
+    def team_factory(spec, check=None):
+        built.append((spec, check))
+        return h.teams[spec]
+
+    h.team_factory = team_factory
+    made = []
+
+    def check_factory(task):
+        made.append(task.task_id)
+        return Check(f"suite for {task.task_id}")
+
+    summary = h.run(tmp_path, make_tasks(2), check_factory=check_factory)
+
+    assert summary.attempted == 4 and summary.errored == 0
+    assert sorted(made) == ["o__r-0", "o__r-1"]  # once per task, for the check team only
+    solve_time = built[2:]  # the first two calls only read the canonical names
+    assert {(spec, c.command if c else None) for spec, c in solve_time} == {
+        ("solo:worker=claude", None),
+        ("review:coder=claude,reviewer=check,rounds=3", "suite for o__r-0"),
+        ("review:coder=claude,reviewer=check,rounds=3", "suite for o__r-1"),
+    }
