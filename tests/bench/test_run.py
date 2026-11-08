@@ -207,6 +207,19 @@ def test_session_transcripts_from_the_sandboxes_are_stored_scrubbed_and_named_af
     text = gzip.decompress((directory / "transcript-worker-0.jsonl.gz").read_bytes()).decode()
     assert text == '{"tool":"Bash","out":"KEY=[REDACTED]"}\n'
 
+    # A new solve of the pair replaces the previous solve's files; nothing of it is left over.
+    (directory / "candidate-7.diff").write_text("stale")
+    (directory / "round-2.eval.log").write_text("stale")
+    h.run(tmp_path, make_tasks(1), redactor=redactor, retry_errors=True)  # finished: skipped
+    assert (directory / "candidate-7.diff").exists()
+    records = (tmp_path / "results.jsonl").read_text().splitlines()
+    first = json.loads(records[0])
+    first["error"] = "solve: agent command lost to the sandbox"
+    (tmp_path / "results.jsonl").write_text(json.dumps(first) + "\n")
+    h.run(tmp_path, make_tasks(1), redactor=redactor)
+    assert not (directory / "candidate-7.diff").exists() and not (directory / "round-2.eval.log").exists()
+    assert len(list(directory.glob("transcript-*.jsonl.gz"))) == 3
+
     # A solve that ran out of time and left no patch still keeps its transcripts.
     slow = FakeTeam("solo:worker=claude", delay=30)
     timed = Harness(slow)
@@ -523,6 +536,63 @@ def test_cancellation_closes_every_open_workspace(tmp_path):
     assert len(h.workspaces) == 3 and all(w.closed for w in h.workspaces)
     assert not (tmp_path / "results.jsonl").exists()
     assert team.active == 0  # the in-flight solves were cancelled with their pairs
+
+
+class Abandonable(MemoryWorkspace):
+    abandoned = False
+
+    def abandon(self):
+        self.abandoned = True
+
+
+class NoticingTeam(FakeTeam):
+    """Records whether its workspace was abandoned when the solve was cancelled."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.noticed = []
+
+    async def solve(self, task, workspace):
+        try:
+            return await super().solve(task, workspace)
+        except asyncio.CancelledError:
+            self.noticed.append(workspace.abandoned)  # where a team closes its forks
+            raise
+
+
+def test_a_cancelled_pair_abandons_its_workspace_before_the_team_cleans_up(tmp_path):
+    team = NoticingTeam("solo:worker=claude", delay=30)
+    h = Harness(team)
+
+    async def abandonable(task):
+        return Abandonable()
+
+    h.workspace_factory = abandonable
+
+    async def scenario():
+        job = asyncio.create_task(
+            run_benchmark(
+                make_tasks(2), [team.name], tmp_path, concurrency=2,
+                team_factory=h.team_factory, workspace_factory=h.workspace_factory,
+                evaluator=h.evaluator, unpriced_fn=lambda s: [], log=lambda m: None,
+                redactor=Redactor(host_env=False),
+            )
+        )
+        while team.active < 2:
+            await asyncio.sleep(0.01)
+        job.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await job
+
+    asyncio.run(scenario())
+    assert team.noticed == [True, True] and all(w.abandoned and w.closed for w in h.workspaces)
+
+    # A solve timeout is not a cancellation of the pair: its transcripts are still wanted.
+    slow = NoticingTeam("solo:worker=claude", delay=30)
+    timed = Harness(slow)
+    timed.workspace_factory = abandonable
+    timed.run(tmp_path / "timed", make_tasks(1), solve_timeout_s=0.05)
+    assert slow.noticed == [False] and not timed.workspaces[0].abandoned
 
 
 def test_duplicate_team_specs_are_rejected_after_canonicalisation(tmp_path):

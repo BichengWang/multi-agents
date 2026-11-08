@@ -52,7 +52,7 @@ def test_review_returns_the_best_patch_and_feeds_feedback_back_to_the_coder(repo
     # Every round's patch is kept, the superseded ones too, with the reviewer's verdict on it.
     log = result.meta["round_log"]
     assert [f"+attempt {n}" in entry["patch"] for n, entry in enumerate(log, 1)] == [True] * 3
-    assert [entry["passed"] for entry in log] == [False] * 3
+    assert [(entry["passed"], entry["reviewed"]) for entry in log] == [(False, True)] * 3
     assert [r.role for r in result.runs] == ["coder", "reviewer"] * 3
     # The revision prompt carries the reviewer's feedback and the coder resumes its session.
     second = coder.calls[1]
@@ -75,6 +75,7 @@ def test_review_stops_when_the_coder_stops_changing_anything(repo):
     result, *_ = solve(ReviewTeam(coder, reviewer, rounds=4), repo)
     assert len(coder.calls) == 2 and len(reviewer.calls) == 1  # no second review of an identical patch
     assert "attempt 1" in result.patch
+    assert [e["reviewed"] for e in result.meta["round_log"]] == [True, True]  # round 2 repeats round 1
 
 
 def test_unparseable_review_is_recorded_and_does_not_sink_the_team(repo):
@@ -87,6 +88,18 @@ def test_unparseable_review_is_recorded_and_does_not_sink_the_team(repo):
     failures = result.meta["failures"]
     assert len(failures) == 2 and all(f["role"] == "reviewer" and "VerdictParseError" in f["error"] for f in failures)
     assert [r.role for r in result.runs].count("reviewer") == 2
+    # Placeholder verdicts are marked as not the reviewer's own.
+    assert [e["reviewed"] for e in result.meta["round_log"]] == [False, False]
+
+
+def test_an_empty_attempt_is_rejected_without_a_review_and_marked_so(repo):
+    async def idle(call):
+        return "nothing to do"
+
+    reviewer = scoring_reviewer({})
+    result, *_ = solve(ReviewTeam(FakeHarness(idle, name="coder"), reviewer, rounds=2), repo)
+    assert reviewer.calls == [] and result.patch == ""
+    assert [(e["patch"], e["passed"], e["reviewed"]) for e in result.meta["round_log"]] == [("", False, False)] * 2
 
 
 def test_reviewer_cannot_mutate_the_workers_workspace(repo):

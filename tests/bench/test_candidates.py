@@ -107,10 +107,12 @@ def graded_with(task_id, team, patch, resolved, meta):
 
 
 def rounds(*entries):
-    return {"round_log": [
-        {"round": n, "patch": patch, "passed": passed, "changed": changed}
-        for n, (patch, passed, changed) in enumerate(entries, 1)
-    ]}
+    """A review team's meta from ``(patch, passed, changed[, reviewed])`` per round."""
+    log = []
+    for n, (patch, passed, changed, *reviewed) in enumerate(entries, 1):
+        log.append({"round": n, "patch": patch, "passed": passed, "changed": changed,
+                    "reviewed": reviewed[0] if reviewed else True})
+    return {"round_log": log}
 
 
 def candidate_records():
@@ -120,7 +122,7 @@ def candidate_records():
         graded_with("t3", BEST, "G", False, {"candidates": [{"patch": "G"}, {"patch": "H"}]}),  # H ungraded
         graded_with("t1", REVIEW, "R2", True, rounds(("R1", False, True), ("R2", True, True))),
         graded_with("t2", REVIEW, "S2", False, rounds(("S1", False, True), ("S2", True, True))),
-        graded_with("t3", REVIEW, "U", False, rounds(("U", False, True), ("U", False, False))),
+        graded_with("t3", REVIEW, "U", False, rounds(("U", False, True), ("U", False, False), ("", False, True, False))),
     ]
 
 
@@ -141,7 +143,8 @@ def test_report_shows_oracle_pass_at_k_and_per_round_reviewer_precision_once_gra
     assert best["Pick missed a resolving candidate"] == "1"
     review = table(text, "| Team | Rounds")[REVIEW]
     cells = ("Approved, resolved", "Approved, unresolved", "Rejected, resolved", "Rejected, unresolved")
-    assert review["Rounds"] == "5" and [review[c] for c in cells] == ["1", "1", "1", "2"]  # unchanged round left out
+    # Left out: t3's unchanged round 2 and its empty round 3, which no reviewer judged.
+    assert review["Rounds"] == "5" and [review[c] for c in cells] == ["1", "1", "1", "2"]
     assert review["Precision"] == "1/2 (50%)" and review["Specificity"] == "2/3 (67%)"
 
     # Nothing new before grading, or for records without stored patches (the pilot's).
@@ -165,25 +168,62 @@ def test_report_command_reads_the_grades_beside_the_results(tmp_path, capsys):
     assert table(capsys.readouterr().out, "| Team | Tasks | Candidates")[BEST]["Tasks"] == "2 of 3"
 
 
-def test_grade_candidates_command_grades_with_the_runs_dataset(tmp_path, monkeypatch, capsys):
+def test_grade_candidates_command_grades_in_the_runs_recorded_environment(tmp_path, monkeypatch, capsys):
     import agent.bench.cli as cli
 
     write_records(tmp_path, stored_run()[:2])
-    (tmp_path / "meta.json").write_text(json.dumps({"runs": [{"dataset": "multilang-test"}]}))
-    loaded = []
+    run = {"dataset": "multilang-test", "backend": "docker", "add_python": None, "registry_secret": None}
+    (tmp_path / "meta.json").write_text(json.dumps({"runs": [run]}))
+    loaded, backends = [], []
 
     def load_tasks(dataset, instance_ids):
         loaded.append((dataset, instance_ids))
         return [task(i) for i in instance_ids]
 
+    def backend(args):
+        backends.append((args.backend, args.add_python, args.registry_secret))
+        return "backend"
+
     grader = Grader()
     monkeypatch.setattr(cli, "load_tasks", load_tasks)
-    monkeypatch.setattr(cli, "_backend", lambda args: "backend")
+    monkeypatch.setattr(cli, "_backend", backend)
     monkeypatch.setattr(cli, "evaluate_patch", lambda task, patch, backend: grader(task, patch))
-    assert main(["grade-candidates", str(tmp_path), "--team", BEST, "--backend", "docker"]) == 0
+    assert main(["grade-candidates", str(tmp_path), "--team", BEST]) == 0
     assert loaded == [("multilang-test", ["t1"])] and grader.calls == [("t1", "B")]
+    assert backends == [("docker", None, None)]  # the run's backend, not the CLI default
     assert "graded 1 patch(es), 0 resolved" in capsys.readouterr().out
     assert len(load_records(tmp_path / CANDIDATES_FILE)) == 1
+
+    # A flag that contradicts the run is refused before anything is graded.
+    for flag in (["--backend", "modal"], ["--add-python", "3.12"], ["--registry-secret", "hub"]):
+        assert main(["grade-candidates", str(tmp_path), *flag]) == 2
+        assert "contradicts the run's" in capsys.readouterr().err
+    assert main(["grade-candidates", str(tmp_path), "--backend", "docker"]) == 0  # agreeing is fine
+    # A run recorded before these settings were stored (the pilot) takes them from the flags.
+    (tmp_path / "meta.json").write_text(json.dumps({"runs": [{"backend": "modal"}]}))
+    assert main(["grade-candidates", str(tmp_path), "--add-python", "3.12"]) == 0
+    assert backends[-1] == ("modal", "3.12", None)
+    assert len(backends) == 3
+
+
+def test_run_records_the_options_that_shape_the_grading_image(tmp_path, monkeypatch):
+    import agent.bench.cli as cli
+
+    seen = {}
+
+    async def run_benchmark(tasks, teams, out, **kwargs):
+        seen.update(kwargs["run_meta"])
+        from agent.bench.run import RunSummary
+
+        return RunSummary()
+
+    monkeypatch.setattr(cli, "_select", lambda args: [task("t1")])
+    monkeypatch.setattr(cli, "_backend", lambda args, teams=(): "backend")
+    monkeypatch.setattr(cli, "run_benchmark", run_benchmark)
+    argv = ["run", "--team", "solo:worker=claude", "--out", str(tmp_path), "--add-python", "3.12",
+            "--registry-secret", "hub-creds"]
+    assert main(argv) == 0
+    assert (seen["backend"], seen["add_python"], seen["registry_secret"]) == ("modal", "3.12", "hub-creds")
 
 
 @pytest.mark.parametrize("directory, code", [("runs/x", 0), ("/abs/runs/x", 2)])

@@ -365,6 +365,58 @@ def test_a_failed_transcript_copy_still_terminates_and_does_not_mark_agent_work_
     run(scenario())
 
 
+def test_the_transcript_copy_has_a_hard_time_cap_and_keeps_what_it_printed(tmp_path, monkeypatch):
+    import agent.bench.sandbox as sandbox_module
+
+    monkeypatch.setattr(sandbox_module, "TRANSCRIPT_TIMEOUT_S", 0.3)
+    modal, backend, _, _ = prepare(tmp_path)
+
+    async def scenario():
+        hung = await SandboxWorkspace.create("img:1", backend=backend)
+        hung_sb = modal.sandboxes[0]
+
+        async def never_starts(*argv, **kwargs):
+            await asyncio.sleep(60)  # e.g. Modal never creates the exec
+
+        hung_sb.exec = never_starts
+        started = asyncio.get_running_loop().time()
+        await hung.close()
+        assert asyncio.get_running_loop().time() - started < 5
+        assert hung_sb.terminated and hung.transcripts == {}
+
+        failing = await SandboxWorkspace.create("img:1", backend=backend)
+        await sh(failing, 'mkdir -p "$HOME/.claude/projects/x" && echo "{}" > "$HOME/.claude/projects/x/s.jsonl"')
+        failing_sb = modal.sandboxes[1]
+        real = failing_sb.exec
+
+        async def exits_3(*argv, **kwargs):
+            if TRANSCRIPT_MARK in argv:
+                argv = (*argv[:2], argv[2] + "\nexit 3", *argv[3:])
+            return await real(*argv, **kwargs)
+
+        failing_sb.exec = exits_3
+        await failing.close()
+        assert list(failing.transcripts.values()) == ["{}\n"]
+
+    run(scenario())
+
+
+def test_an_abandoned_workspace_and_its_forks_close_without_copying_transcripts(tmp_path):
+    modal, backend, _, _ = prepare(tmp_path)
+
+    async def scenario():
+        ws = await SandboxWorkspace.create("img:1", backend=backend)
+        early = await ws.fork()
+        ws.abandon()  # the pair is being cancelled
+        late = await ws.fork()
+        for workspace in (early, late, ws):
+            await workspace.close()
+
+    run(scenario())
+    assert len(modal.sandboxes) == 3 and all(sb.terminated for sb in modal.sandboxes)
+    assert not any(TRANSCRIPT_MARK in argv for sb in modal.sandboxes for argv in sb.exec_log)
+
+
 def test_parse_transcripts_marks_a_file_cut_at_the_size_cap():
     output = (
         f"\n{TRANSCRIPT_MARK}      3 /r/a.jsonl\nabc"

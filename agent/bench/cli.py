@@ -129,6 +129,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     grade.add_argument("--team", action="append", help="only this team (repeatable); default: all")
     _add_sandbox_options(grade)
+    # Taken from the run's meta.json so candidates are graded like the submitted patches.
+    grade.set_defaults(backend=None)
 
     report = sub.add_parser("report", help="Markdown report of a run directory")
     report.add_argument("dir")
@@ -272,6 +274,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
                     "limit": args.limit,
                     "seed": args.seed,
                     "gold_file": args.gold_file,
+                    # The grading image depends on these; grade-candidates reuses them.
+                    "add_python": args.add_python,
+                    "registry_secret": args.registry_secret,
                     "isolate_history": not args.keep_history,
                     "check_base_commit": not args.no_check_base_commit,
                 },
@@ -296,12 +301,35 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+# Options that change the grading sandbox; ``run`` records them in meta.json.
+GRADING_ENV = {"backend": "--backend", "add_python": "--add-python", "registry_secret": "--registry-secret"}
+
+
+def _grading_env(args: argparse.Namespace, recorded: dict[str, object]) -> None:
+    """Grade in the run's own grading environment: take each ``GRADING_ENV`` option from the run's
+    meta.json entry, and refuse a flag that contradicts it. Runs recorded before these were stored
+    (the pilot) keep the flags given here."""
+    for key, flag in GRADING_ENV.items():
+        given = getattr(args, key)
+        if key in recorded:
+            if given is not None and given != recorded[key]:
+                raise ValueError(
+                    f"{flag} {given} contradicts the run's {recorded[key]!r} in meta.json; "
+                    "grade with the run's settings"
+                )
+            setattr(args, key, recorded[key])
+    if args.backend is None:
+        args.backend = "modal"
+
+
 def _cmd_grade_candidates(args: argparse.Namespace) -> int:
     out = Path(args.dir)
     records = load_records(out / RESULTS_FILE)
     if not records:
         raise ValueError(f"no results in {out / RESULTS_FILE}")
-    dataset = args.dataset or latest_run(load_meta(out)).get("dataset") or DEFAULT_DATASET
+    run = latest_run(load_meta(out))
+    _grading_env(args, run)
+    dataset = args.dataset or run.get("dataset") or DEFAULT_DATASET
     tasks = load_tasks(dataset, instance_ids=sorted({r["task_id"] for r in records}))
     backend = _backend(args)
 
@@ -355,7 +383,7 @@ def _cmd_remote(args: argparse.Namespace) -> int:
         if value and Path(value).is_absolute():
             name = "the directory" if flag == "dir" else f"--{flag.replace('_', '-')}"
             raise ValueError(f"{name} must be relative to the volume root")
-    if inner.backend != "modal":
+    if (inner.backend or "modal") != "modal":  # grade-candidates may take it from meta.json
         raise ValueError("remote runs use the modal backend")
     from .remote import VOLUME, launch
 

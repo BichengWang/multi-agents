@@ -1,3 +1,5 @@
+import json
+
 from agent.bench.redact import REDACTED, Redactor
 
 
@@ -35,3 +37,15 @@ def test_longer_secrets_win_over_their_prefixes_and_host_environment_is_read(mon
         f"a {REDACTED} b {REDACTED}"
     )
     assert r.text("nothing to see") == "nothing to see"
+
+
+def test_values_are_also_scrubbed_in_their_json_escaped_forms():
+    secret = 'pa"ss\\wörd\tkey-0123'
+    r = Redactor([secret], host_env=False)
+    for line in (
+        json.dumps({"out": f"KEY={secret}"}),  # how a session transcript stores tool output
+        json.dumps({"out": f"KEY={secret}"}, ensure_ascii=False),
+        f"KEY={secret}",
+    ):
+        scrubbed = r.text(line)
+        assert REDACTED in scrubbed and "key-0123" not in scrubbed

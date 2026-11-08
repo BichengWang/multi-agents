@@ -333,6 +333,11 @@ def transcript_names(paths: Sequence[str], runs: Sequence[HarnessRun]) -> dict[s
     return names
 
 
+# Artifacts of one solve beyond patch.diff, runs.json and eval.log; a new solve of the pair removes
+# the previous solve's (a grading-only retry keeps them).
+SOLVE_ARTIFACTS = ("candidate-*", "round-*", "subtask-*", "transcript-*")
+
+
 def _write_artifacts(
     out: Path,
     redactor: Redactor,
@@ -342,9 +347,16 @@ def _write_artifacts(
     result: Optional[TeamResult],
     log: str,
     transcripts: Optional[dict[str, str]] = None,
+    *,
+    new_solve: bool = True,
 ) -> None:
+    """Blocking (scrubbing and compressing transcripts takes a while): run it in a thread."""
     directory = out / ARTIFACTS_DIR / slug(team) / slug(task_id)
     directory.mkdir(parents=True, exist_ok=True)
+    if new_solve:
+        for pattern in SOLVE_ARTIFACTS:
+            for stale in directory.glob(pattern):
+                stale.unlink()
     (directory / "patch.diff").write_text(
         redactor.text(patch), encoding="utf-8", errors="surrogateescape"
     )
@@ -366,7 +378,7 @@ def _write_artifacts(
         names = transcript_names(sorted(transcripts), result.runs if result is not None else [])
         for path, name in names.items():
             data = redactor.text(transcripts[path]).encode("utf-8", "replace")
-            (directory / name).write_bytes(gzip.compress(data, mtime=0))
+            (directory / name).write_bytes(gzip.compress(data, compresslevel=6, mtime=0))
 
 
 async def run_benchmark(
@@ -471,8 +483,9 @@ async def run_benchmark(
         )
         stored = await ledger.append(record)
         if record["patch"] or result is not None or transcripts:
-            _write_artifacts(
-                out, redactor, name, task.task_id, record["patch"], result, eval_log, transcripts
+            await asyncio.to_thread(
+                _write_artifacts, out, redactor, name, task.task_id, record["patch"], result, eval_log,
+                transcripts, new_solve="resumed_from_error" not in record,
             )
         summary.records.append(stored)
         if stored.get("error"):
@@ -502,15 +515,24 @@ async def run_benchmark(
     return summary
 
 
+def _abandon(workspace: Workspace) -> None:
+    """The pair is being cancelled: its sandboxes close without copying transcripts out."""
+    abandon = getattr(workspace, "abandon", None)
+    if abandon is not None:
+        abandon()
+
+
 async def _solve(
     team: Team, task: BenchTask, workspace: Workspace, timeout_s: Optional[float]
 ) -> tuple[Optional[TeamResult], Optional[BaseException], bool]:
     """Run ``team.solve``; returns (result, crash, timed_out). Cancellation propagates, and takes
-    the running solve down with it."""
+    the running solve down with it (a timeout does not abandon the workspace: its transcripts are
+    kept)."""
     job = asyncio.ensure_future(team.solve(task.coding_task(), workspace))
     try:
         done, _ = await asyncio.wait({job}, timeout=timeout_s)
     except BaseException:
+        _abandon(workspace)  # before the team's forks close
         job.cancel()
         await asyncio.gather(job, return_exceptions=True)
         raise
@@ -644,6 +666,9 @@ async def _run_pair(
                 usage = dict(UNKNOWN_USAGE)
                 duration = wall
                 runs = []
+        except asyncio.CancelledError:
+            _abandon(workspace)
+            raise
         finally:
             await workspace.close()
             transcripts.update(getattr(workspace, "transcripts", None) or {})

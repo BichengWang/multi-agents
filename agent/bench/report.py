@@ -251,8 +251,9 @@ class TeamStats:
 
     def round_approvals(self, grades: Grades) -> Optional[tuple[int, int, int, int]]:
         """The reviewer's verdict on every graded review round against that round's resolution,
-        cells as in ``approvals``. A round where the coder changed nothing repeats the previous
-        verdict and is left out. ``None`` for teams without stored rounds."""
+        cells as in ``approvals``. Left out: a round where the coder changed nothing (it repeats
+        the previous verdict) and one the reviewer never judged (an empty patch, a failed review).
+        ``None`` for teams without stored rounds."""
         cells = [0, 0, 0, 0]
         seen = False
         for rec in self.records.values():
@@ -261,7 +262,7 @@ class TeamStats:
                     continue
                 seen = True
                 outcome = patch_outcome(rec, entry, grades)
-                if outcome is None or not entry.get("changed", True):
+                if outcome is None or not entry.get("changed", True) or not entry.get("reviewed", True):
                     continue
                 cells[2 * (not entry["passed"]) + (not outcome)] += 1
         return (cells[0], cells[1], cells[2], cells[3]) if seen else None
@@ -617,8 +618,9 @@ def _render_candidates(summary: Summary) -> list[str]:
     if rounds:
         lines += [
             "",
-            "The reviewer's verdict on every graded round, not only the last; a round where the "
-            "coder changed nothing repeats the previous verdict and is left out.",
+            "The reviewer's verdict on every graded round, not only the last. Left out: rounds "
+            "where the coder changed nothing (they repeat the previous verdict) and rounds the "
+            "reviewer never judged (an empty patch, a failed review).",
             "",
             "| Team | Rounds | Approved, resolved | Approved, unresolved | Rejected, resolved | "
             "Rejected, unresolved | Precision | Specificity |",

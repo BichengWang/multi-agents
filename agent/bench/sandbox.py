@@ -13,7 +13,9 @@ Semantics match ``agent.teams.worktree.LocalWorktree``:
 * ``apply`` is ``git apply --binary``;
 * ``fork`` is an independent sandbox from the same image, at its pristine state;
 * ``close`` first copies the agent CLIs' session transcripts out of an agent sandbox into
-  ``transcripts`` (shared with its forks), best effort: a failed copy only loses the transcripts.
+  ``transcripts`` (shared with its forks), best effort within ``TRANSCRIPT_TIMEOUT_S``: a failed
+  copy only loses the transcripts. ``abandon`` (the pair is being cancelled) skips the copy for the
+  workspace and its forks.
 
 The baseline for ``diff`` is a tree object captured right after the sandbox starts, not ``HEAD``:
 instance images carry build output and sometimes tracked-file changes from environment setup, and
@@ -400,6 +402,8 @@ class SandboxWorkspace:
         # every fork; session ids are unique, so forks never collide.
         self.transcripts: dict[str, str] = {}
         self._transcripts_copied = False
+        # Set by ``abandon``, shared with every fork: close without copying transcripts.
+        self._abandoned = asyncio.Event()
 
     @classmethod
     async def create(
@@ -592,25 +596,33 @@ class SandboxWorkspace:
             self.exec_errors.append(f"fork: {type(exc).__name__}: {exc}"[:500])
             raise
         forked.exec_errors, forked.exec_timeouts = self.exec_errors, self.exec_timeouts
-        forked.transcripts = self.transcripts
+        forked.transcripts, forked._abandoned = self.transcripts, self._abandoned
         return forked
 
+    def abandon(self) -> None:
+        """The pair is being cancelled and stores nothing: this workspace and its forks close
+        without copying transcripts out first."""
+        self._abandoned.set()
+
     async def _copy_transcripts(self) -> None:
-        """Best effort, bypassing ``exec`` so that a failure never marks the pair's agent work as
-        lost; bounded by ``TRANSCRIPT_TIMEOUT_S`` (plus a minute if the output stream hangs)."""
+        """Best effort, at most ``TRANSCRIPT_TIMEOUT_S`` in all, bypassing ``exec`` so that a
+        failure never marks the pair's agent work as lost. Files printed before a non-zero exit
+        are kept."""
         self._transcripts_copied = True
         try:
-            code, out, _ = await self._raw_exec(
-                self._sandbox,
-                self._backend.config,
-                ["sh", "-c", _TRANSCRIPTS, "sh", TRANSCRIPT_MARK, str(TRANSCRIPT_MAX_BYTES)],
-                workdir="/",
-                timeout=TRANSCRIPT_TIMEOUT_S,
+            _, out, _ = await asyncio.wait_for(
+                self._raw_exec(
+                    self._sandbox,
+                    self._backend.config,
+                    ["sh", "-c", _TRANSCRIPTS, "sh", TRANSCRIPT_MARK, str(TRANSCRIPT_MAX_BYTES)],
+                    workdir="/",
+                    timeout=TRANSCRIPT_TIMEOUT_S,
+                ),
+                TRANSCRIPT_TIMEOUT_S,
             )
         except Exception:
             return
-        if code == 0:
-            self.transcripts.update(parse_transcripts(out.decode("utf-8", "replace")))
+        self.transcripts.update(parse_transcripts(out.decode("utf-8", "replace")))
 
     async def close(self) -> None:
         """Terminate the sandbox. ``_closed`` is set only once termination succeeded, so a failed
@@ -618,7 +630,12 @@ class SandboxWorkspace:
         if self._closed:
             return
         try:
-            if self.agent and self._backend.config.keep_transcripts and not self._transcripts_copied:
+            if (
+                self.agent
+                and self._backend.config.keep_transcripts
+                and not self._transcripts_copied
+                and not self._abandoned.is_set()
+            ):
                 await self._copy_transcripts()
         finally:
             await self._terminate_with_retries()

@@ -221,9 +221,10 @@ python -m agent.bench run --since 2026-07-01 --limit 50 --seed 7 \
     --team solo:worker=claude@claude-sonnet-5-5 \
     --team review:coder=claude@claude-sonnet-5-5,reviewer=claude@claude-sonnet-5-5 \
     --team best:workers=claude@claude-sonnet-5-5+claude@claude-sonnet-5-5+claude@claude-sonnet-5-5 \
-    --max-cost-usd 600 --concurrency 6 --out runs/pilot
+    --add-python 3.12 --max-cost-usd 600 --concurrency 6 --out runs/pilot
 
-# 4. Optional, any time later: grade the patches teams produced but did not submit.
+# 4. Optional, any time later: grade the patches teams produced but did not submit. The backend,
+#    --add-python and --registry-secret come from the run's meta.json (a different flag is refused).
 python -m agent.bench grade-candidates runs/pilot --concurrency 8
 
 # 5. Report, comparing every team with the solo baseline on the same tasks.
@@ -242,17 +243,20 @@ Every patch a team produced is kept, not only the one it submitted: each best-of
 credential scrub changed is marked `patch_redacted`. The agent CLIs' session transcripts (Claude
 Code's and Codex's JSONL, tool calls and their output included) are copied out of every agent
 sandbox before it closes, scrubbed, as `transcript-<role>-<i>.jsonl.gz` (`i`: the run's index in
-`runs.json`). Grading is unchanged: only the submitted patch. `grade-candidates` grades the other
-candidate and round patches afterwards, from the records, with the same grader in fresh grading
-sandboxes (no model cost; `remote grade-candidates` works too), into `candidates.jsonl`; `report`
-then adds oracle pass@k next to the judge's pick and the reviewer's precision round by round.
-The pilot's records predate this and have neither.
+`runs.json`); a new solve of a pair replaces the previous solve's files, and a cancelled pair
+(Ctrl-C) skips the copy. Grading is unchanged: only the submitted patch. `grade-candidates` grades
+the other candidate and round patches afterwards, from the records, with the same grader in fresh
+grading sandboxes built like the run's (backend, `--add-python`, `--registry-secret`, recorded in
+`meta.json`), at no model cost (`remote grade-candidates` works too), into `candidates.jsonl`;
+`report` then adds oracle pass@k next to the judge's pick and the reviewer's precision round by
+round, leaving out rounds the reviewer never judged. The pilot's records predate this and have
+neither.
 Filters shared by `tasks`, `gold` and `run`: `--dataset`, `--since` (inclusive),
 `--until` (exclusive), `--repo`, `--language`, `--instance-id`, `--limit`, `--seed`.
 `meta.json` keeps the first invocation's `created_at` and appends one entry per invocation with the
 complete filter set (dataset, dates, repos, languages, instance ids, limit, seed, gold file, history
-and base-commit checks), the teams, the task ids and the budget; `report` covers the teams and tasks
-of the latest entry.
+and base-commit checks), the backend, `--add-python` and the registry secret's name, the teams, the
+task ids and the budget; `report` covers the teams and tasks of the latest entry.
 
 Every record also notes `isolate_history` and `image_head`, the commit the image was checked out
 at. Setup refuses an image whose checkout is not the task's `base_commit` (a dataset/image mismatch
