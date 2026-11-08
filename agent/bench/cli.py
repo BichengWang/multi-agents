@@ -13,7 +13,7 @@ from typing import Optional
 from agent.teams.validation import validate_positive_finite
 
 from .dataset import DEFAULT_DATASET, SOURCES, BenchTask, load_tasks
-from .report import build_report
+from .report import MODAL_SANDBOX_USD_PER_HOUR, build_report
 from .run import (
     GOLD_FILE,
     BudgetError,
@@ -126,6 +126,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--count-errors-as-failures",
         action="store_true",
         help="count errored pairs as unresolved instead of excluding them",
+    )
+    report.add_argument(
+        "--sandbox-usd-per-hour",
+        type=float,
+        default=MODAL_SANDBOX_USD_PER_HOUR,
+        help="price sandbox-hours at this rate, stated in the report "
+        f"(default: Modal's list price for the runner's sandbox, {MODAL_SANDBOX_USD_PER_HOUR:g})",
     )
     report.add_argument("--out", help="also write the report to this file")
 
@@ -275,12 +282,14 @@ def _canonicalize(spec: str) -> str:
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
+    validate_positive_finite(args.sandbox_usd_per_hour, "--sandbox-usd-per-hour")
     text = build_report(
         args.dir,
         baseline=args.baseline,
         teams=args.team,
         count_errors_as_failures=args.count_errors_as_failures,
         canonicalize=_canonicalize,
+        sandbox_usd_per_hour=args.sandbox_usd_per_hour,
     )
     print(text)
     if args.out:
