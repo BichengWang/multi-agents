@@ -88,9 +88,10 @@ Deviations from upstream:
   count: the hidden tests own those files, and agents often add their own tests there, which then
   conflict. Upstream grades both cases on the tests alone. The test-only verdict remains in
   `report`; `test_patch_applied`, `patch_applied` and `patch_rejected_files` record apply status.
-  Until 2026-11-01 every rejection counted, which cost 7 to 11 of 48 resolved tasks per team in
-  the first pilot (49 patches, all rejected only in hidden-test files); its published results
-  were re-graded from the stored logs with this rule.
+  Until 2026-11-01 (US Pacific; each record's `eval.regraded` carries the UTC date, 2026-11-02)
+  every rejection counted, which cost 7 to 11 of 48 resolved tasks per team in the first pilot
+  (49 patches, all rejected only in hidden-test files); its published results were re-graded from
+  the stored logs with this rule.
   `apply_log` preserves stdout before the test-log marker and script stderr, including git's
   rejection diagnostics. Hidden-test-patch failure or a missing application marker is a grading
   error with diagnostics, excluded from statistics and retried on resume.
@@ -134,7 +135,7 @@ uv run --extra bench modal secret create multi-agents-bench \
   sandbox's own environment and from your host environment, plus anything shaped like a provider
   key (`sk-...`, `sk-ant-...`, `ghp_...`, `AIza...`, ...), becomes `[REDACTED]`. Records say whether
   that happened (`redacted`, `patch_redacted`). Grading uses the unscrubbed patch. The scrub is
-  pattern- and value-based, so skim `artifacts/` before publishing trajectories.
+  pattern- and value-based, so skim `artifacts/` before publishing it.
 - Images are pulled from Docker Hub by Modal. If pulls are rate limited, create a secret with
   `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` and pass `--registry-secret NAME`.
 - Agent sandboxes extend the instance image with Node.js 24.21.0 (tarball checksum-verified against
@@ -226,8 +227,10 @@ python -m agent.bench report runs/pilot --baseline solo:worker=claude@claude-son
 
 `run` writes to `--out`: `results.jsonl` (one record per task x team: patch, resolved, usage and
 cost, duration, runs summary, grading details, error), `meta.json`, and
-`artifacts/<team>/<task>/{patch.diff,runs.json,eval.log}` with full harness logs (the raw
-trajectories). Filters shared by `tasks`, `gold` and `run`: `--dataset`, `--since` (inclusive),
+`artifacts/<team>/<task>/{patch.diff,runs.json,eval.log}`: the patch, each harness run's final
+message and short log, and the grading log. The short log is not a trajectory: Claude Code's is the
+turn count and stop reason, Codex's the commands it ran and their exit codes.
+Filters shared by `tasks`, `gold` and `run`: `--dataset`, `--since` (inclusive),
 `--until` (exclusive), `--repo`, `--language`, `--instance-id`, `--limit`, `--seed`.
 `meta.json` keeps the first invocation's `created_at` and appends one entry per invocation with the
 complete filter set (dataset, dates, repos, languages, instance ids, limit, seed, gold file, history
@@ -297,8 +300,10 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   before the agent starts (`git gc --prune=now` failing fails the pair, never silently leaks), so
   the fix commit cannot be read with `git log --all`. The hidden tests
   are only ever written into a separate grading sandbox, which has no secrets and no agent CLIs.
-  What cannot be stripped: network access (an agent could in principle fetch the upstream fix; the
-  protocol's trajectory-audit remedy applies, and `artifacts/` keeps the trajectories).
+  What cannot be stripped: network access (an agent could in principle fetch the upstream fix).
+  The protocol's remedy is a trajectory audit, which the stored data cannot support: no tool output
+  is kept, and a Claude Code run (every pilot run) keeps only its final message, turn count and stop
+  reason, not its tool calls. For the pilot this risk is therefore not ruled out.
 - **Patch** = everything changed since the sandbox started (commits, edits, new files,
   `.gitignore` honoured), diffed against a tree snapshot taken at start. Files that were untracked
   but not ignored in the image (build output, generated reports) are excluded from the snapshot

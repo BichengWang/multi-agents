@@ -190,7 +190,7 @@ Setup, methodology, cost estimates and limitations:
 **First results (October 2026):** on 48 fresh tasks, Claude Haiku 5.5 resolved 27 solo, 29 with a
 reviewer and 28 as best of 3, at $0.061, $0.098 and $0.17 per task. The teams' one or two extra
 tasks are not significant (paired p = 0.5 and 1.0): the reviewer approved 47 of 48 final patches,
-and the judge's top scores were tied on 32 of 48 tasks. Table, analysis, data and raw trajectories:
+and the judge's top scores were tied on 32 of 48 tasks. Table, analysis and data:
 [pilot results](https://github.com/BichengWang/multi-agents/blob/main/docs/pilot-2026-10.md).
 
 ## Status
