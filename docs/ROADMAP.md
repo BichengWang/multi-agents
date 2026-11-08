@@ -58,7 +58,7 @@ H := harness[@model]                          # claude, codex@gpt-5-codex, sdk@l
    evaluation; report with resolve rate, cost, wall time and confidence intervals. Live on local
    Docker since 2026-10-28 and on Modal since 2026-10-29.
 4. **Pilot results** (done for one model tier) — 48 fresh tasks × solo, review and best of 3 on
-   Claude Haiku 5.5; table, analysis and raw trajectories [published](pilot-2026-10.md). The teams
+   Claude Haiku 5.5; table, analysis and data [published](pilot-2026-10.md). The teams
    resolved one or two more tasks than solo, not significant, at 1.6× and 2.7× the cost. Next: a
    frontier tier, and `--check` as reviewer/judge.
 5. **Launch** — README led by the results, terminal demo, launch posts.
