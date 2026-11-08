@@ -4,7 +4,12 @@ Pure Python statistics (no scipy):
 
 * Wilson score interval for a binomial proportion, 95 % (z = 1.959963984540054);
 * exact two-sided McNemar test on the discordant pairs (binomial with p = 0.5), used for the paired
-  comparison of a team against a baseline on the same tasks.
+  comparison of a team against a baseline on the same tasks;
+* Newcombe's (1998) method 10 interval for that paired difference in resolve rate.
+
+Offline analyses from the stored records (no grading or model calls): extra model cost per extra
+resolved task, solve and grading sandbox-hours, unresolved tasks by failure class from the grading
+report, and the reviewer's approvals and the judge's ties against resolution.
 
 Every statistic is computed on the *common* tasks: those with a valid result for every team in the
 report. A pair is invalid when its record has an ``error`` (infrastructure, agent crash, timeout,
@@ -16,6 +21,7 @@ from __future__ import annotations
 
 import math
 import statistics
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,6 +30,19 @@ from typing import Any, Optional
 from .run import RESULTS_FILE, load_meta, load_records
 
 Z95 = 1.959963984540054
+
+# Modal's list price for the sandbox the runner requests (2 cores, 16 GiB), from the benchmark
+# guide's cost estimate; the report states the rate it prices sandbox-hours at.
+MODAL_SANDBOX_USD_PER_HOUR = 0.668
+
+# Runs of these roles each work in a fork of the team's sandbox (which stays open for the whole
+# solve); every other run works in the team's sandbox itself.
+FORKED_ROLES = {"review": frozenset({"reviewer"}), "best": frozenset({"worker", "judge"})}
+
+NO_F2P_RESULT = "no F2P result"
+F2P_NOT_ALL_PASS = "F2P ran, not all pass"
+P2P_REGRESSION = "P2P regression"
+FAILURE_CLASSES = (NO_F2P_RESULT, F2P_NOT_ALL_PASS, P2P_REGRESSION)
 
 
 def wilson_interval(successes: int, n: int, z: float = Z95) -> tuple[float, float]:
@@ -46,6 +65,79 @@ def mcnemar_exact(wins: int, losses: int) -> float:
     return min(1.0, 2 * tail / 2**n)
 
 
+def newcombe_paired_interval(
+    both: int, wins: int, losses: int, neither: int, z: float = Z95
+) -> tuple[float, float]:
+    """Interval of a paired difference in proportions (team minus baseline): Newcombe (1998), method 10.
+
+    ``wins``: the team succeeded and the baseline did not; ``losses``: the reverse. Each proportion
+    gets its Wilson interval, and the two are combined with the correlation of the paired outcomes,
+    whose numerator Newcombe continuity-corrects (ad - bc - n/2 when ad > bc, floored at 0).
+    """
+    n = both + wins + losses + neither
+    if n <= 0:
+        return (-1.0, 1.0)
+    p1, p2 = (both + wins) / n, (both + losses) / n
+    l1, u1 = wilson_interval(both + wins, n, z)
+    l2, u2 = wilson_interval(both + losses, n, z)
+    margins = (both + wins) * (losses + neither) * (both + losses) * (wins + neither)
+    numerator: float = both * neither - wins * losses
+    if numerator > 0:
+        numerator = max(numerator - n / 2, 0.0)
+    phi = numerator / math.sqrt(margins) if margins else 0.0
+    delta = p1 - p2
+    lower = delta - math.sqrt((p1 - l1) ** 2 - 2 * phi * (p1 - l1) * (u2 - p2) + (u2 - p2) ** 2)
+    upper = delta + math.sqrt((u1 - p1) ** 2 - 2 * phi * (u1 - p1) * (p2 - l2) + (p2 - l2) ** 2)
+    return (max(-1.0, lower), min(1.0, upper))
+
+
+def sandbox_seconds(rec: dict[str, Any]) -> tuple[Optional[float], Optional[float]]:
+    """(solve, grading) sandbox seconds of one record, ``None`` where it has no timing.
+
+    Solve: the team's own sandbox for the whole solve (``duration_s``) plus every run in a fork of
+    it (``FORKED_ROLES``). Grading: ``eval.duration_s``. Sums of timed spans, so a lower bound on
+    billed time: sandbox start-up and fork setup are not timed.
+    """
+    forked = FORKED_ROLES.get(str(rec.get("team", "")).split(":", 1)[0], frozenset())
+    solve = rec.get("duration_s")
+    if solve is not None:
+        solve = float(solve) + sum(
+            float(run.get("duration_s") or 0.0)
+            for run in rec.get("runs") or []
+            if run.get("role") in forked
+        )
+    grading = (rec.get("eval") or {}).get("duration_s")
+    return solve, (float(grading) if grading is not None else None)
+
+
+def failure_class(rec: dict[str, Any]) -> str:
+    """Why an unresolved record failed, from its grading fields alone (no log parsing).
+
+    One of ``FAILURE_CLASSES``: no hidden FAIL_TO_PASS test produced a result; some did but not all
+    pass (a test without a result does not pass), with every PASS_TO_PASS test intact; or a
+    PASS_TO_PASS test fails. Anything else is named: an errored pair, an empty patch, a grading
+    timeout, or tests that pass for a patch rejected outside the hidden test patch's files.
+    """
+    ev = rec.get("eval") or {}
+    if rec.get("error") is not None or not ev:
+        return "errored"
+    if ev.get("empty_patch"):
+        return "empty patch"
+    if ev.get("timed_out"):
+        return "grading timed out"
+    report = ev.get("report") or {}
+    if not report:
+        return "no grading report"
+    f2p = report.get("FAIL_TO_PASS") or {}
+    if (report.get("PASS_TO_PASS") or {}).get("failure"):
+        return P2P_REGRESSION
+    if report.get("resolved"):
+        return "patch rejected outside the hidden-test files"
+    if not f2p.get("success") and not f2p.get("failure"):
+        return NO_F2P_RESULT
+    return F2P_NOT_ALL_PASS
+
+
 @dataclass
 class TeamStats:
     team: str
@@ -56,6 +148,7 @@ class TeamStats:
     costs: list[Optional[float]] = field(default_factory=list)
     durations: list[float] = field(default_factory=list)
     outcomes: dict[str, bool] = field(default_factory=dict)  # common tasks only
+    records: dict[str, dict[str, Any]] = field(default_factory=dict, repr=False)  # common tasks only
 
     @property
     def rate(self) -> float:
@@ -73,6 +166,46 @@ class TeamStats:
     def priced_costs(self) -> list[float]:
         return [c for c in self.costs if c is not None]
 
+    def sandbox_hours(self) -> tuple[float, float, int]:
+        """Solve and grading sandbox-hours over the common tasks, and how many records lack a time."""
+        solve = grading = 0.0
+        untimed = 0
+        for rec in self.records.values():
+            s, g = sandbox_seconds(rec)
+            solve += s or 0.0
+            grading += g or 0.0
+            untimed += s is None or g is None
+        return solve / 3600, grading / 3600, untimed
+
+    def failure_classes(self) -> Counter[str]:
+        return Counter(failure_class(rec) for t, rec in self.records.items() if not self.outcomes[t])
+
+    def approvals(self) -> Optional[tuple[int, int, int, int]]:
+        """Final reviewer verdict vs resolution: (approved and resolved, approved and unresolved,
+        rejected and resolved, rejected and unresolved); ``None`` for teams without a reviewer."""
+        cells = [0, 0, 0, 0]
+        seen = False
+        for task, rec in self.records.items():
+            meta = rec.get("meta") or {}
+            if "accepted" not in meta:
+                continue
+            seen = True
+            cells[2 * (not meta["accepted"]) + (not self.outcomes[task])] += 1
+        return (cells[0], cells[1], cells[2], cells[3]) if seen else None
+
+    def judge_ties(self) -> Optional[tuple[int, int]]:
+        """(tasks whose top judge score two or more candidates share, tasks judged); ``None`` for
+        teams without a judge."""
+        ties = judged = 0
+        for rec in self.records.values():
+            meta = rec.get("meta") or {}
+            scores = [s for s in meta.get("scores") or [] if s is not None]
+            if "candidates" not in meta or not scores:
+                continue
+            judged += 1
+            ties += scores.count(max(scores)) > 1
+        return (ties, judged) if judged else None
+
 
 @dataclass
 class Paired:
@@ -83,6 +216,8 @@ class Paired:
     losses: int  # baseline resolved, team did not
     p_value: float
     delta: float
+    interval: tuple[float, float] = (-1.0, 1.0)  # Newcombe 95% CI of delta
+    extra_cost: Optional[float] = None  # team's minus baseline's model cost; None if any is unpriced
 
 
 @dataclass
@@ -160,6 +295,7 @@ def summarize(
             rec = latest[(task, team)]
             ok = bool(rec.get("resolved")) and rec.get("error") is None
             st.outcomes[task] = ok
+            st.records[task] = rec
             st.n += 1
             st.resolved += ok
             usage = rec.get("usage") or {}
@@ -177,6 +313,9 @@ def summarize(
                 continue
             wins = sum(1 for t in common if st.outcomes[t] and not base.outcomes[t])
             losses = sum(1 for t in common if base.outcomes[t] and not st.outcomes[t])
+            both = sum(1 for t in common if st.outcomes[t] and base.outcomes[t])
+            neither = len(common) - both - wins - losses
+            priced = not st.unpriced and not base.unpriced
             paired.append(
                 Paired(
                     team=st.team,
@@ -186,6 +325,8 @@ def summarize(
                     losses=losses,
                     p_value=mcnemar_exact(wins, losses),
                     delta=(wins - losses) / len(common) if common else 0.0,
+                    interval=newcombe_paired_interval(both, wins, losses, neither),
+                    extra_cost=sum(st.priced_costs) - sum(base.priced_costs) if priced else None,
                 )
             )
     return Summary(
@@ -199,8 +340,9 @@ def _pct(x: float) -> str:
 
 
 def _money(x: float) -> str:
-    # Cheap models cost fractions of a cent per task; two decimals would print them as $0.00.
-    return f"${x:,.3f}" if 0 < abs(x) < 0.1 else f"${x:,.2f}"
+    # Cheap models cost fractions of a cent per task, and ratios of two-decimal cells drift
+    # ($0.17 / $0.061 = 2.8 for a 2.7x ratio), so amounts under $1 get three decimals.
+    return f"${x:,.3f}" if 0 < abs(x) < 1 else f"${x:,.2f}"
 
 
 def _mean_cost(values: list[Optional[float]]) -> str:
@@ -242,7 +384,146 @@ def _duration(seconds: list[float]) -> str:
     return f"{m / 60:.1f} min" if m >= 90 else f"{m:.0f} s"
 
 
-def render(summary: Summary) -> str:
+def _share(k: int, n: int) -> str:
+    return f"{k}/{n} ({100 * k / n:.0f}%)" if n else "n/a"
+
+
+def _ratio(x: Optional[float], base: Optional[float]) -> str:
+    return f"{x / base:.1f}×" if x is not None and base else "n/a"
+
+
+def _extra_per_resolved(pr: Paired) -> str:
+    net = pr.wins - pr.losses
+    if net <= 0:
+        return "n/a (no net gain)"
+    if pr.extra_cost is None:
+        return "unpriced"
+    if pr.extra_cost <= 0:
+        return "none (no extra cost)"
+    return _money(pr.extra_cost / net)
+
+
+def _render_compute(summary: Summary, rate: Optional[float]) -> list[str]:
+    stats = summary.teams
+    hours = {st.team: st.sandbox_hours() for st in stats}
+    base = next((st for st in stats if st.team == summary.baseline), None)
+
+    def per_task(st: TeamStats) -> Optional[float]:
+        """Mean model plus solve-sandbox cost per task; None when a model cost is unknown."""
+        if rate is None or st.unpriced or not st.n:
+            return None
+        return (sum(st.priced_costs) + hours[st.team][0] * rate) / st.n
+
+    lines = [
+        "",
+        "## Compute",
+        "",
+        "Sandbox-hours sum timed spans, so they bound billed time from below (sandbox start-up and "
+        "fork setup are not timed): the team's own sandbox for the whole solve, plus every run in a "
+        "fork of it (`review`: the reviewer; `best`: each worker and the judge; other team kinds: "
+        "none counted), plus the grading sandbox.",
+    ]
+    if rate is None:
+        lines[-1] += " No rate was given, so sandbox time is not priced."
+    elif rate == MODAL_SANDBOX_USD_PER_HOUR:
+        lines[-1] += (
+            f" Priced at ${rate:g} per sandbox-hour, Modal's list price for the runner's sandbox "
+            "(2 cores, 16 GiB; see the benchmark guide's cost estimate); "
+            "`--sandbox-usd-per-hour` sets another rate."
+        )
+    else:
+        lines[-1] += f" Priced at ${rate:g} per sandbox-hour (`--sandbox-usd-per-hour`)."
+    header = ["Team", "Solve sandbox-hours"]
+    if base is not None:
+        header.append("vs baseline")
+    header.append("Grading sandbox-hours")
+    if rate is not None:
+        header += ["Solve sandbox cost/task", "Model + solve sandbox cost/task"]
+        if base is not None:
+            header.append("vs baseline")
+    lines += ["", "| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
+    for st in stats:
+        solve, grading, untimed = hours[st.team]
+        cells = [f"`{st.team}`", f"{solve:.1f} h" + (f" ({untimed} untimed)" if untimed else "")]
+        if base is not None:
+            cells.append(_ratio(solve, hours[base.team][0]))
+        cells.append(f"{grading:.1f} h")
+        if rate is not None:
+            total = per_task(st)
+            cells.append(_money(solve * rate / st.n) if st.n else "n/a")
+            cells.append(_money(total) if total is not None else "unpriced")
+            if base is not None:
+                cells.append(_ratio(total, per_task(base)))
+        lines.append("| " + " | ".join(cells) + " |")
+    return lines
+
+
+def _render_failures(summary: Summary) -> list[str]:
+    lines = [
+        "",
+        "## Unresolved tasks by failure class",
+        "",
+        "From each unresolved record's grading report, without reading logs. *No F2P result*: none "
+        "of the hidden FAIL_TO_PASS tests produced a result (for example, the hidden tests do not "
+        "compile against the patch). *F2P ran, not all pass*: some did, and at least one failed or "
+        "produced none, while no PASS_TO_PASS test fails. *P2P regression*: a PASS_TO_PASS test "
+        "fails. *Other*: an empty patch, a grading timeout, a patch rejected outside the hidden "
+        "test patch's files, or an errored pair counted as unresolved.",
+        "",
+        "| Team | Unresolved | No F2P result | F2P ran, not all pass | P2P regression | Other |",
+        "|---|---|---|---|---|---|",
+    ]
+    for st in summary.teams:
+        classes = st.failure_classes()
+        other = {k: v for k, v in classes.items() if k not in FAILURE_CLASSES}
+        other_cell = str(sum(other.values()))
+        if other:
+            other_cell += " (" + ", ".join(f"{v} {k}" for k, v in sorted(other.items())) + ")"
+        lines.append(
+            f"| `{st.team}` | {sum(classes.values())} | "
+            + " | ".join(str(classes[k]) for k in FAILURE_CLASSES)
+            + f" | {other_cell} |"
+        )
+    return lines
+
+
+def _render_evaluators(summary: Summary) -> list[str]:
+    reviewed = [(st, cells) for st in summary.teams if (cells := st.approvals()) is not None]
+    judged = [(st, ties) for st in summary.teams if (ties := st.judge_ties()) is not None]
+    if not reviewed and not judged:
+        return []
+    lines = ["", "## Reviewer and judge"]
+    if reviewed:
+        lines += [
+            "",
+            "The reviewer's verdict on each final patch (`meta.accepted`) against resolution. "
+            "Precision: resolved among approved; specificity: rejected among unresolved.",
+            "",
+            "| Team | Tasks | Approved, resolved | Approved, unresolved | Rejected, resolved | "
+            "Rejected, unresolved | Precision | Specificity |",
+            "|---|---|---|---|---|---|---|---|",
+        ]
+        for st, (tp, fp, fn, tn) in reviewed:
+            lines.append(
+                f"| `{st.team}` | {tp + fp + fn + tn} | {tp} | {fp} | {fn} | {tn} | "
+                f"{_share(tp, tp + fp)} | {_share(tn, tn + fp)} |"
+            )
+    if judged:
+        lines += [
+            "",
+            "Tasks where two or more candidates share the judge's top score (ties go to the "
+            "earliest candidate).",
+            "",
+            "| Team | Tasks judged | Top score tied |",
+            "|---|---|---|",
+        ]
+        for st, (ties, n) in judged:
+            lines.append(f"| `{st.team}` | {n} | {_share(ties, n)} |")
+    return lines
+
+
+def render(summary: Summary, *, sandbox_usd_per_hour: Optional[float] = None) -> str:
+    """``sandbox_usd_per_hour`` prices sandbox-hours; without it they are reported unpriced."""
     n = len(summary.common_tasks)
     lines = ["# Benchmark report", ""]
     meta = summary.meta
@@ -297,18 +578,28 @@ def render(summary: Summary) -> str:
             "",
             "Same tasks for both teams. Wins: the team resolved a task the baseline did not; "
             "losses: the reverse. p is the exact two-sided McNemar test on those discordant "
-            "tasks (no multiplicity correction across teams).",
+            "tasks (no multiplicity correction across teams). The 95% CI of Δ is Newcombe's "
+            "(1998) method 10 for paired proportions. Extra cost per extra resolved task: the "
+            "team's total model cost minus the baseline's, divided by wins minus losses.",
             "",
-            "| Team | Tasks | Wins | Losses | Δ resolve rate | p (McNemar exact) |",
-            "|---|---|---|---|---|---|",
+            "| Team | Tasks | Wins | Losses | Δ resolve rate | 95% CI of Δ | p (McNemar exact) "
+            "| Extra model cost per extra resolved |",
+            "|---|---|---|---|---|---|---|---|",
         ]
         for pr in summary.paired:
+            lo, hi = pr.interval
             lines.append(
                 f"| `{pr.team}` | {pr.n} | {pr.wins} | {pr.losses} | "
-                f"{100 * pr.delta:+.1f} pts | {pr.p_value:.4f} |"
+                f"{100 * pr.delta:+.1f} pts | {100 * lo:+.1f} to {100 * hi:+.1f} pts | "
+                f"{pr.p_value:.4f} | {_extra_per_resolved(pr)} |"
             )
         if not summary.paired:
-            lines.append("| (baseline only) | | | | | |")
+            lines.append("| (baseline only) | | | | | | | |")
+
+    if n:
+        lines += _render_compute(summary, sandbox_usd_per_hour)
+        lines += _render_failures(summary)
+        lines += _render_evaluators(summary)
 
     lines += ["", "## Excluded and errored pairs", ""]
     if summary.count_errors_as_failures:
@@ -352,6 +643,7 @@ def build_report(
     teams: Optional[Sequence[str]] = None,
     count_errors_as_failures: bool = False,
     canonicalize: Any = None,
+    sandbox_usd_per_hour: Optional[float] = None,
 ) -> str:
     """Report for ``out_dir``. Without ``teams`` it covers the teams (and tasks) of the latest run
     recorded in ``meta.json``, so leftovers of earlier invocations in the same directory neither
@@ -377,5 +669,6 @@ def build_report(
             meta=run,
             teams=selected,
             task_ids=run.get("task_ids") or None,
-        )
+        ),
+        sandbox_usd_per_hour=sandbox_usd_per_hour,
     )
