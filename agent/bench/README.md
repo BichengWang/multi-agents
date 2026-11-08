@@ -11,6 +11,7 @@ dataset.py   load + filter + seeded sample of tasks      sandbox.py   sandbox = 
 evaluate.py  official grading in a fresh sandbox          docker_backend.py  local Docker backend
 run.py       task x team -> JSONL (resumable)             report.py    Markdown report, Wilson / McNemar
 check.py     the task's test suite as reviewer=/judge=check
+candidates.py  grade-candidates: grade stored candidate and round patches
 cli.py       python -m agent.bench ...
 ```
 
@@ -187,7 +188,7 @@ python -m agent.bench gold --backend docker --since 2026-07-01 --limit 10 --out 
 The client holds every sandbox command open while it runs, and Modal keeps a finished command's
 output for 10 minutes only. If this machine sleeps or loses its connection for longer, the work is
 lost (`exec not found`, `Connection lost`): from a laptop that slept overnight, 33 of 70 gold
-validations errored that way. `remote` runs the same `gold` or `run` command as a detached Modal
+validations errored that way. `remote` runs the same `gold`, `run` or `grade-candidates` command as a detached Modal
 function instead, which keeps going whatever happens here:
 
 ```bash
@@ -222,7 +223,10 @@ python -m agent.bench run --since 2026-07-01 --limit 50 --seed 7 \
     --team best:workers=claude@claude-sonnet-5-5+claude@claude-sonnet-5-5+claude@claude-sonnet-5-5 \
     --max-cost-usd 600 --concurrency 6 --out runs/pilot
 
-# 4. Report, comparing every team with the solo baseline on the same tasks.
+# 4. Optional, any time later: grade the patches teams produced but did not submit.
+python -m agent.bench grade-candidates runs/pilot --concurrency 8
+
+# 5. Report, comparing every team with the solo baseline on the same tasks.
 python -m agent.bench report runs/pilot --baseline solo:worker=claude@claude-sonnet-5-5
 ```
 
@@ -231,6 +235,18 @@ cost, duration, runs summary, grading details, error), `meta.json`, and
 `artifacts/<team>/<task>/{patch.diff,runs.json,eval.log}`: the patch, each harness run's final
 message and short log, and the grading log. The short log is not a trajectory: Claude Code's is the
 turn count and stop reason, Codex's the commands it ran and their exit codes.
+Every patch a team produced is kept, not only the one it submitted: each best-of-N candidate's
+(`meta.candidates[].patch`), each review round's with the reviewer's verdict
+(`meta.round_log[].patch`, `.passed`) and each plan subtask's (`meta.subtasks[].patch`), also as
+`candidate-<i>.diff`, `round-<n>.diff` and `subtask-<n>.diff` beside `patch.diff`. A copy the
+credential scrub changed is marked `patch_redacted`. The agent CLIs' session transcripts (Claude
+Code's and Codex's JSONL, tool calls and their output included) are copied out of every agent
+sandbox before it closes, scrubbed, as `transcript-<role>-<i>.jsonl.gz` (`i`: the run's index in
+`runs.json`). Grading is unchanged: only the submitted patch. `grade-candidates` grades the other
+candidate and round patches afterwards, from the records, with the same grader in fresh grading
+sandboxes (no model cost; `remote grade-candidates` works too), into `candidates.jsonl`; `report`
+then adds oracle pass@k next to the judge's pick and the reviewer's precision round by round.
+The pilot's records predate this and have neither.
 Filters shared by `tasks`, `gold` and `run`: `--dataset`, `--since` (inclusive),
 `--until` (exclusive), `--repo`, `--language`, `--instance-id`, `--limit`, `--seed`.
 `meta.json` keeps the first invocation's `created_at` and appends one entry per invocation with the
@@ -319,9 +335,10 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   the fix commit cannot be read with `git log --all`. The hidden tests
   are only ever written into a separate grading sandbox, which has no secrets and no agent CLIs.
   What cannot be stripped: network access (an agent could in principle fetch the upstream fix).
-  The protocol's remedy is a trajectory audit, which the stored data cannot support: no tool output
-  is kept, and a Claude Code run (every pilot run) keeps only its final message, turn count and stop
-  reason, not its tool calls. For the pilot this risk is therefore not ruled out.
+  The protocol's remedy is a trajectory audit. The pilot's stored data cannot support one: no tool
+  output was kept, and a Claude Code run (every pilot run) kept only its final message, turn count
+  and stop reason, not its tool calls. For the pilot this risk is therefore not ruled out. Later
+  runs keep each agent's session transcript (`transcript-*.jsonl.gz`), which records every tool call.
 - **Patch** = everything changed since the sandbox started (commits, edits, new files,
   `.gitignore` honoured), diffed against a tree snapshot taken at start. Files that were untracked
   but not ignored in the image (build output, generated reports) are excluded from the snapshot

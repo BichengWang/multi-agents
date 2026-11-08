@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 import json
 from datetime import datetime, timezone
 
@@ -17,7 +18,7 @@ from agent.bench.run import (
 )
 from agent.teams.types import CodingTask, HarnessRun, TeamResult, Usage
 
-from .fakes import FakeTeam, MemoryWorkspace
+from .fakes import FakeTeam, MemoryWorkspace, make_run
 
 SECRET_TEST_NAME = "tests/hidden_test.py::test_secret"
 
@@ -113,6 +114,106 @@ def test_every_pair_gets_a_fresh_workspace_a_team_run_and_a_graded_record(tmp_pa
     assert (artifacts / "patch.diff").read_text().startswith("diff --git")
     assert json.loads((artifacts / "runs.json").read_text())["runs"][0]["log"] == "LOG"
     assert (artifacts / "eval.log").read_text() == "test log"
+
+
+class MetaTeam(FakeTeam):
+    """Submits ``final`` with the given ``meta`` and a worker and a judge run."""
+
+    def __init__(self, name, meta, final="diff --git a/f b/f\n+final\n", sessions=("s", "s")):
+        super().__init__(name)
+        self.meta, self.final, self.sessions = meta, final, sessions
+
+    async def solve(self, task, workspace):
+        workspace.edits.append(self.final)
+        runs = [make_run(0.5, role) for role in ("worker", "judge")]
+        for run, session in zip(runs, self.sessions):
+            run.session_id = session
+        return TeamResult(patch=await workspace.diff(), runs=runs, duration_s=1.0, meta=self.meta)
+
+
+def test_every_candidate_and_round_patch_is_kept_in_the_record_and_as_a_diff(tmp_path):
+    secret = "opaque-sandbox-key-abcdefgh"
+    final = "diff --git a/f b/f\n+final\n"
+    best = MetaTeam(
+        "best:workers=claude+claude+claude,judge=claude",
+        {"chosen": 1, "candidates": [
+            {"candidate": 1, "score": 9.0, "runs": [0, 1], "patch": final},
+            {"candidate": 2, "score": 7.0, "runs": [], "patch": f"+key = '{secret}'\n"},
+            {"candidate": 3, "score": None, "runs": [], "patch": ""},
+        ]},
+    )
+    review = MetaTeam(
+        "review:coder=claude,reviewer=claude",
+        {"round_log": [
+            {"round": 1, "changed": True, "patch": "+first try\n", "score": 4.0, "passed": False},
+            {"round": 2, "changed": True, "patch": final, "score": 9.0, "passed": True},
+        ]},
+    )
+    redactor = Redactor(host_env=False)
+    redactor.add_env_dump(f"ANTHROPIC_API_KEY={secret}")
+    Harness(best, review).run(tmp_path, make_tasks(1), redactor=redactor)
+
+    records = {r["team"]: r for r in load_records(tmp_path / "results.jsonl")}
+    stored = records[best.name]["meta"]["candidates"]
+    assert [c["patch"] for c in stored] == [final, "+key = '[REDACTED]'\n", ""]
+    assert [c.get("patch_redacted", False) for c in stored] == [False, True, False]
+    assert records[best.name]["patch_redacted"] is False  # the submitted patch was clean
+    assert [r["patch"] for r in records[review.name]["meta"]["round_log"]] == ["+first try\n", final]
+
+    best_dir = tmp_path / "artifacts" / "best_workers=claude+claude+claude,judge=claude" / "o__r-0"
+    assert (best_dir / "candidate-1.diff").read_text() == final
+    assert (best_dir / "candidate-2.diff").read_text() == "+key = '[REDACTED]'\n"
+    assert (best_dir / "candidate-3.diff").read_text() == ""
+    # runs.json keeps the meta, not a third copy of the patches.
+    assert json.loads((best_dir / "runs.json").read_text())["meta"]["candidates"][1] == {
+        "candidate": 2, "score": 7.0, "runs": [],
+    }
+    review_dir = tmp_path / "artifacts" / "review_coder=claude,reviewer=claude" / "o__r-0"
+    assert sorted(p.name for p in review_dir.glob("round-*.diff")) == ["round-1.diff", "round-2.diff"]
+    assert (review_dir / "round-1.diff").read_text() == "+first try\n"
+
+
+def test_session_transcripts_from_the_sandboxes_are_stored_scrubbed_and_named_after_their_run(tmp_path):
+    secret = "opaque-sandbox-key-abcdefgh"
+    session = "0b5e7c1a-1111-2222-3333-444455556666"
+    home = "/root/.claude/projects/-testbed"
+
+    class Transcribed(MemoryWorkspace):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.transcripts = {
+                f"{home}/{session}.jsonl": f'{{"tool":"Bash","out":"KEY={secret}"}}\n',
+                f"{home}/{session}/subagents/agent-a1.jsonl": '{"tool":"WebFetch"}\n',
+                f"{home}/9f9f9f9f-unmatched.jsonl": "{}\n",
+            }
+
+    async def transcribed(task):
+        return Transcribed()
+
+    team = MetaTeam("solo:worker=claude", {}, sessions=(session, None))
+    h = Harness(team)
+    h.workspace_factory = transcribed
+    redactor = Redactor(host_env=False)
+    redactor.add_env_dump(f"ANTHROPIC_API_KEY={secret}")
+    h.run(tmp_path, make_tasks(1), redactor=redactor)
+
+    directory = tmp_path / "artifacts" / "solo_worker=claude" / "o__r-0"
+    names = sorted(p.name for p in directory.glob("transcript-*"))
+    assert names == [
+        "transcript-9f9f9f9f-unmatched.jsonl.gz",
+        "transcript-worker-0-agent-a1.jsonl.gz",
+        "transcript-worker-0.jsonl.gz",
+    ]
+    text = gzip.decompress((directory / "transcript-worker-0.jsonl.gz").read_bytes()).decode()
+    assert text == '{"tool":"Bash","out":"KEY=[REDACTED]"}\n'
+
+    # A solve that ran out of time and left no patch still keeps its transcripts.
+    slow = FakeTeam("solo:worker=claude", delay=30)
+    timed = Harness(slow)
+    timed.workspace_factory = transcribed
+    timed.run(tmp_path / "timed", make_tasks(1), solve_timeout_s=0.05, redactor=redactor)
+    left = tmp_path / "timed" / "artifacts" / "solo_worker=claude" / "o__r-0"
+    assert len(list(left.glob("transcript-*.jsonl.gz"))) == 3
 
 
 def test_meta_json_keeps_the_first_invocation_and_appends_later_ones_with_the_full_filters(tmp_path):

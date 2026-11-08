@@ -49,6 +49,10 @@ def test_review_returns_the_best_patch_and_feeds_feedback_back_to_the_coder(repo
 
     assert "attempt 2" in result.patch and "attempt 3" not in result.patch
     assert result.meta["scores"] == [4, 7, 5] and result.meta["best_round"] == 2
+    # Every round's patch is kept, the superseded ones too, with the reviewer's verdict on it.
+    log = result.meta["round_log"]
+    assert [f"+attempt {n}" in entry["patch"] for n, entry in enumerate(log, 1)] == [True] * 3
+    assert [entry["passed"] for entry in log] == [False] * 3
     assert [r.role for r in result.runs] == ["coder", "reviewer"] * 3
     # The revision prompt carries the reviewer's feedback and the coder resumes its session.
     second = coder.calls[1]
@@ -62,6 +66,8 @@ def test_review_stops_as_soon_as_the_reviewer_passes(repo):
     result, *_ = solve(ReviewTeam(coder, reviewer, rounds=5), repo)
     assert result.meta["rounds"] == 2 and result.meta["accepted"] is True
     assert len(coder.calls) == 2 and "attempt 2" in result.patch
+    assert [entry["passed"] for entry in result.meta["round_log"]] == [False, True]
+    assert result.meta["round_log"][1]["patch"] == result.patch
 
 
 def test_review_stops_when_the_coder_stops_changing_anything(repo):
@@ -126,6 +132,9 @@ def test_best_selects_the_highest_score_and_survives_a_failing_worker(repo):
     assert [r.role for r in result.runs] == ["worker", "judge", "worker", "judge"]
     runs_by_candidate = {c["candidate"]: [result.runs[i].role for i in c["runs"]] for c in result.meta["candidates"]}
     assert runs_by_candidate == {1: ["worker", "judge"], 2: [], 3: ["worker", "judge"]}
+    # Every candidate's patch is kept, chosen or not.
+    first, failed, chosen = (c["patch"] for c in result.meta["candidates"])
+    assert "+a" in first and failed == "" and chosen == result.patch
     # Every worker and judge ran in its own fork, all closed afterwards.
     roots = [r for h in (*workers, judge) for r in h.roots]
     assert len(set(roots)) == len(roots) and not any(os.path.exists(r) for r in roots)

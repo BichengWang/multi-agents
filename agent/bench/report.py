@@ -9,7 +9,9 @@ Pure Python statistics (no scipy):
 
 Offline analyses from the stored records (no grading or model calls): extra model cost per extra
 resolved task, solve and grading sandbox-hours, unresolved tasks by failure class from the grading
-report, and the reviewer's approvals and the judge's ties against resolution.
+report, and the reviewer's approvals and the judge's ties against resolution. Once
+``grade-candidates`` has graded the stored candidate and round patches (``candidates.jsonl``), also
+oracle pass@k next to the judge's pick, and the reviewer's approvals round by round.
 
 Every statistic is computed on the *common* tasks: those with a valid result for every team in the
 report. A pair is invalid when its record has an ``error`` (infrastructure, agent crash, timeout,
@@ -27,7 +29,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from .candidates import load_grades, patch_sha256
 from .run import RESULTS_FILE, load_meta, load_records
+
+# (task_id, team, patch sha256) -> resolved, from candidates.jsonl
+Grades = dict[tuple[str, str, str], bool]
 
 Z95 = 1.959963984540054
 
@@ -138,6 +144,22 @@ def failure_class(rec: dict[str, Any]) -> str:
     return F2P_NOT_ALL_PASS
 
 
+def patch_outcome(rec: dict[str, Any], entry: dict[str, Any], grades: Grades) -> Optional[bool]:
+    """Whether a stored candidate or round patch of ``rec`` resolves; ``None`` when unknown (not
+    stored, scrubbed, or not graded yet). The submitted patch has the record's verdict and an
+    empty patch never resolves."""
+    patch = entry.get("patch")
+    if not isinstance(patch, str):
+        return None
+    if not patch.strip():
+        return False
+    if patch == rec.get("patch"):
+        return bool(rec.get("resolved")) and rec.get("error") is None
+    if entry.get("patch_redacted"):
+        return None
+    return grades.get((rec["task_id"], rec["team"], patch_sha256(patch)))
+
+
 @dataclass
 class TeamStats:
     team: str
@@ -206,6 +228,44 @@ class TeamStats:
             ties += scores.count(max(scores)) > 1
         return (ties, judged) if judged else None
 
+    def oracle(self, grades: Grades) -> Optional[tuple[int, int, int, list[int]]]:
+        """Over the tasks where every best-of-N candidate has a verdict: (tasks, judge's pick
+        resolved, some candidate resolved, distinct candidate counts); ``None`` for teams without
+        stored candidates."""
+        tasks = picked = oracle = 0
+        sizes: set[int] = set()
+        seen = False
+        for task, rec in self.records.items():
+            candidates = (rec.get("meta") or {}).get("candidates") or []
+            if not any(isinstance(c.get("patch"), str) for c in candidates):
+                continue
+            seen = True
+            outcomes = [patch_outcome(rec, c, grades) for c in candidates]
+            if None in outcomes:
+                continue
+            tasks += 1
+            picked += self.outcomes[task]
+            oracle += any(outcomes)
+            sizes.add(len(candidates))
+        return (tasks, picked, oracle, sorted(sizes)) if seen else None
+
+    def round_approvals(self, grades: Grades) -> Optional[tuple[int, int, int, int]]:
+        """The reviewer's verdict on every graded review round against that round's resolution,
+        cells as in ``approvals``. A round where the coder changed nothing repeats the previous
+        verdict and is left out. ``None`` for teams without stored rounds."""
+        cells = [0, 0, 0, 0]
+        seen = False
+        for rec in self.records.values():
+            for entry in (rec.get("meta") or {}).get("round_log") or []:
+                if not isinstance(entry.get("patch"), str) or "passed" not in entry:
+                    continue
+                seen = True
+                outcome = patch_outcome(rec, entry, grades)
+                if outcome is None or not entry.get("changed", True):
+                    continue
+                cells[2 * (not entry["passed"]) + (not outcome)] += 1
+        return (cells[0], cells[1], cells[2], cells[3]) if seen else None
+
 
 @dataclass
 class Paired:
@@ -231,6 +291,7 @@ class Summary:
     scoped_tasks: int
     count_errors_as_failures: bool
     meta: dict[str, Any]
+    grades: Grades = field(default_factory=dict)  # of stored candidate and round patches
 
 
 def summarize(
@@ -241,8 +302,10 @@ def summarize(
     meta: Optional[dict[str, Any]] = None,
     teams: Optional[Sequence[str]] = None,
     task_ids: Optional[Sequence[str]] = None,
+    grades: Optional[Grades] = None,
 ) -> Summary:
     """``teams`` / ``task_ids`` restrict the report (default: every team and task in ``records``).
+    ``grades`` are the verdicts of stored candidate and round patches (``load_grades``).
 
     A task counts only if every reported team has a usable record for it; (task, team) pairs that
     were never run, for instance after a budget halt, are listed as not run, not as errors.
@@ -331,7 +394,7 @@ def summarize(
             )
     return Summary(
         stats, baseline, paired, common, errored, not_run, len(tasks),
-        count_errors_as_failures, meta or {},
+        count_errors_as_failures, meta or {}, grades or {},
     )
 
 
@@ -522,6 +585,53 @@ def _render_evaluators(summary: Summary) -> list[str]:
     return lines
 
 
+def _render_candidates(summary: Summary) -> list[str]:
+    """Oracle pass@k and per-round reviewer precision; nothing until candidates were graded."""
+    if not summary.grades:
+        return []
+    best = [(st, o) for st in summary.teams if (o := st.oracle(summary.grades)) is not None]
+    rounds = [(st, c) for st in summary.teams if (c := st.round_approvals(summary.grades)) is not None]
+    if not best and not rounds:
+        return []
+    lines = [
+        "",
+        "## Candidates and review rounds",
+        "",
+        "Every patch a team produced, graded with the same hidden tests (`grade-candidates`). A "
+        "patch identical to the submitted one has its verdict; an empty one is unresolved.",
+    ]
+    if best:
+        lines += [
+            "",
+            "Best-of-N over the tasks where every candidate has a verdict. *Oracle pass@k*: some "
+            "candidate resolves, which a perfect judge would have picked.",
+            "",
+            "| Team | Tasks | Candidates | Judge's pick resolved | Oracle pass@k | Pick missed a resolving candidate |",
+            "|---|---|---|---|---|---|",
+        ]
+        for st, (n, picked, oracle, sizes) in best:
+            lines.append(
+                f"| `{st.team}` | {n} of {st.n} | {'/'.join(map(str, sizes)) or 'n/a'} | "
+                f"{_share(picked, n)} | {_share(oracle, n)} | {oracle - picked} |"
+            )
+    if rounds:
+        lines += [
+            "",
+            "The reviewer's verdict on every graded round, not only the last; a round where the "
+            "coder changed nothing repeats the previous verdict and is left out.",
+            "",
+            "| Team | Rounds | Approved, resolved | Approved, unresolved | Rejected, resolved | "
+            "Rejected, unresolved | Precision | Specificity |",
+            "|---|---|---|---|---|---|---|---|",
+        ]
+        for st, (tp, fp, fn, tn) in rounds:
+            lines.append(
+                f"| `{st.team}` | {tp + fp + fn + tn} | {tp} | {fp} | {fn} | {tn} | "
+                f"{_share(tp, tp + fp)} | {_share(tn, tn + fp)} |"
+            )
+    return lines
+
+
 def render(summary: Summary, *, sandbox_usd_per_hour: Optional[float] = None) -> str:
     """``sandbox_usd_per_hour`` prices sandbox-hours; without it they are reported unpriced."""
     n = len(summary.common_tasks)
@@ -600,6 +710,7 @@ def render(summary: Summary, *, sandbox_usd_per_hour: Optional[float] = None) ->
         lines += _render_compute(summary, sandbox_usd_per_hour)
         lines += _render_failures(summary)
         lines += _render_evaluators(summary)
+        lines += _render_candidates(summary)
 
     lines += ["", "## Excluded and errored pairs", ""]
     if summary.count_errors_as_failures:
@@ -669,6 +780,7 @@ def build_report(
             meta=run,
             teams=selected,
             task_ids=run.get("task_ids") or None,
+            grades=load_grades(out),
         ),
         sandbox_usd_per_hour=sandbox_usd_per_hour,
     )

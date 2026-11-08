@@ -7,12 +7,15 @@ from agent.bench.sandbox import (
     CLAUDE_CODE_VERSION,
     CODEX_VERSION,
     NODE_VERSION,
+    TRANSCRIPT_MARK,
+    TRANSCRIPT_MAX_BYTES,
     ModalBackend,
     SandboxWorkspace,
     SandboxConfig,
     SandboxError,
     SandboxExecTimeout,
     install_script,
+    parse_transcripts,
 )
 from agent.teams.types import Workspace
 
@@ -302,6 +305,74 @@ def test_close_retries_and_only_marks_closed_after_a_successful_terminate(tmp_pa
         assert stuck_sb.terminated and stuck._closed
 
     run(scenario())
+
+
+def test_closing_agent_sandboxes_copies_out_their_session_transcripts_first(tmp_path):
+    modal, backend, _, _ = prepare(tmp_path)
+    claude = "$HOME/.claude/projects/-testbed"
+    codex = "$HOME/.codex/sessions/2026/11/08"
+
+    async def scenario():
+        ws = await SandboxWorkspace.create("img:1", backend=backend)
+        await sh(ws, f'mkdir -p {claude}/sid-main/subagents && printf \'{{"a":1}}\\n{{"b":2}}\\n\' > {claude}/sid-main.jsonl')
+        await sh(ws, f"printf 'no newline' > {claude}/sid-main/subagents/agent-x.jsonl && : > {claude}/empty.jsonl")
+        fork = await ws.fork()
+        await sh(fork, f"mkdir -p {codex} && echo '{{\"c\":3}}' > {codex}/rollout-1-sid-fork.jsonl")
+        await fork.close()  # the fork's transcripts reach the parent before the parent closes
+        rollout = f"{modal.sandboxes[1].workroot}/home/.codex/sessions/2026/11/08/rollout-1-sid-fork.jsonl"
+        assert ws.transcripts == {rollout: '{"c":3}\n'}
+        await ws.close()
+        grader = await SandboxWorkspace.create("img:1", backend=backend, agent=False)
+        await grader.close()
+        return ws, fork
+
+    ws, fork = run(scenario())
+    home = f"{modal.sandboxes[0].workroot}/home/.claude/projects/-testbed"
+    assert fork.transcripts is ws.transcripts
+    assert {k: v for k, v in ws.transcripts.items() if k.startswith(home)} == {
+        f"{home}/empty.jsonl": "",
+        f"{home}/sid-main.jsonl": '{"a":1}\n{"b":2}\n',
+        f"{home}/sid-main/subagents/agent-x.jsonl": "no newline",
+    }
+    assert len(ws.transcripts) == 4 and all(sb.terminated for sb in modal.sandboxes)
+    # Grading sandboxes run no agent and are not searched.
+    assert not any(TRANSCRIPT_MARK in argv for argv in modal.sandboxes[2].exec_log)
+
+
+def test_a_failed_transcript_copy_still_terminates_and_does_not_mark_agent_work_lost(tmp_path):
+    modal, backend, _, _ = prepare(tmp_path)
+
+    async def scenario():
+        ws = await SandboxWorkspace.create("img:1", backend=backend)
+        sandbox = modal.sandboxes[0]
+        real = sandbox.exec
+
+        async def gone(*argv, **kwargs):
+            if TRANSCRIPT_MARK in argv:
+                raise RuntimeError("exec not found")
+            return await real(*argv, **kwargs)
+
+        sandbox.exec = gone
+        await ws.close()
+        assert sandbox.terminated and ws.transcripts == {}
+        assert ws.exec_errors == [] and ws.exec_timeouts == []
+
+        off = ModalBackend(SandboxConfig(keep_transcripts=False), modal=modal)
+        quiet = await SandboxWorkspace.create("img:1", backend=off)
+        await quiet.close()
+        assert not any(TRANSCRIPT_MARK in argv for argv in modal.sandboxes[1].exec_log)
+
+    run(scenario())
+
+
+def test_parse_transcripts_marks_a_file_cut_at_the_size_cap():
+    output = (
+        f"\n{TRANSCRIPT_MARK}      3 /r/a.jsonl\nabc"
+        f"\n{TRANSCRIPT_MARK} {TRANSCRIPT_MAX_BYTES + 9} /r/b.jsonl\nxyz"
+    )
+    found = parse_transcripts(output)
+    assert found["/r/a.jsonl"] == "abc"  # BSD wc pads the size
+    assert found["/r/b.jsonl"].startswith("xyz\n") and '"bench-truncated"' in found["/r/b.jsonl"]
 
 
 def test_failure_to_prune_history_fails_setup_instead_of_leaking_silently(tmp_path):

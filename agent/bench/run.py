@@ -26,11 +26,17 @@ Teams whose spec uses ``check`` as reviewer or judge get the task's own test sui
 (``check.py``); every other team gets none.
 
 Everything written to disk is passed through a ``Redactor`` first; grading uses the originals.
+
+Besides the submitted patch, records keep every patch a team produced (``extra_patches``: best-of-N
+candidates, review rounds, plan subtasks), and ``artifacts/`` keeps them as ``<label>.diff`` next to
+``patch.diff``, with the agent CLIs' session transcripts copied out of the sandboxes. Grading
+them is a separate, optional pass (``candidates.py``).
 """
 
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import re
 import time
@@ -41,7 +47,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from agent.teams.harnesses.check import Check
-from agent.teams.types import Team, TeamResult, Workspace
+from agent.teams.types import HarnessRun, Team, TeamResult, Workspace
 from agent.teams.validation import validate_positive_finite
 from agent.workflows.concurrency import map_concurrently
 
@@ -56,6 +62,9 @@ META_FILE = "meta.json"
 ARTIFACTS_DIR = "artifacts"
 GOLD_FILE = "gold.jsonl"
 FINAL_MESSAGE_CHARS = 1000
+
+# meta key -> artifact label prefix of the patches a team produced besides the one it submitted.
+EXTRA_PATCHES = {"candidates": "candidate", "round_log": "round", "subtasks": "subtask"}
 
 # Called as factory(spec), or factory(spec, check=...) for a spec that uses the check harness.
 TeamFactory = Callable[..., Team]
@@ -133,6 +142,19 @@ def required_secret_keys(
             elif kind == "codex":
                 keys.add("CODEX_API_KEY")
     return tuple(sorted(keys))
+
+
+def extra_patches(meta: Optional[dict[str, Any]]) -> list[tuple[str, dict[str, Any]]]:
+    """``(label, entry)`` for each patch stored in a team's ``meta`` besides the submitted one:
+    best-of-N candidates (``candidate-<i>``), review rounds (``round-<n>``) and plan subtasks
+    (``subtask-<n>``), numbered from 1 in meta order. Records written before patches were stored
+    have none."""
+    found = []
+    for key, prefix in EXTRA_PATCHES.items():
+        for number, entry in enumerate((meta or {}).get(key) or [], 1):
+            if isinstance(entry, dict) and isinstance(entry.get("patch"), str):
+                found.append((f"{prefix}-{number}", entry))
+    return found
 
 
 def _usage_json(usage: Any) -> dict[str, Any]:
@@ -272,6 +294,11 @@ class _Ledger:
         stored = self.redactor.obj(record)
         stored["redacted"] = stored != record
         stored["patch_redacted"] = stored.get("patch") != record.get("patch")
+        for (_, kept), (_, original) in zip(
+            extra_patches(stored.get("meta")), extra_patches(record.get("meta"))
+        ):
+            if kept["patch"] != original["patch"]:
+                kept["patch_redacted"] = True  # the stored copy is not the patch: never grade it
         async with self._lock:
             self.out.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8") as handle:
@@ -285,6 +312,27 @@ class _Ledger:
         return stored
 
 
+def transcript_names(paths: Sequence[str], runs: Sequence[HarnessRun]) -> dict[str, str]:
+    """Artifact name of each transcript file: ``transcript-<role>-<i>`` after the first run (index
+    in ``runs.json``) whose session id is in its path, plus the file's own name when that is not
+    the session id (a Claude Code subagent, a Codex rollout); unmatched files keep their name."""
+    names = {}
+    for path in paths:
+        stem = path.rsplit("/", 1)[-1].removesuffix(".jsonl")
+        index = next(
+            (i for i, r in enumerate(runs) if r.session_id and len(r.session_id) >= 8 and r.session_id in path),
+            None,
+        )
+        if index is None:
+            name = f"transcript-{slug(stem)}"
+        else:
+            name = f"transcript-{slug(runs[index].role)}-{index}"
+            if stem != runs[index].session_id:
+                name += f"-{slug(stem)}"
+        names[path] = name + ".jsonl.gz"
+    return names
+
+
 def _write_artifacts(
     out: Path,
     redactor: Redactor,
@@ -293,6 +341,7 @@ def _write_artifacts(
     patch: str,
     result: Optional[TeamResult],
     log: str,
+    transcripts: Optional[dict[str, str]] = None,
 ) -> None:
     directory = out / ARTIFACTS_DIR / slug(team) / slug(task_id)
     directory.mkdir(parents=True, exist_ok=True)
@@ -300,13 +349,24 @@ def _write_artifacts(
         redactor.text(patch), encoding="utf-8", errors="surrogateescape"
     )
     if result is not None:
-        payload = {"meta": result.meta, "runs": [_run_json(r, full=True) for r in result.runs]}
+        for label, entry in extra_patches(result.meta):
+            (directory / f"{label}.diff").write_text(
+                redactor.text(entry["patch"]), encoding="utf-8", errors="surrogateescape"
+            )
+        meta = json.loads(json.dumps(result.meta, default=str))
+        for _, entry in extra_patches(meta):
+            del entry["patch"]  # in the .diff files above
+        payload = {"meta": meta, "runs": [_run_json(r, full=True) for r in result.runs]}
         (directory / "runs.json").write_text(
-            json.dumps(redactor.obj(json.loads(json.dumps(payload, default=str))), indent=1),
-            encoding="utf-8",
+            json.dumps(redactor.obj(payload), indent=1), encoding="utf-8"
         )
     if log:
         (directory / "eval.log").write_text(redactor.text(log), encoding="utf-8", errors="replace")
+    if transcripts:
+        names = transcript_names(sorted(transcripts), result.runs if result is not None else [])
+        for path, name in names.items():
+            data = redactor.text(transcripts[path]).encode("utf-8", "replace")
+            (directory / name).write_bytes(gzip.compress(data, mtime=0))
 
 
 async def run_benchmark(
@@ -404,12 +464,16 @@ async def run_benchmark(
             return
         summary.attempted += 1
         check = check_factory(task) if spec in checked and check_factory is not None else None
+        transcripts: dict[str, str] = {}
         record, result, eval_log = await _run_pair(
-            task, spec, name, prev, solve_timeout_s, team_factory, check, workspace_factory, evaluator
+            task, spec, name, prev, solve_timeout_s, team_factory, check, workspace_factory, evaluator,
+            transcripts,
         )
         stored = await ledger.append(record)
-        if record["patch"] or result is not None:
-            _write_artifacts(out, redactor, name, task.task_id, record["patch"], result, eval_log)
+        if record["patch"] or result is not None or transcripts:
+            _write_artifacts(
+                out, redactor, name, task.task_id, record["patch"], result, eval_log, transcripts
+            )
         summary.records.append(stored)
         if stored.get("error"):
             summary.errored += 1
@@ -472,7 +536,10 @@ async def _run_pair(
     check: Optional[Check],
     workspace_factory: WorkspaceFactory,
     evaluator: Evaluator,
+    transcripts: dict[str, str],
 ) -> tuple[dict[str, Any], Optional[TeamResult], str]:
+    """One pair's record, team result and grading log; ``transcripts`` receives the session
+    transcripts the workspace (and its forks) copied out when they closed."""
     loop = asyncio.get_running_loop()
     started = time.time()
     record: dict[str, Any] = {
@@ -579,6 +646,7 @@ async def _run_pair(
                 runs = []
         finally:
             await workspace.close()
+            transcripts.update(getattr(workspace, "transcripts", None) or {})
         record.update(
             patch=patch, usage=usage, duration_s=round(duration, 3), runs=runs, meta=meta
         )

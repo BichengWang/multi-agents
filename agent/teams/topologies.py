@@ -244,7 +244,9 @@ class _Coder:
         patch = await self.workspace.diff()
         draft = _Draft(patch, unchanged=patch == self.last_patch)
         self.last_patch = patch
-        self.log.append({"round": round_no, "changed": not draft.unchanged, "coder_error": error})
+        self.log.append(
+            {"round": round_no, "changed": not draft.unchanged, "coder_error": error, "patch": patch}
+        )
         return draft
 
 
@@ -297,6 +299,7 @@ class ReviewTeam:
     ``check`` reviewer, which can only pass or fail, the last attempt when none passes.
     A failed review scores 0 and is recorded in ``meta["failures"]``. A ``check`` reviewer implies
     the team's check (same command); an LLM reviewer is shown the check result for each patch.
+    ``meta["round_log"]`` keeps every attempt's patch and whether the reviewer passed it.
     """
 
     coder: Harness
@@ -342,8 +345,10 @@ class ReviewTeam:
         )
         flow = await loop.run(WORKER_PROMPT.format(instruction=task.instruction))
         scores: list[float] = flow.meta["scores"]
-        for entry, score in zip(coder.log, scores):
+        verdicts = [step.output for step in flow.steps if step.name == "evaluate"]
+        for entry, score, verdict in zip(coder.log, scores, verdicts):
             entry["score"] = score
+            entry["passed"] = bool(verdict.passed)
         meta: dict[str, Any] = {
             "team": self.name,
             "rounds": flow.meta["iterations"],
@@ -456,6 +461,7 @@ class BestTeam:
     The judge scores each candidate independently (0-10), it does not rank them side by side.
     With a ``check`` (or a ``check`` judge), every candidate is also checked and candidates that
     fail rank below every candidate that passes; scores order within each group.
+    ``meta["candidates"]`` keeps every candidate's patch, chosen or not.
     """
 
     workers: Sequence[Harness]
@@ -510,6 +516,7 @@ class BestTeam:
                 "harness": harness_label(c.harness),
                 "score": meta["scores"][c.index - 1],
                 "runs": list(range(len(runs), len(runs) + len(c.runs))),
+                "patch": c.patch,
             }
             if gate:
                 entry["check"] = c.check.to_dict() if c.check else None
