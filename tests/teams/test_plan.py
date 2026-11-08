@@ -191,6 +191,10 @@ def test_workers_run_in_parallel_in_separate_forks_and_clean_patches_merge_witho
     assert TASK.instruction in prompt and "do module a" in prompt and "a.txt" in prompt
     assert "module b" in prompt and "do module b" not in prompt
     assert [s["status"] for s in result.meta["subtasks"]] == ["applied", "applied"]
+    assert [("+module a" in s["patch"], "+module b" in s["patch"]) for s in result.meta["subtasks"]] == [
+        (True, False),
+        (False, True),
+    ]
     assert result.meta["integration"]["integrator_runs"] == 0
     assert [result.runs[i].harness for s in result.meta["subtasks"] for i in s["runs"]] == ["w1", "w2"]
 

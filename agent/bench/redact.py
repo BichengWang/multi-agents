@@ -9,11 +9,15 @@ after the agent ran ``env``. Everything persisted goes through a ``Redactor`` fi
   and of the same variables in the host environment;
 * strings that look like common provider keys (``sk-...``, ``sk-ant-...``, ``ghp_...``, ...).
 
+A value is also scrubbed in its JSON-escaped forms (a ``"``, ``\\``, control or non-ASCII character
+inside it is escaped in raw JSONL, such as an agent CLI's session transcript).
+
 Grading always uses the in-memory original; only stored copies are redacted.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import threading
@@ -66,11 +70,13 @@ class Redactor:
     def add(self, value: str | None) -> None:
         if not value or len(value) < _MIN_VALUE_LEN:
             return
+        forms = {value, *(json.dumps(value, ensure_ascii=a)[1:-1] for a in (False, True))}
         with self._lock:
-            if value not in self._values:
-                self._values.append(value)
-                # Longest first, so a value that contains another is replaced whole.
-                self._values.sort(key=len, reverse=True)
+            for form in forms:
+                if form not in self._values:
+                    self._values.append(form)
+            # Longest first, so a value that contains another is replaced whole.
+            self._values.sort(key=len, reverse=True)
 
     def add_many(self, values: Iterable[str]) -> None:
         for value in values:

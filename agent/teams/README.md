@@ -53,10 +53,11 @@ native schema flag where there is one (`claude --json-schema`, `codex exec --out
 otherwise the last JSON object in the reply.
 
 `TeamResult.meta` holds the canonical `team`, and per topology: `review` → `scores`, `rounds`,
-`accepted`, `best_round`, `round_log`; `best` → `scores` (`null` for dropped workers), `chosen`
-(1-based), `candidates` (harness, score and indices into `runs`). Failures go to `failures`.
+`accepted`, `best_round`, `round_log` (each round's `patch`, `score` and whether the reviewer `passed`
+it); `best` → `scores` (`null` for dropped workers), `chosen` (1-based), `candidates` (harness, score,
+`patch` and indices into `runs`). Failures go to `failures`.
 
-`plan` → `subtasks` (title, instruction, paths, `round` (0 = the initial plan), `worker`, `status` of `applied`/`conflict`/`failed`/`empty`/`replanned`, with a reviewer also `review` (`scores`, `accepted`, `best_round`), indices into `runs`; numbered 1-based in creation order across rounds),
+`plan` → `subtasks` (title, instruction, paths, `round` (0 = the initial plan), `worker`, `patch`, `status` of `applied`/`conflict`/`failed`/`empty`/`replanned`, with a reviewer also `review` (`scores`, `accepted`, `best_round`), indices into `runs`; numbered 1-based in creation order across rounds),
 `replans` (one `{round, failed, subtasks, error?}` per replan round: the subtask numbers handed back and the new ones),
 `integration` (`applied`/`conflicts`/`missing` subtask numbers, `integrator_runs`), `check_before_fix`
 (the failing check result, when a fix pass ran) and `fallback`. Its `runs` are in this order: `planner`,

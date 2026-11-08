@@ -29,7 +29,7 @@ Every harness run (``planner``, ``worker`` or ``coder``/``reviewer``, ``integrat
 replan round the planner and its workers, then the integrator. Failures are in
 ``meta["failures"]`` (a subtask's carry its ``subtask`` number and, from a review loop, its
 ``attempt``; a failed replan its ``round``); ``meta["subtasks"]`` numbers subtasks 1-based in creation order across rounds
-and records each one's ``round`` (0 = the initial plan) and, with a reviewer, its ``review``
+and records each one's ``round`` (0 = the initial plan), its worker's ``patch`` and, with a reviewer, its ``review``
 (``scores``, ``accepted``, ``best_round``); ``meta["replans"]`` has one entry per replan round.
 """
 
@@ -453,7 +453,7 @@ class PlanTeam:
             "round": 0 if state is None else state.round,
         }
         if state is not None:
-            entry.update(worker=harness_label(state.harness), status=state.status)
+            entry.update(worker=harness_label(state.harness), status=state.status, patch=state.patch)
             if state.review is not None:
                 entry["review"] = state.review
         return entry

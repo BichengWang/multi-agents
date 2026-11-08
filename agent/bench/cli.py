@@ -1,4 +1,4 @@
-"""``python -m agent.bench`` command line: tasks | gold | run | report | remote."""
+"""``python -m agent.bench`` command line: tasks | gold | run | grade-candidates | report | remote."""
 
 from __future__ import annotations
 
@@ -12,12 +12,16 @@ from typing import Optional
 
 from agent.teams.validation import validate_positive_finite
 
+from .candidates import CANDIDATES_FILE, grade_candidates
 from .dataset import DEFAULT_DATASET, SOURCES, BenchTask, load_tasks
-from .report import MODAL_SANDBOX_USD_PER_HOUR, build_report
+from .evaluate import EvalResult, evaluate_patch
+from .report import MODAL_SANDBOX_USD_PER_HOUR, build_report, latest_run
 from .run import (
     GOLD_FILE,
+    RESULTS_FILE,
     BudgetError,
     canonical_team,
+    load_meta,
     load_records,
     required_secret_keys,
     run_benchmark,
@@ -114,6 +118,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="do not strip git history in agent sandboxes (the fix commit may be readable)",
     )
 
+    grade = sub.add_parser(
+        "grade-candidates",
+        help="grade the best-of-N candidate and review-round patches stored in a run directory "
+        "with the hidden tests (grading sandboxes only, no agents); writes candidates.jsonl",
+    )
+    grade.add_argument("dir", help="a `run` output directory")
+    grade.add_argument(
+        "--dataset", help="dataset of the tasks (default: the one in the directory's meta.json)"
+    )
+    grade.add_argument("--team", action="append", help="only this team (repeatable); default: all")
+    _add_sandbox_options(grade)
+    # Taken from the run's meta.json so candidates are graded like the submitted patches.
+    grade.set_defaults(backend=None)
+
     report = sub.add_parser("report", help="Markdown report of a run directory")
     report.add_argument("dir")
     report.add_argument("--baseline", help="team spec to compare every team against")
@@ -138,10 +156,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     remote = sub.add_parser(
         "remote",
-        help="run `gold ...` or `run ...` as a detached Modal function (survives this machine "
-        "sleeping); relative paths are in the Modal Volume multi-agents-bench-runs",
+        help="run `gold ...`, `run ...` or `grade-candidates ...` as a detached Modal function "
+        "(survives this machine sleeping); relative paths are in the Modal Volume "
+        "multi-agents-bench-runs",
     )
-    remote.add_argument("argv", nargs=argparse.REMAINDER, help="a gold or run command line")
+    remote.add_argument(
+        "argv", nargs=argparse.REMAINDER, help="a gold, run or grade-candidates command line"
+    )
     return parser
 
 
@@ -253,6 +274,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
                     "limit": args.limit,
                     "seed": args.seed,
                     "gold_file": args.gold_file,
+                    # The grading image depends on these; grade-candidates reuses them.
+                    "add_python": args.add_python,
+                    "registry_secret": args.registry_secret,
                     "isolate_history": not args.keep_history,
                     "check_base_commit": not args.no_check_base_commit,
                 },
@@ -273,6 +297,58 @@ def _cmd_run(args: argparse.Namespace) -> int:
         f"timed out (graded) {summary.timed_out}, "
         f"spent ${summary.spent_usd:.2f}"
         + (f"; halted: {summary.halted}" if summary.halted else "")
+    )
+    return 0
+
+
+# Options that change the grading sandbox; ``run`` records them in meta.json.
+GRADING_ENV = {"backend": "--backend", "add_python": "--add-python", "registry_secret": "--registry-secret"}
+
+
+def _grading_env(args: argparse.Namespace, recorded: dict[str, object]) -> None:
+    """Grade in the run's own grading environment: take each ``GRADING_ENV`` option from the run's
+    meta.json entry, and refuse a flag that contradicts it. Runs recorded before these were stored
+    (the pilot) keep the flags given here."""
+    for key, flag in GRADING_ENV.items():
+        given = getattr(args, key)
+        if key in recorded:
+            if given is not None and given != recorded[key]:
+                raise ValueError(
+                    f"{flag} {given} contradicts the run's {recorded[key]!r} in meta.json; "
+                    "grade with the run's settings"
+                )
+            setattr(args, key, recorded[key])
+    if args.backend is None:
+        args.backend = "modal"
+
+
+def _cmd_grade_candidates(args: argparse.Namespace) -> int:
+    out = Path(args.dir)
+    records = load_records(out / RESULTS_FILE)
+    if not records:
+        raise ValueError(f"no results in {out / RESULTS_FILE}")
+    run = latest_run(load_meta(out))
+    _grading_env(args, run)
+    dataset = args.dataset or run.get("dataset") or DEFAULT_DATASET
+    tasks = load_tasks(dataset, instance_ids=sorted({r["task_id"] for r in records}))
+    backend = _backend(args)
+
+    async def evaluator(task: BenchTask, patch: str) -> EvalResult:
+        return await evaluate_patch(task, patch, backend=backend)
+
+    summary = asyncio.run(
+        grade_candidates(
+            out,
+            tasks,
+            evaluator=evaluator,
+            concurrency=args.concurrency,
+            teams=[canonical_team(t) for t in args.team] if args.team else None,
+        )
+    )
+    print(
+        f"graded {summary.graded} patch(es), {summary.resolved} resolved; errored {summary.errored}; "
+        f"already graded {summary.already_graded}; see {out / CANDIDATES_FILE}"
+        + (f"; not in {dataset}: {', '.join(summary.no_task)}" if summary.no_task else "")
     )
     return 0
 
@@ -299,14 +375,15 @@ def _cmd_report(args: argparse.Namespace) -> int:
 
 def _cmd_remote(args: argparse.Namespace) -> int:
     argv = list(args.argv)
-    if not argv or argv[0] not in ("gold", "run"):
-        raise ValueError("remote runs a `gold ...` or `run ...` command")
+    if not argv or argv[0] not in ("gold", "run", "grade-candidates"):
+        raise ValueError("remote runs a `gold ...`, `run ...` or `grade-candidates ...` command")
     inner = build_parser().parse_args(argv)  # fail here, not after the remote start
-    for flag in ("out", "gold_file"):
+    for flag in ("out", "gold_file", "dir"):
         value = getattr(inner, flag, None)
         if value and Path(value).is_absolute():
-            raise ValueError(f"--{flag.replace('_', '-')} must be relative to the volume root")
-    if inner.backend != "modal":
+            name = "the directory" if flag == "dir" else f"--{flag.replace('_', '-')}"
+            raise ValueError(f"{name} must be relative to the volume root")
+    if (inner.backend or "modal") != "modal":  # grade-candidates may take it from meta.json
         raise ValueError("remote runs use the modal backend")
     from .remote import VOLUME, launch
 
@@ -314,7 +391,7 @@ def _cmd_remote(args: argparse.Namespace) -> int:
     print(
         f"started {call_id} in app {app_id}\n"
         f"  follow:  modal app logs {app_id}\n"
-        f"  fetch:   modal volume get {VOLUME} {inner.out} <local dir>"
+        f"  fetch:   modal volume get {VOLUME} {getattr(inner, 'out', None) or inner.dir} <local dir>"
     )
     return 0
 
@@ -326,6 +403,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "tasks": _cmd_tasks,
             "gold": _cmd_gold,
             "run": _cmd_run,
+            "grade-candidates": _cmd_grade_candidates,
             "report": _cmd_report,
             "remote": _cmd_remote,
         }[args.command](args)

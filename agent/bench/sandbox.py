@@ -11,7 +11,11 @@ Semantics match ``agent.teams.worktree.LocalWorktree``:
   honoured, untracked ``GENERATED_FILES`` left out), computed with a throwaway git index,
   binary-safe (``--binary --full-index``);
 * ``apply`` is ``git apply --binary``;
-* ``fork`` is an independent sandbox from the same image, at its pristine state.
+* ``fork`` is an independent sandbox from the same image, at its pristine state;
+* ``close`` first copies the agent CLIs' session transcripts out of an agent sandbox into
+  ``transcripts`` (shared with its forks), best effort within ``TRANSCRIPT_TIMEOUT_S``: a failed
+  copy only loses the transcripts. ``abandon`` (the pair is being cancelled) skips the copy for the
+  workspace and its forks.
 
 The baseline for ``diff`` is a tree object captured right after the sandbox starts, not ``HEAD``:
 instance images carry build output and sometimes tracked-file changes from environment setup, and
@@ -28,6 +32,7 @@ import base64
 import importlib
 import inspect
 import math
+import re
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -94,6 +99,8 @@ class SandboxConfig:
     # Extra environment for every process in agent sandboxes. IS_SANDBOX=1 lets Claude Code run
     # with permissions bypassed as root.
     env: dict[str, str] = field(default_factory=dict)
+    # Copy the agent CLIs' session transcripts out of each agent sandbox before it is terminated.
+    keep_transcripts: bool = True
 
 
 _SANDBOX_ENV = {
@@ -214,6 +221,40 @@ for list in "$GITDIR/bench-untracked" "$GEN"; do
 done
 git diff --cached --binary --full-index --no-color --no-ext-diff --no-textconv --no-renames "$TREE"
 """
+
+# Prints every session transcript the agent CLIs wrote (``--resume`` reads them back, so ``-p``
+# runs write them too): Claude Code's ``projects/<cwd>/<session>.jsonl`` (and its subagents'
+# ``<session>/subagents/*.jsonl``), Codex's ``sessions/YYYY/MM/DD/rollout-*-<thread>.jsonl``.
+# Each file follows a "$1 <size> <path>" line; $2 caps the bytes copied per file.
+_TRANSCRIPTS = r"""
+H=${HOME:-/root}
+for d in "${CLAUDE_CONFIG_DIR:-$H/.claude}/projects" "${CODEX_HOME:-$H/.codex}/sessions"; do
+  [ -d "$d" ] || continue
+  find "$d" -type f -name '*.jsonl' | sort | while IFS= read -r f; do
+    printf '\n%s %s %s\n' "$1" "$(wc -c < "$f")" "$f"
+    head -c "$2" "$f"
+  done
+done
+"""
+TRANSCRIPT_MARK = "<<<BENCH_TRANSCRIPT>>>"
+TRANSCRIPT_MAX_BYTES = 64 * 1024 * 1024
+TRANSCRIPT_TIMEOUT_S = 120.0
+_TRANSCRIPT_HEAD = re.compile(rf"^{re.escape(TRANSCRIPT_MARK)} +(\d+) (.+)$", re.MULTILINE)  # BSD wc pads
+
+
+def parse_transcripts(output: str) -> dict[str, str]:
+    """``{path: content}`` from ``_TRANSCRIPTS`` output; a file cut at the cap gets a last line
+    saying so."""
+    heads = list(_TRANSCRIPT_HEAD.finditer(output))
+    found = {}
+    for head, after in zip(heads, [*heads[1:], None]):
+        # Drop the newline printf puts before the next header.
+        body = output[head.end() + 1 : after.start() - 1 if after else len(output)]
+        size = int(head.group(1))
+        if size > TRANSCRIPT_MAX_BYTES:
+            body += f'\n{{"type": "bench-truncated", "bytes": {size}, "kept": {TRANSCRIPT_MAX_BYTES}}}\n'
+        found[head.group(2)] = body
+    return found
 
 
 async def _call(fn: Any, *args: Any, **kwargs: Any) -> Any:
@@ -357,6 +398,12 @@ class SandboxWorkspace:
         # pair's cost unknown, and errors a pair whose run was lost to the sandbox (not a timeout).
         self.exec_errors: list[str] = []
         self.exec_timeouts: list[str] = []
+        # Session transcripts ({path in the sandbox: content}) copied out on close, shared with
+        # every fork; session ids are unique, so forks never collide.
+        self.transcripts: dict[str, str] = {}
+        self._transcripts_copied = False
+        # Set by ``abandon``, shared with every fork: close without copying transcripts.
+        self._abandoned = asyncio.Event()
 
     @classmethod
     async def create(
@@ -549,13 +596,51 @@ class SandboxWorkspace:
             self.exec_errors.append(f"fork: {type(exc).__name__}: {exc}"[:500])
             raise
         forked.exec_errors, forked.exec_timeouts = self.exec_errors, self.exec_timeouts
+        forked.transcripts, forked._abandoned = self.transcripts, self._abandoned
         return forked
+
+    def abandon(self) -> None:
+        """The pair is being cancelled and stores nothing: this workspace and its forks close
+        without copying transcripts out first."""
+        self._abandoned.set()
+
+    async def _copy_transcripts(self) -> None:
+        """Best effort, at most ``TRANSCRIPT_TIMEOUT_S`` in all, bypassing ``exec`` so that a
+        failure never marks the pair's agent work as lost. Files printed before a non-zero exit
+        are kept."""
+        self._transcripts_copied = True
+        try:
+            _, out, _ = await asyncio.wait_for(
+                self._raw_exec(
+                    self._sandbox,
+                    self._backend.config,
+                    ["sh", "-c", _TRANSCRIPTS, "sh", TRANSCRIPT_MARK, str(TRANSCRIPT_MAX_BYTES)],
+                    workdir="/",
+                    timeout=TRANSCRIPT_TIMEOUT_S,
+                ),
+                TRANSCRIPT_TIMEOUT_S,
+            )
+        except Exception:
+            return
+        self.transcripts.update(parse_transcripts(out.decode("utf-8", "replace")))
 
     async def close(self) -> None:
         """Terminate the sandbox. ``_closed`` is set only once termination succeeded, so a failed
         attempt (leaving a billed sandbox running) can be retried by a later ``close``."""
         if self._closed:
             return
+        try:
+            if (
+                self.agent
+                and self._backend.config.keep_transcripts
+                and not self._transcripts_copied
+                and not self._abandoned.is_set()
+            ):
+                await self._copy_transcripts()
+        finally:
+            await self._terminate_with_retries()
+
+    async def _terminate_with_retries(self) -> None:
         for attempt in range(3):
             if await _terminate(self._sandbox):
                 self._closed = True
@@ -566,7 +651,7 @@ class SandboxWorkspace:
             f"could not terminate sandbox for {self.image_tag}; it keeps running until its "
             f"{self._backend.config.lifetime_s}s lifetime ends",
             RuntimeWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
 
     async def __aenter__(self) -> SandboxWorkspace:

@@ -244,7 +244,9 @@ class _Coder:
         patch = await self.workspace.diff()
         draft = _Draft(patch, unchanged=patch == self.last_patch)
         self.last_patch = patch
-        self.log.append({"round": round_no, "changed": not draft.unchanged, "coder_error": error})
+        self.log.append(
+            {"round": round_no, "changed": not draft.unchanged, "coder_error": error, "patch": patch}
+        )
         return draft
 
 
@@ -257,18 +259,25 @@ class _Reviewer:
     name: str = "reviewer"
     runs: list[HarnessRun] = field(default_factory=list)
     failures: list[dict[str, Any]] = field(default_factory=list)
-    verdicts: dict[str, Verdict] = field(default_factory=dict)
+    # patch -> its verdict and whether the reviewer gave it (not a placeholder for a failed review)
+    verdicts: dict[str, tuple[Verdict, bool]] = field(default_factory=dict)
     calls: int = 0
     checker: Optional[CheckRunner] = None
+    # Per call: whether the verdict is the reviewer's own, not a stand-in for an empty patch or a
+    # reviewer that crashed or gave no valid verdict.
+    reviewed: list[bool] = field(default_factory=list)
 
     async def __call__(self, patch: str) -> Verdict:
         self.calls += 1
         if not patch.strip():
+            self.reviewed.append(False)
             return Verdict(
                 score=0.0, passed=False, feedback="The change is empty: no file was modified."
             )
         if patch in self.verdicts:  # a stuck coder re-submitted the same state; do not pay again
-            return self.verdicts[patch]
+            verdict, own = self.verdicts[patch]
+            self.reviewed.append(own)
+            return verdict
         outcome, _ = await _evaluate(
             self.harness,
             self.checker,
@@ -283,7 +292,8 @@ class _Reviewer:
             self.runs.append(outcome.run)
         if outcome.error:
             self.failures.append(_failure(round=self.calls, role="reviewer", error=outcome.error))
-        self.verdicts[patch] = outcome.verdict
+        self.verdicts[patch] = (outcome.verdict, outcome.error is None)
+        self.reviewed.append(outcome.error is None)
         return outcome.verdict
 
 
@@ -297,6 +307,8 @@ class ReviewTeam:
     ``check`` reviewer, which can only pass or fail, the last attempt when none passes.
     A failed review scores 0 and is recorded in ``meta["failures"]``. A ``check`` reviewer implies
     the team's check (same command); an LLM reviewer is shown the check result for each patch.
+    ``meta["round_log"]`` keeps every attempt's patch, whether the reviewer passed it and whether
+    the reviewer gave that verdict itself (``reviewed``: false for an empty patch or a failed review).
     """
 
     coder: Harness
@@ -342,8 +354,9 @@ class ReviewTeam:
         )
         flow = await loop.run(WORKER_PROMPT.format(instruction=task.instruction))
         scores: list[float] = flow.meta["scores"]
-        for entry, score in zip(coder.log, scores):
-            entry["score"] = score
+        verdicts = [step.output for step in flow.steps if step.name == "evaluate"]
+        for entry, score, verdict, reviewed in zip(coder.log, scores, verdicts, reviewer.reviewed):
+            entry.update(score=score, passed=bool(verdict.passed), reviewed=reviewed)
         meta: dict[str, Any] = {
             "team": self.name,
             "rounds": flow.meta["iterations"],
@@ -456,6 +469,7 @@ class BestTeam:
     The judge scores each candidate independently (0-10), it does not rank them side by side.
     With a ``check`` (or a ``check`` judge), every candidate is also checked and candidates that
     fail rank below every candidate that passes; scores order within each group.
+    ``meta["candidates"]`` keeps every candidate's patch, chosen or not.
     """
 
     workers: Sequence[Harness]
@@ -510,6 +524,7 @@ class BestTeam:
                 "harness": harness_label(c.harness),
                 "score": meta["scores"][c.index - 1],
                 "runs": list(range(len(runs), len(runs) + len(c.runs))),
+                "patch": c.patch,
             }
             if gate:
                 entry["check"] = c.check.to_dict() if c.check else None

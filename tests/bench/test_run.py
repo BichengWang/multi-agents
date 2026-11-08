@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 import json
 from datetime import datetime, timezone
 
@@ -17,7 +18,7 @@ from agent.bench.run import (
 )
 from agent.teams.types import CodingTask, HarnessRun, TeamResult, Usage
 
-from .fakes import FakeTeam, MemoryWorkspace
+from .fakes import FakeTeam, MemoryWorkspace, make_run
 
 SECRET_TEST_NAME = "tests/hidden_test.py::test_secret"
 
@@ -113,6 +114,119 @@ def test_every_pair_gets_a_fresh_workspace_a_team_run_and_a_graded_record(tmp_pa
     assert (artifacts / "patch.diff").read_text().startswith("diff --git")
     assert json.loads((artifacts / "runs.json").read_text())["runs"][0]["log"] == "LOG"
     assert (artifacts / "eval.log").read_text() == "test log"
+
+
+class MetaTeam(FakeTeam):
+    """Submits ``final`` with the given ``meta`` and a worker and a judge run."""
+
+    def __init__(self, name, meta, final="diff --git a/f b/f\n+final\n", sessions=("s", "s")):
+        super().__init__(name)
+        self.meta, self.final, self.sessions = meta, final, sessions
+
+    async def solve(self, task, workspace):
+        workspace.edits.append(self.final)
+        runs = [make_run(0.5, role) for role in ("worker", "judge")]
+        for run, session in zip(runs, self.sessions):
+            run.session_id = session
+        return TeamResult(patch=await workspace.diff(), runs=runs, duration_s=1.0, meta=self.meta)
+
+
+def test_every_candidate_and_round_patch_is_kept_in_the_record_and_as_a_diff(tmp_path):
+    secret = "opaque-sandbox-key-abcdefgh"
+    final = "diff --git a/f b/f\n+final\n"
+    best = MetaTeam(
+        "best:workers=claude+claude+claude,judge=claude",
+        {"chosen": 1, "candidates": [
+            {"candidate": 1, "score": 9.0, "runs": [0, 1], "patch": final},
+            {"candidate": 2, "score": 7.0, "runs": [], "patch": f"+key = '{secret}'\n"},
+            {"candidate": 3, "score": None, "runs": [], "patch": ""},
+        ]},
+    )
+    review = MetaTeam(
+        "review:coder=claude,reviewer=claude",
+        {"round_log": [
+            {"round": 1, "changed": True, "patch": "+first try\n", "score": 4.0, "passed": False},
+            {"round": 2, "changed": True, "patch": final, "score": 9.0, "passed": True},
+        ]},
+    )
+    redactor = Redactor(host_env=False)
+    redactor.add_env_dump(f"ANTHROPIC_API_KEY={secret}")
+    Harness(best, review).run(tmp_path, make_tasks(1), redactor=redactor)
+
+    records = {r["team"]: r for r in load_records(tmp_path / "results.jsonl")}
+    stored = records[best.name]["meta"]["candidates"]
+    assert [c["patch"] for c in stored] == [final, "+key = '[REDACTED]'\n", ""]
+    assert [c.get("patch_redacted", False) for c in stored] == [False, True, False]
+    assert records[best.name]["patch_redacted"] is False  # the submitted patch was clean
+    assert [r["patch"] for r in records[review.name]["meta"]["round_log"]] == ["+first try\n", final]
+
+    best_dir = tmp_path / "artifacts" / "best_workers=claude+claude+claude,judge=claude" / "o__r-0"
+    assert (best_dir / "candidate-1.diff").read_text() == final
+    assert (best_dir / "candidate-2.diff").read_text() == "+key = '[REDACTED]'\n"
+    assert (best_dir / "candidate-3.diff").read_text() == ""
+    # runs.json keeps the meta, not a third copy of the patches.
+    assert json.loads((best_dir / "runs.json").read_text())["meta"]["candidates"][1] == {
+        "candidate": 2, "score": 7.0, "runs": [],
+    }
+    review_dir = tmp_path / "artifacts" / "review_coder=claude,reviewer=claude" / "o__r-0"
+    assert sorted(p.name for p in review_dir.glob("round-*.diff")) == ["round-1.diff", "round-2.diff"]
+    assert (review_dir / "round-1.diff").read_text() == "+first try\n"
+
+
+def test_session_transcripts_from_the_sandboxes_are_stored_scrubbed_and_named_after_their_run(tmp_path):
+    secret = "opaque-sandbox-key-abcdefgh"
+    session = "0b5e7c1a-1111-2222-3333-444455556666"
+    home = "/root/.claude/projects/-testbed"
+
+    class Transcribed(MemoryWorkspace):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.transcripts = {
+                f"{home}/{session}.jsonl": f'{{"tool":"Bash","out":"KEY={secret}"}}\n',
+                f"{home}/{session}/subagents/agent-a1.jsonl": '{"tool":"WebFetch"}\n',
+                f"{home}/9f9f9f9f-unmatched.jsonl": "{}\n",
+            }
+
+    async def transcribed(task):
+        return Transcribed()
+
+    team = MetaTeam("solo:worker=claude", {}, sessions=(session, None))
+    h = Harness(team)
+    h.workspace_factory = transcribed
+    redactor = Redactor(host_env=False)
+    redactor.add_env_dump(f"ANTHROPIC_API_KEY={secret}")
+    h.run(tmp_path, make_tasks(1), redactor=redactor)
+
+    directory = tmp_path / "artifacts" / "solo_worker=claude" / "o__r-0"
+    names = sorted(p.name for p in directory.glob("transcript-*"))
+    assert names == [
+        "transcript-9f9f9f9f-unmatched.jsonl.gz",
+        "transcript-worker-0-agent-a1.jsonl.gz",
+        "transcript-worker-0.jsonl.gz",
+    ]
+    text = gzip.decompress((directory / "transcript-worker-0.jsonl.gz").read_bytes()).decode()
+    assert text == '{"tool":"Bash","out":"KEY=[REDACTED]"}\n'
+
+    # A new solve of the pair replaces the previous solve's files; nothing of it is left over.
+    (directory / "candidate-7.diff").write_text("stale")
+    (directory / "round-2.eval.log").write_text("stale")
+    h.run(tmp_path, make_tasks(1), redactor=redactor, retry_errors=True)  # finished: skipped
+    assert (directory / "candidate-7.diff").exists()
+    records = (tmp_path / "results.jsonl").read_text().splitlines()
+    first = json.loads(records[0])
+    first["error"] = "solve: agent command lost to the sandbox"
+    (tmp_path / "results.jsonl").write_text(json.dumps(first) + "\n")
+    h.run(tmp_path, make_tasks(1), redactor=redactor)
+    assert not (directory / "candidate-7.diff").exists() and not (directory / "round-2.eval.log").exists()
+    assert len(list(directory.glob("transcript-*.jsonl.gz"))) == 3
+
+    # A solve that ran out of time and left no patch still keeps its transcripts.
+    slow = FakeTeam("solo:worker=claude", delay=30)
+    timed = Harness(slow)
+    timed.workspace_factory = transcribed
+    timed.run(tmp_path / "timed", make_tasks(1), solve_timeout_s=0.05, redactor=redactor)
+    left = tmp_path / "timed" / "artifacts" / "solo_worker=claude" / "o__r-0"
+    assert len(list(left.glob("transcript-*.jsonl.gz"))) == 3
 
 
 def test_meta_json_keeps_the_first_invocation_and_appends_later_ones_with_the_full_filters(tmp_path):
@@ -422,6 +536,63 @@ def test_cancellation_closes_every_open_workspace(tmp_path):
     assert len(h.workspaces) == 3 and all(w.closed for w in h.workspaces)
     assert not (tmp_path / "results.jsonl").exists()
     assert team.active == 0  # the in-flight solves were cancelled with their pairs
+
+
+class Abandonable(MemoryWorkspace):
+    abandoned = False
+
+    def abandon(self):
+        self.abandoned = True
+
+
+class NoticingTeam(FakeTeam):
+    """Records whether its workspace was abandoned when the solve was cancelled."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.noticed = []
+
+    async def solve(self, task, workspace):
+        try:
+            return await super().solve(task, workspace)
+        except asyncio.CancelledError:
+            self.noticed.append(workspace.abandoned)  # where a team closes its forks
+            raise
+
+
+def test_a_cancelled_pair_abandons_its_workspace_before_the_team_cleans_up(tmp_path):
+    team = NoticingTeam("solo:worker=claude", delay=30)
+    h = Harness(team)
+
+    async def abandonable(task):
+        return Abandonable()
+
+    h.workspace_factory = abandonable
+
+    async def scenario():
+        job = asyncio.create_task(
+            run_benchmark(
+                make_tasks(2), [team.name], tmp_path, concurrency=2,
+                team_factory=h.team_factory, workspace_factory=h.workspace_factory,
+                evaluator=h.evaluator, unpriced_fn=lambda s: [], log=lambda m: None,
+                redactor=Redactor(host_env=False),
+            )
+        )
+        while team.active < 2:
+            await asyncio.sleep(0.01)
+        job.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await job
+
+    asyncio.run(scenario())
+    assert team.noticed == [True, True] and all(w.abandoned and w.closed for w in h.workspaces)
+
+    # A solve timeout is not a cancellation of the pair: its transcripts are still wanted.
+    slow = NoticingTeam("solo:worker=claude", delay=30)
+    timed = Harness(slow)
+    timed.workspace_factory = abandonable
+    timed.run(tmp_path / "timed", make_tasks(1), solve_timeout_s=0.05)
+    assert slow.noticed == [False] and not timed.workspaces[0].abandoned
 
 
 def test_duplicate_team_specs_are_rejected_after_canonicalisation(tmp_path):

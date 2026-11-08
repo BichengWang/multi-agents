@@ -49,6 +49,10 @@ def test_review_returns_the_best_patch_and_feeds_feedback_back_to_the_coder(repo
 
     assert "attempt 2" in result.patch and "attempt 3" not in result.patch
     assert result.meta["scores"] == [4, 7, 5] and result.meta["best_round"] == 2
+    # Every round's patch is kept, the superseded ones too, with the reviewer's verdict on it.
+    log = result.meta["round_log"]
+    assert [f"+attempt {n}" in entry["patch"] for n, entry in enumerate(log, 1)] == [True] * 3
+    assert [(entry["passed"], entry["reviewed"]) for entry in log] == [(False, True)] * 3
     assert [r.role for r in result.runs] == ["coder", "reviewer"] * 3
     # The revision prompt carries the reviewer's feedback and the coder resumes its session.
     second = coder.calls[1]
@@ -62,6 +66,8 @@ def test_review_stops_as_soon_as_the_reviewer_passes(repo):
     result, *_ = solve(ReviewTeam(coder, reviewer, rounds=5), repo)
     assert result.meta["rounds"] == 2 and result.meta["accepted"] is True
     assert len(coder.calls) == 2 and "attempt 2" in result.patch
+    assert [entry["passed"] for entry in result.meta["round_log"]] == [False, True]
+    assert result.meta["round_log"][1]["patch"] == result.patch
 
 
 def test_review_stops_when_the_coder_stops_changing_anything(repo):
@@ -69,6 +75,7 @@ def test_review_stops_when_the_coder_stops_changing_anything(repo):
     result, *_ = solve(ReviewTeam(coder, reviewer, rounds=4), repo)
     assert len(coder.calls) == 2 and len(reviewer.calls) == 1  # no second review of an identical patch
     assert "attempt 1" in result.patch
+    assert [e["reviewed"] for e in result.meta["round_log"]] == [True, True]  # round 2 repeats round 1
 
 
 def test_unparseable_review_is_recorded_and_does_not_sink_the_team(repo):
@@ -81,6 +88,18 @@ def test_unparseable_review_is_recorded_and_does_not_sink_the_team(repo):
     failures = result.meta["failures"]
     assert len(failures) == 2 and all(f["role"] == "reviewer" and "VerdictParseError" in f["error"] for f in failures)
     assert [r.role for r in result.runs].count("reviewer") == 2
+    # Placeholder verdicts are marked as not the reviewer's own.
+    assert [e["reviewed"] for e in result.meta["round_log"]] == [False, False]
+
+
+def test_an_empty_attempt_is_rejected_without_a_review_and_marked_so(repo):
+    async def idle(call):
+        return "nothing to do"
+
+    reviewer = scoring_reviewer({})
+    result, *_ = solve(ReviewTeam(FakeHarness(idle, name="coder"), reviewer, rounds=2), repo)
+    assert reviewer.calls == [] and result.patch == ""
+    assert [(e["patch"], e["passed"], e["reviewed"]) for e in result.meta["round_log"]] == [("", False, False)] * 2
 
 
 def test_reviewer_cannot_mutate_the_workers_workspace(repo):
@@ -126,6 +145,9 @@ def test_best_selects_the_highest_score_and_survives_a_failing_worker(repo):
     assert [r.role for r in result.runs] == ["worker", "judge", "worker", "judge"]
     runs_by_candidate = {c["candidate"]: [result.runs[i].role for i in c["runs"]] for c in result.meta["candidates"]}
     assert runs_by_candidate == {1: ["worker", "judge"], 2: [], 3: ["worker", "judge"]}
+    # Every candidate's patch is kept, chosen or not.
+    first, failed, chosen = (c["patch"] for c in result.meta["candidates"])
+    assert "+a" in first and failed == "" and chosen == result.patch
     # Every worker and judge ran in its own fork, all closed afterwards.
     roots = [r for h in (*workers, judge) for r in h.roots]
     assert len(set(roots)) == len(roots) and not any(os.path.exists(r) for r in roots)
