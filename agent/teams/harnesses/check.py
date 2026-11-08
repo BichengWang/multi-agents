@@ -2,6 +2,8 @@
 
 ``Check`` is the command plus its timeout; ``Check.bind(workspace)`` gives a ``CheckRunner`` that
 runs it in a throwaway fork of ``workspace`` with a patch applied (results are memoized per patch).
+A ``Check`` with an ``evaluate`` function judges the patch with it instead (``command`` is then only
+its label); the benchmark uses one to run a task's test suite in a clean sandbox.
 ``CheckHarness`` is the same command as a pseudo-harness, usable as ``reviewer=check`` or
 ``judge=check``: it runs in the fork the reviewer/judge machinery already provides and answers with
 a verdict (10 if the command exits 0, else 0, feedback = the tail of its output). No LLM is called,
@@ -11,7 +13,8 @@ so a run costs exactly $0.00.
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from collections.abc import Awaitable, Callable
+from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
 from agent.workflows import Verdict
@@ -75,6 +78,10 @@ async def execute_check(workspace: Workspace, command: str, timeout: Optional[fl
 class Check:
     command: str
     timeout: Optional[float] = None
+    # Judges (workspace, non-empty patch) itself; ``command`` is then only a label.
+    evaluate: Optional[Callable[[Workspace, str], Awaitable[CheckResult]]] = field(
+        default=None, compare=False, repr=False
+    )
 
     def bind(self, workspace: Workspace) -> CheckRunner:
         return CheckRunner(self, workspace)
@@ -99,6 +106,13 @@ class CheckRunner:
         return result
 
     async def _run(self, patch: str) -> CheckResult:
+        if self.check.evaluate is not None:
+            try:
+                return await self.check.evaluate(self.workspace, patch)
+            except Exception as exc:
+                return CheckResult(
+                    self.check.command, False, None, f"The check could not run ({type(exc).__name__}: {exc})", 0.0
+                )
         fork: Optional[Workspace] = None
         try:
             fork = await self.workspace.fork()

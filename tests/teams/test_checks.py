@@ -210,6 +210,41 @@ def test_best_with_check_as_judge_keeps_the_candidate_that_passes(repo):
     assert result.usage.cost_usd == pytest.approx(0.03) and result.meta["check"]["passed"] is True
 
 
+def test_a_check_with_its_own_evaluator_judges_patches_without_running_a_command(repo):
+    seen = []
+
+    async def evaluate(workspace, patch):
+        seen.append(patch)
+        passed = "attempt 2" in patch
+        return CheckResult("suite", passed, 0 if passed else 1, f"saw {len(seen)} patches", 0.1)
+
+    check = Check("suite", evaluate=evaluate)
+    team = build_team("review:coder=claude,reviewer=check,rounds=3", check=check)
+    team.coder = numbered_coder()  # build_team gave a real CLI; the reviewer is the check
+    result = solve(team, repo)
+
+    assert result.meta["scores"] == [0, 10] and result.meta["check"]["passed"] is True
+    assert len(seen) == 2  # once per patch; the final patch's result is reused
+    assert result.meta["check"]["command"] == "suite"
+    assert "saw 1 patches" in team.coder.calls[1].prompt
+
+
+def test_a_check_evaluator_that_raises_is_a_failed_check(repo):
+    async def evaluate(workspace, patch):
+        raise RuntimeError("sandbox gone")
+
+    result = solve(SoloTeam(writer("solution.txt", "x\n"), check=Check("suite", evaluate=evaluate)), repo)
+    recorded = result.meta["check"]
+    assert recorded["passed"] is False and recorded["exit_code"] is None
+    assert "could not run (RuntimeError: sandbox gone)" in recorded["output_tail"]
+
+
+def test_build_team_takes_a_check_object_as_is():
+    check = Check("suite", timeout=5)
+    team = build_team("best:workers=claude+codex,judge=check", check=check)
+    assert team.check is check and team.judge.command == "suite"
+
+
 def test_check_harness_is_priced_and_valid_only_as_reviewer_or_judge():
     assert is_priced("check")
     team = build_team("review:coder=claude,reviewer=check", check="true")

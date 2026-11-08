@@ -10,6 +10,7 @@ significance, cost and wall time.
 dataset.py   load + filter + seeded sample of tasks      sandbox.py   sandbox = Workspace; Modal backend
 evaluate.py  official grading in a fresh sandbox          docker_backend.py  local Docker backend
 run.py       task x team -> JSONL (resumable)             report.py    Markdown report, Wilson / McNemar
+check.py     the task's test suite as reviewer=/judge=check
 cli.py       python -m agent.bench ...
 ```
 
@@ -294,7 +295,24 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   `problem_statement`, never `test_patch`, `FAIL_TO_PASS`, hints or any grading field; they never
   see grader output. This follows SWE-bench-Live's evaluation protocol
   ([README](https://github.com/microsoft/SWE-bench-Live#-evaluation)). Teams that loop
-  (`review`) use only the agents' own judgment.
+  (`review`) use only the agents' own judgment, unless the spec makes `check` the reviewer or
+  judge (below).
+- **`check` as reviewer or judge.** `review:coder=H,reviewer=check` and
+  `best:workers=H+H+H,judge=check` get the task's own test suite as their objective check
+  (`check.py`): the dataset's `rebuild_cmds`, `test_cmds` and `print_cmds` (whole-suite commands;
+  none of the 48 pilot tasks' commands names a hidden test) run on the visible repository, without
+  the hidden test patch, in a clean sandbox of the instance image, and the log is parsed with the
+  task's own parser (exit codes are not used, since many `test_cmds` pipe through `tee`). A patch
+  passes iff it applies and no test fails that did not fail at the base commit: every test that
+  passed there still passes (one that no longer runs, as when the build breaks, counts as
+  failing), and no new test fails. The base commit's results run once per
+  task, alongside the first candidate. The coder or the judge sees a summary (counts and the names
+  of newly failing tests) plus the log tail: what running the project's tests in the sandbox would
+  show, never the hidden tests or the grader's verdict. It is a treatment, not a leak: the team
+  gets a test runner the solo agent has to drive itself. Each check costs about one grading run of
+  sandbox time (pilot median 4.5 minutes, 90th percentile 12.6), inside `--solve-timeout`: a
+  three-round `reviewer=check` team can spend four suite runs, so raise the timeout (e.g. 7200).
+  Other teams get no check.
 - **No leaks through the image.** Instance images are built at the task's base commit but may carry
   later git history. Agent sandboxes strip every ref, remote, reflog entry and unreachable object
   before the agent starts (`git gc --prune=now` failing fails the pair, never silently leaks), so
