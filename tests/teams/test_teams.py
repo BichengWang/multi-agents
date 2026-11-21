@@ -257,3 +257,33 @@ def test_cancelling_a_best_team_removes_its_forks_and_kills_the_agents_processes
                 alive.discard(pid)
         time.sleep(0.05)
     assert not alive
+
+
+def test_review_never_returns_an_empty_attempt_over_a_real_change(repo):
+    # Attempt 1 changes nothing (scored 0 without a review), attempt 2 makes a change whose review
+    # fails (also 0). The tie must not hand back the empty attempt and discard the change.
+    async def late(call):
+        if call.number == 2:
+            await write(call.workspace, "solution.txt", "attempt 2\n")
+        return "done"
+
+    async def broken(call):
+        return "no verdict"
+
+    coder, reviewer = FakeHarness(late, name="coder"), FakeHarness(broken, name="reviewer")
+    result, *_ = solve(ReviewTeam(coder, reviewer, rounds=2), repo)
+    assert result.meta["scores"] == [0, 0]
+    assert "attempt 2" in result.patch and result.meta["best_round"] == 2
+
+
+def test_best_never_picks_an_empty_candidate_over_a_real_change(repo):
+    async def idle(call):
+        return "nothing to change"
+
+    async def silent(call):
+        return "no verdict"
+
+    workers = [FakeHarness(idle, name="w1"), worker_writing("b\n", "w2")]
+    result, *_ = solve(BestTeam(workers, FakeHarness(silent, name="judge")), repo)
+    assert result.meta["scores"] == [0, 0]
+    assert result.meta["chosen"] == 2 and "+b" in result.patch

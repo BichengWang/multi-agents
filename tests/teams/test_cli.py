@@ -226,3 +226,14 @@ def test_run_preserves_brackets_in_filenames_and_output_paths(env, capsys):
     assert filename in output
     assert str(record_path) in output
     assert str(record_path.with_name("final.patch")) in output
+
+
+def test_a_runs_dir_that_cannot_be_written_is_refused_before_any_agent_runs(env, capsys):
+    # Found only after the run, it would crash the save and lose the paid-for patch with the worktree.
+    _, harness, tmp_path = env
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("x")
+    code = cli_module.main(["run", "--team", "solo:worker=claude", "--runs-dir", str(blocker / "runs"), "x"])
+    assert code == 2 and harness.calls == []
+    assert "Cannot save run records" in capsys.readouterr().out
+    assert not any((tmp_path / "worktrees").glob("*/*"))  # the worktree made for the run is removed

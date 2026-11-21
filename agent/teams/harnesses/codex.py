@@ -207,7 +207,8 @@ class CodexHarness:
         thread_id = parsed.thread_id or session_id
         usage, model = await self._usage(workspace, parsed, thread_id, session_id)
         exit_code = res.exit_code if res.exit_code != 0 else (0 if parsed.ok else 1)
-        message = parsed.text if parsed.ok or parsed.text else parsed.error
+        # On failure the text is only the agent's last progress message; the error says what went wrong.
+        message = parsed.text if parsed.ok else parsed.error
         log = parsed.log
         if res.exit_code != 0 and res.stderr.strip():
             log = f"{log}\n{res.stderr.strip()}"

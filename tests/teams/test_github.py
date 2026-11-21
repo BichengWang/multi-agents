@@ -442,6 +442,22 @@ def test_pr_body_reports_the_check_result_and_unpriced_runs():
     assert "$0.5000 + 1 unpriced run(s)" in body and "| reviewer | codex | 10/0/5 | n/a | 3.0 |" in body
 
 
+def test_pr_body_says_a_check_that_did_not_finish_did_not_finish():
+    from agent.teams import TeamResult
+
+    body = github.render_pr_body(
+        issue=None,
+        info=github.RepoInfo("acme/widgets", "main"),
+        instruction="add a guard",
+        team="solo:worker=claude",
+        result=TeamResult(patch=""),
+        # A check that timed out (or could not run) has no exit code.
+        check={"command": "pytest -q", "passed": False, "exit_code": None, "duration_s": 600.0},
+        files=[],
+    )
+    assert "`pytest -q`: **failed (did not finish)**, 600.0s" in body and "None" not in body
+
+
 def test_commit_patch_leaves_a_dirty_checkout_alone(world):
     (world.repo / "a.txt").write_text("my edit\n")
     (world.repo / "scratch.txt").write_text("untracked\n")

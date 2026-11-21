@@ -64,7 +64,10 @@ async def run_cli(
             getattr(exc, "stdout", "") or "",
             getattr(exc, "stderr", "") or "",
         )
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
+        if exc.filename not in (None, argv[0]):
+            # Something else is missing, typically the working directory (the workspace root).
+            return CliOutcome(None, time.perf_counter() - start, f"cannot run {argv[0]!r}: {exc}", 1)
         return CliOutcome(
             None, time.perf_counter() - start, f"{argv[0]!r} not found on PATH", MISSING_BINARY_EXIT_CODE
         )

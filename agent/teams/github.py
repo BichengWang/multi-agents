@@ -294,7 +294,10 @@ def render_pr_body(
     lines += ["## Task", "", issue.title if issue else _first_line(instruction, 300), ""]
     lines += ["## Team", "", f"`{team}`", ""]
     if check:
-        verdict = "passed" if check.get("passed") else f"failed (exit code {check.get('exit_code')})"
+        code = check.get("exit_code")
+        verdict = "passed" if check.get("passed") else (
+            f"failed (exit code {code})" if code is not None else "failed (did not finish)"
+        )
         duration = check.get("duration_s")
         took = f", {duration:.1f}s" if isinstance(duration, (int, float)) else ""
         lines += ["## Check", "", f"`{check.get('command')}`: **{verdict}**{took}", ""]
