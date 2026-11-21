@@ -49,3 +49,41 @@ def test_subscription_token_reaches_agent_containers_only_without_an_api_key(mon
 def test_missing_claude_key_names_the_subscription_alternative():
     with pytest.raises(SandboxError, match=r"ANTHROPIC_API_KEY \(or CLAUDE_CODE_OAUTH_TOKEN\)"):
         DockerBackend(SandboxConfig(secret_keys=("ANTHROPIC_API_KEY",)), environ={})
+
+
+def test_a_command_past_its_deadline_is_killed_in_its_container_and_becomes_a_timeout(monkeypatch):
+    from agent.bench.sandbox import SandboxExecTimeout, SandboxWorkspace
+
+    docker_calls, procs = [], []
+
+    async def fake_docker(*args, env=None):
+        docker_calls.append(args)  # never run: `kill -KILL -1` here would hit the host
+        return 0, b"", b""
+
+    class LocalContainer:
+        async def exec(self, *argv, workdir, env=None, timeout, text=False):
+            proc = await asyncio.create_subprocess_exec(
+                *argv,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            procs.append(proc)
+            return docker_backend._DockerProcess(proc, "c1", timeout)
+
+    monkeypatch.setattr(docker_backend, "_docker", fake_docker)
+
+    async def go():
+        with pytest.raises(SandboxExecTimeout):
+            await SandboxWorkspace._raw_exec(
+                LocalContainer(), SandboxConfig(), ["sleep", "30"], workdir="/", timeout=0.2
+            )
+        # A command that finishes in time keeps its own exit code.
+        code, out, _ = await SandboxWorkspace._raw_exec(
+            LocalContainer(), SandboxConfig(), ["sh", "-c", "echo hi; exit 3"], workdir="/", timeout=30
+        )
+        assert (code, out) == (3, b"hi\n")
+
+    asyncio.run(go())
+    assert docker_calls == [("exec", "c1", "sh", "-c", "kill -KILL -1")]
+    assert procs[0].returncode is not None  # the local `docker exec` client is gone too

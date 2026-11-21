@@ -14,9 +14,11 @@ report, and the reviewer's approvals and the judge's ties against resolution. On
 oracle pass@k next to the judge's pick, and the reviewer's approvals round by round.
 
 Every statistic is computed on the *common* tasks: those with a valid result for every team in the
-report. A pair is invalid when its record has an ``error`` (infrastructure, agent crash, timeout,
-grading failure); such pairs are excluded and listed explicitly, unless
-``count_errors_as_failures`` is set, in which case they count as unresolved.
+report. A pair is invalid when its record has an ``error`` (an infrastructure failure: no workspace,
+an agent command lost to the sandbox, a run that never reached the model, an unreadable workspace,
+a grading failure; a team that crashed or timed out is graded, not errored); such pairs are excluded
+and listed explicitly, unless ``count_errors_as_failures`` is set, in which case they count as
+unresolved.
 """
 
 from __future__ import annotations
@@ -114,6 +116,15 @@ def sandbox_seconds(rec: dict[str, Any]) -> tuple[Optional[float], Optional[floa
         )
     grading = (rec.get("eval") or {}).get("duration_s")
     return solve, (float(grading) if grading is not None else None)
+
+
+def model_cost(rec: dict[str, Any]) -> Optional[float]:
+    """Model cost of one record, ``None`` when unknown. A pair that errored before any agent ran
+    (``stage="workspace"``, which stores no usage) spent nothing."""
+    usage = rec.get("usage")
+    if usage:
+        return usage.get("cost_usd")
+    return 0.0 if rec.get("error") is not None and rec.get("stage") == "workspace" else None
 
 
 def failure_class(rec: dict[str, Any]) -> str:
@@ -324,12 +335,18 @@ def summarize(
         team_list = list(dict.fromkeys(teams))
         missing = [t for t in team_list if not any(team == t for _, team in latest)]
         if missing:
-            raise ValueError(f"no results for team(s) {missing}")
+            scope = f" on the {len(in_scope)} task(s) in scope" if in_scope is not None else ""
+            raise ValueError(f"no results for team(s) {missing}{scope}")
     else:
         team_list = list(dict.fromkeys(rec["team"] for rec in records))
         team_list = [t for t in team_list if any(team == t for _, team in latest)]
     teams = team_list
     if baseline is not None and baseline not in teams:
+        if any(rec["team"] == baseline for rec in records):
+            raise ValueError(
+                f"baseline {baseline!r} is not among the reported teams {teams}; "
+                "name every team to report with --team, the baseline included"
+            )
         raise ValueError(f"baseline {baseline!r} has no results; teams present: {teams}")
     tasks = sorted(in_scope) if in_scope is not None else sorted({task for task, _ in latest})
     not_run = [(t, team) for t in tasks for team in teams if (t, team) not in latest]
@@ -362,8 +379,7 @@ def summarize(
             st.records[task] = rec
             st.n += 1
             st.resolved += ok
-            usage = rec.get("usage") or {}
-            st.costs.append(usage.get("cost_usd") if usage else None)
+            st.costs.append(model_cost(rec))
             st.timed_out += bool((rec.get("meta") or {}).get("timed_out"))
             if rec.get("duration_s") is not None:
                 st.durations.append(float(rec["duration_s"]))
@@ -768,9 +784,13 @@ def build_report(
     meta = load_meta(out)
     run = latest_run(meta)
     canon = canonicalize or (lambda spec: spec)
-    selected = [canon(t) for t in teams] if teams else (run.get("teams") or None)
-    if selected is not None:
-        selected = [t for t in selected if any(r["team"] == t for r in records)] or None
+    if teams:
+        # Named teams are reported or refused, never dropped (summarize names the missing ones).
+        selected: Optional[list[str]] = [canon(t) for t in teams]
+    else:
+        # The latest run's teams that have any record (a budget halt can leave one without).
+        present_teams = {r["team"] for r in records}
+        selected = [t for t in run.get("teams") or [] if t in present_teams] or None
     if baseline is not None:
         present = {r["team"] for r in records}
         baseline = baseline if baseline in present else canon(baseline)

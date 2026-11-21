@@ -260,14 +260,15 @@ def _full_rows(
     for location, cands in by_location.items():
         ids = {c.instance_id: c for c in cands}
         if isinstance(source, Path):
-            for row in _read_jsonl(Path(location)):
-                if str(row["instance_id"]) in ids:
-                    yield ids[str(row["instance_id"])], row
-            continue
-        pq = _require("pyarrow.parquet")
-        table = pq.read_table(location, filters=[("instance_id", "in", sorted(ids))])
-        for row in table.to_pylist():
-            yield ids[str(row["instance_id"])], row
+            rows: Iterable[dict[str, Any]] = _read_jsonl(Path(location))
+        else:
+            pq = _require("pyarrow.parquet")
+            rows = pq.read_table(location, filters=[("instance_id", "in", sorted(ids))]).to_pylist()
+        for row in rows:
+            # The first row of a repeated instance, the one its candidate was filtered on.
+            cand = ids.pop(str(row["instance_id"]), None)
+            if cand is not None:
+                yield cand, row
 
 
 def load_tasks(

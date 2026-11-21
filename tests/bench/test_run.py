@@ -281,6 +281,22 @@ def test_a_pair_whose_agent_command_was_lost_is_errored_with_unknown_cost(tmp_pa
     assert [r["error"] for r in load_records(tmp_path / "results.jsonl")] == [rec["error"], None]
 
 
+def test_a_new_solve_leaves_no_artifact_of_the_previous_solve(tmp_path):
+    team = _LossyTeam("solo:worker=claude", lost=["ConflictError: exec not found"])
+    h = Harness(team)
+    h.run(tmp_path, make_tasks(1))
+    artifacts = tmp_path / "artifacts" / "solo_worker=claude" / "o__r-0"
+    assert (artifacts / "patch.diff").read_text() and (artifacts / "runs.json").exists()
+
+    # The retry crashes before editing anything: no team result, an empty patch, no transcripts.
+    team.lost, team.fail_for = [], {"o__r-0"}
+    h.run(tmp_path, make_tasks(1))
+    final = load_records(tmp_path / "results.jsonl")[-1]
+    assert final["error"] is None and final["patch"] == "" and final["runs"] == []
+    assert (artifacts / "patch.diff").read_text() == ""
+    assert not (artifacts / "runs.json").exists()  # its runs belong to the lost solve
+
+
 def test_a_pair_with_a_timed_out_agent_command_is_graded_with_unknown_cost(tmp_path):
     h = Harness(_LossyTeam("solo:worker=claude", timeouts=["command timed out after 60s: claude"]))
     summary = h.run(tmp_path, make_tasks(1))
@@ -800,6 +816,14 @@ def test_tasks_command_prints_the_seeded_sample_without_credentials(capsys):
     rows = [json.loads(line) for line in first.splitlines()]
     assert len(rows) == 2 and all(r["created_at"] >= "2025-01-01" for r in rows)
     assert set(rows[0]) >= {"task_id", "repo", "language", "image", "f2p", "p2p"}
+
+
+def test_solve_timeout_help_says_the_pair_is_graded_not_errored():
+    from agent.bench.cli import build_parser
+
+    run = next(a for a in build_parser()._subparsers._group_actions[0].choices["run"]._actions
+               if "--solve-timeout" in a.option_strings)
+    assert "errored" not in run.help and "graded" in run.help
 
 
 @pytest.mark.parametrize("option", ["max_cost_usd", "solve_timeout_s"])

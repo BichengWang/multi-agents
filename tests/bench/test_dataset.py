@@ -137,6 +137,17 @@ def test_limit_larger_than_pool_returns_everything_and_zero_returns_nothing():
         load_tasks(str(FIXTURE), limit=-1)
 
 
+def test_a_row_repeated_in_a_local_file_is_one_task(tmp_path):
+    # A concatenated or re-exported file can repeat an instance; running it twice would pay for
+    # the same pair twice and give it two records.
+    lines = FIXTURE.read_text().splitlines()
+    path = tmp_path / "rows.jsonl"
+    path.write_text("\n".join([*lines, lines[0]]) + "\n")
+    tasks = load_tasks(str(path))
+    assert len(tasks) == len(ALL_IDS) and ids(tasks) == ALL_IDS
+    assert len(load_tasks(str(path), instance_ids=[json.loads(lines[0])["instance_id"]])) == 1
+
+
 def test_unknown_dataset_is_rejected():
     with pytest.raises(ValueError):
         load_tasks("nope")

@@ -323,12 +323,13 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   none of the 48 pilot tasks' commands names a hidden test) run on the visible repository, without
   the hidden test patch, in a clean sandbox of the instance image, and the log is parsed with the
   task's own parser (exit codes are not used, since many `test_cmds` pipe through `tee`). A patch
-  passes iff it applies and no test fails that did not fail at the base commit: every test that
-  passed there still passes (one that no longer runs, as when the build breaks, counts as
-  failing), and no new test fails. The base commit's results run once per
-  task, alongside the first candidate. The coder or the judge sees a summary (counts and the names
-  of newly failing tests) plus the log tail: what running the project's tests in the sandbox would
-  show, never the hidden tests or the grader's verdict. It is a treatment, not a leak: the team
+  passes iff it applies, every test that passed at the base commit still passes (one that no
+  longer runs, as when the build breaks, counts as failing), and no new test fails. Tests that
+  failed or were skipped at the base commit are ignored, even if they now fail. The base commit's
+  results run once per task, alongside the first candidate. The coder or the judge sees a summary
+  (counts and the names of newly failing tests) plus the log tail: what running the project's
+  tests in the sandbox would show, never the hidden tests or the grader's verdict. It is a
+  treatment, not a leak: the team
   gets a test runner the solo agent has to drive itself. Each check costs about one grading run of
   sandbox time (pilot median 4.5 minutes, 90th percentile 12.6), inside `--solve-timeout`: a
   three-round `reviewer=check` team can spend four suite runs, so raise the timeout (e.g. 7200).
@@ -357,7 +358,9 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
   result for every team. Errored pairs (infrastructure failures only, see above) are excluded and
   listed by name; `--count-errors-as-failures` counts them as unresolved instead. Pairs that never
   ran (budget halt) are listed under *Not run* and also leave their task out of every team's
-  numbers. `report` covers the teams and tasks of the latest `meta.json` entry (`--team` overrides).
+  numbers. `report` covers the teams and tasks of the latest `meta.json` entry; `--team` replaces
+  the teams (name every one to report, the baseline included) but not the tasks, and a named team
+  without results on them is an error.
   No
   multiplicity correction across teams is applied. With 50 tasks only large effects reach
   significance: 6 wins against 0 losses gives p = 0.031 (5 against 0 gives 0.063), 12 against 3
@@ -365,7 +368,8 @@ would otherwise be graded silently); `--no-check-base-commit` turns that off.
 - **Cost** is `TeamResult.usage` summed over all harness runs. Unpriced runs (and timed-out or
   crashed solves) have unknown cost. The mean then shows `≥` the sum of priced costs divided by *all*
   runs, which is a true lower bound; cost per resolved shows `≥` priced total over resolved runs;
-  the median has no bound and is labelled "priced runs only".
+  the median has no bound and is labelled "priced runs only". A pair that errored before any agent
+  ran (no workspace) cost nothing, so with `--count-errors-as-failures` it counts as $0.
 
 ## Cost estimate
 
