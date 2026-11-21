@@ -74,3 +74,32 @@ def test_to_jsonable_falls_back_to_str_for_unknown_objects():
             return "opaque"
 
     assert to_jsonable({"a": (1, Opaque()), 2: None}) == {"a": [1, "opaque"], "2": None}
+
+
+def test_tracker_records_a_cancelled_call_as_an_error():
+    async def hang(_agent, _input):
+        await asyncio.sleep(10)
+
+    tracker = RunTracker(base=hang)
+    with pytest.raises(asyncio.TimeoutError):
+        asyncio.run(asyncio.wait_for(tracker(FakeAgent("slow", lambda _: None), "hi"), 0.01))
+
+    assert tracker.calls[0].error == "CancelledError: "
+    assert tracker.totals()["errors"] == 1
+
+
+def test_save_run_never_overwrites_a_record_saved_in_the_same_instant(tmp_path, monkeypatch):
+    from datetime import datetime as real_datetime
+
+    class Frozen(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return real_datetime(2026, 1, 1, tzinfo=tz)
+
+    monkeypatch.setattr("agent.workflows.artifacts.datetime", Frozen)
+    first = save_run({"workflow": "w", "final_output": "one"}, tmp_path)
+    second = save_run({"workflow": "w", "final_output": "two"}, tmp_path)
+
+    assert first != second
+    assert json.loads(first.read_text())["final_output"] == "one"
+    assert json.loads(second.read_text())["final_output"] == "two"

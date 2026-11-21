@@ -52,7 +52,7 @@ class RunTracker:
                 result = await Runner.run(agent, input_text)
             record.usage = _usage_dict(result.context_wrapper.usage)
             return result.final_output
-        except Exception as exc:
+        except BaseException as exc:  # a cancelled or timed-out call is not a success
             record.error = f"{type(exc).__name__}: {exc}"
             raise
         finally:
