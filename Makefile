@@ -16,7 +16,7 @@ help:
 	@echo "  update-deps  - Update dependencies"
 	@echo "  bootstrap    - Bootstrap the environment"
 	@echo "  lock         - Refresh the dependency lockfile"
-	@echo "  lint         - Run ruff on agent code and tests"
+	@echo "  lint         - Run ruff on agent code, tests and docs/hooks.py"
 	@echo "  test         - Run lint and offline tests"
 	@echo "  test-ci      - Run offline GitHub workflow and attribution tests (Node.js)"
 	@echo "  check        - Run all offline quality checks"
@@ -52,7 +52,7 @@ lock:
 
 .PHONY: lint
 lint:
-	$(RUN) ruff check agent tests
+	$(RUN) ruff check agent tests docs
 
 .PHONY: test
 test: lint
