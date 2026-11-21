@@ -93,7 +93,8 @@ outside your repository (`~/.cache/multi-agents/runs/`).
 
 `H` is `claude`, `codex` or `sdk`, optionally with `@model`, for example `claude@haiku`,
 `codex@gpt-6-luna` or `sdk@litellm/openrouter/<model>`. `check` (the `--check` command) can be the
-reviewer or the judge: a test-driven loop with no LLM reviewer. Details:
+reviewer of `review` or the judge of `best`: a test-driven loop with no LLM reviewer (not the
+reviewer of `plan`, which `--check` already covers on the integrated patch). Details:
 [team runner guide](https://github.com/BichengWang/multi-agents/blob/main/agent/teams/README.md).
 
 ## From issue to pull request
