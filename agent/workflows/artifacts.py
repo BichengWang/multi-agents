@@ -56,6 +56,14 @@ def save_run(record: dict[str, Any], runs_dir: str | Path = "runs") -> Path:
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     slug = re.sub(r"[^A-Za-z0-9_-]+", "-", str(record.get("workflow") or "run")).strip("-") or "run"
-    path = out / f"{stamp}_{slug}.json"
-    path.write_text(json.dumps(record, indent=2))
-    return path
+    text = json.dumps(record, indent=2)
+    # Exclusive create: two saves in the same microsecond must not overwrite each other.
+    for n in range(1000):
+        path = out / (f"{stamp}_{slug}.json" if n == 0 else f"{stamp}_{slug}_{n}.json")
+        try:
+            with path.open("x") as handle:
+                handle.write(text)
+        except FileExistsError:
+            continue
+        return path
+    raise FileExistsError(f"could not find a free run file name for {stamp}_{slug} in {out}")
