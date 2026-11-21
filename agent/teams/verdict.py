@@ -10,6 +10,7 @@ it is recorded, scores 0 and never crashes the team.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Iterator, Optional
 
@@ -68,13 +69,19 @@ def json_objects(text: str) -> Iterator[dict[str, Any]]:
 
 
 def parse_verdict(text: str) -> Verdict:
-    """Last JSON object in ``text`` with ``score``/``passed``/``feedback``; score clamped to 0-10."""
+    """Last JSON object in ``text`` with ``score``/``passed``/``feedback``; score clamped to 0-10.
+
+    A NaN score (Python's JSON parser accepts ``NaN``) is not a verdict: it compares false with every
+    number, so it would outrank every real score ranked after it.
+    """
     found: Optional[Verdict] = None
     for obj in json_objects(text):
         if {"score", "passed", "feedback"} <= obj.keys():
             try:
                 verdict = Verdict.model_validate(obj)
             except ValueError:
+                continue
+            if math.isnan(verdict.score):
                 continue
             found = verdict.model_copy(update={"score": min(max(verdict.score, 0.0), 10.0)})
     if found is None:

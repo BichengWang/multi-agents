@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from agent.teams import ClaudeHarness, CodexHarness, ExecResult
+from agent.teams import ClaudeHarness, CodexHarness, ExecResult, LocalWorktree
+from agent.teams.harnesses.base import run_cli
+from agent.teams.harnesses.check import execute_check
 from agent.teams.harnesses.claude import parse_claude_output
 from agent.teams.harnesses.codex import parse_codex_events
 from agent.teams.pricing import cost_usd
@@ -73,6 +75,21 @@ def test_claude_harness_turns_failures_into_failed_runs_not_exceptions():
     assert result.exit_code == 124
 
 
+def test_a_vanished_workspace_directory_is_not_reported_as_a_missing_binary(tmp_path):
+    gone = str(tmp_path / "gone")
+    ws = LocalWorktree(gone, repo=str(tmp_path), common_dir=str(tmp_path), base_commit="0" * 40)
+    result = run(ClaudeHarness().run(ws, "task"))
+    assert result.exit_code != 0 and gone in result.final_message
+    assert "not found on PATH" not in result.final_message
+    check = run(execute_check(ws, "true", None))
+    assert not check.passed and gone in check.output_tail and "not found on PATH" not in check.output_tail
+
+    # A binary that really is missing is still reported as such.
+    here = LocalWorktree(str(tmp_path), repo=str(tmp_path), common_dir=str(tmp_path), base_commit="0" * 40)
+    missing = run(run_cli(here, ["multi-agents-no-such-binary"]))
+    assert missing.exit_code == 127 and "not found on PATH" in (missing.error or "")
+
+
 # ---- Codex --------------------------------------------------------------------------------
 
 
@@ -139,6 +156,19 @@ def test_codex_failed_turn_is_a_failed_run():
     assert result.exit_code != 0 and "not supported" in result.final_message
 
 
+def test_a_turn_that_fails_after_a_progress_message_reports_the_error_not_the_message():
+    events = [
+        {"type": "thread.started", "thread_id": "t-1"},
+        {"type": "turn.started"},
+        {"type": "item.completed", "item": {"type": "agent_message", "text": "I'll run the tests first."}},
+        {"type": "turn.failed", "error": {"message": "stream disconnected before completion"}},
+    ]
+    ws = codex_workspace("\n".join(json.dumps(e) for e in events))
+    result = run(CodexHarness("gpt-6-luna").run(ws, "t"))
+    assert result.exit_code != 0
+    assert "stream disconnected" in result.final_message and "run the tests" not in result.final_message
+
+
 # ---- Verdict extraction -------------------------------------------------------------------
 
 
@@ -148,7 +178,17 @@ def test_verdict_is_the_last_valid_object_in_prose_or_fences():
     assert verdict.score == 10 and verdict.passed and verdict.feedback == "ok {braces}"
 
 
-@pytest.mark.parametrize("text", ["", "no json", '{"score": 5}', '{"score": "high", "passed": true, "feedback": "x"}'])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "no json",
+        '{"score": 5}',
+        '{"score": "high", "passed": true, "feedback": "x"}',
+        # NaN compares false with everything, so it would outrank every real score that follows it.
+        '{"score": NaN, "passed": true, "feedback": "x"}',
+    ],
+)
 def test_invalid_verdict_text_raises(text):
     with pytest.raises(VerdictParseError):
         parse_verdict(text)

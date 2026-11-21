@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import re
 import shlex
 import signal
@@ -401,6 +402,19 @@ async def run_command(args: argparse.Namespace, console: Console) -> int:
         await workspace.close()
         return EXIT_APPLY
     runs_dir = args.runs_dir or default_runs_dir(workspace)
+    try:
+        # Checked before any agent runs: a save that fails afterwards would lose the patch.
+        Path(runs_dir).mkdir(parents=True, exist_ok=True)
+        if not os.access(runs_dir, os.W_OK | os.X_OK):
+            raise PermissionError("the directory is not writable")
+    except OSError as exc:
+        console.print(
+            f"[red]Cannot save run records in {escape(runs_dir)}:[/red] {escape(str(exc))}",
+            soft_wrap=True,
+            highlight=False,
+        )
+        await workspace.close()
+        return EXIT_USAGE
     task = CodingTask(task_id=datetime.now(timezone.utc).strftime("task-%Y%m%dT%H%M%S"), instruction=instruction)
     started_at = datetime.now(timezone.utc).isoformat()
     console.print(

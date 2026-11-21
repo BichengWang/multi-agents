@@ -303,8 +303,9 @@ class ReviewTeam:
 
     The coder keeps its session across rounds when its harness supports resume. Stops when the
     reviewer passes the change, after ``rounds`` attempts, or when the coder stops changing
-    anything. Returns the best-scoring patch (earliest on ties), not necessarily the last; with a
-    ``check`` reviewer, which can only pass or fail, the last attempt when none passes.
+    anything. Returns the best-scoring patch (earliest on ties, but never an attempt that changed
+    nothing over one that did), not necessarily the last; with a ``check`` reviewer, which can only
+    pass or fail, the last attempt when none passes.
     A failed review scores 0 and is recorded in ``meta["failures"]``. A ``check`` reviewer implies
     the team's check (same command); an LLM reviewer is shown the check result for each patch.
     ``meta["round_log"]`` keeps every attempt's patch, whether the reviewer passed it and whether
@@ -374,6 +375,13 @@ class ReviewTeam:
             # most feedback, so return it rather than attempt 1.
             patch = coder.last_patch
             meta["best_round"] = len(scores)
+        elif not patch.strip():
+            # An empty attempt scores 0, so it is best only when every attempt scored 0 (e.g. every
+            # review failed): then the earliest attempt that changed something wins, not the empty one.
+            changed = next((n for n, entry in enumerate(coder.log, 1) if entry["patch"].strip()), None)
+            if changed is not None:
+                entry = coder.log[changed - 1]
+                patch, meta["best_round"], meta["accepted"] = entry["patch"], changed, entry["passed"]
         await _record_check(meta, checker, patch)
         return TeamResult(patch, runs, time.perf_counter() - start, meta)
 
@@ -465,7 +473,8 @@ class BestTeam:
     """Each worker solves the task in its own fork; the judge scores every candidate patch.
 
     Workers may be different harnesses. A worker that crashes without producing a change is
-    dropped; if all fail the result has an empty patch. Ties pick the earliest candidate.
+    dropped; if all fail the result has an empty patch. Ties pick the earliest candidate, except
+    that a candidate that changed nothing never wins a tie against one that changed something.
     The judge scores each candidate independently (0-10), it does not rank them side by side.
     With a ``check`` (or a ``check`` judge), every candidate is also checked and candidates that
     fail rank below every candidate that passes; scores order within each group.
@@ -504,16 +513,20 @@ class BestTeam:
         meta: dict[str, Any] = {"team": self.name}
         try:
             flow = await pattern.run(WORKER_PROMPT.format(instruction=task.instruction))
-            patch = flow.final_output.patch
             flow_failures = flow.meta.get("failures", [])
-            meta.update(chosen=flow.meta["chosen"], scores=flow.meta["scores"])
-            if gate:
-                scored = [c for c in candidates if flow.meta["scores"][c.index - 1] is not None]
-                best = max(
-                    scored,
-                    key=lambda c: (c.check is not None and c.check.passed, flow.meta["scores"][c.index - 1]),
-                )
-                patch, meta["chosen"] = best.patch, best.index
+            scores = meta["scores"] = flow.meta["scores"]
+            scored = [c for c in candidates if scores[c.index - 1] is not None]
+            # Passing the check first (with one), then the judge's score. An empty patch scores 0 and
+            # never passes, so the last key only breaks a tie at 0 in favour of an actual change.
+            best = max(
+                scored,
+                key=lambda c: (
+                    gate and c.check is not None and c.check.passed,
+                    scores[c.index - 1],
+                    bool(c.patch.strip()),
+                ),
+            )
+            patch, meta["chosen"] = best.patch, best.index
         except RuntimeError as exc:
             meta.update(chosen=None, scores=[None] * len(candidates), error=str(exc))
         runs: list[HarnessRun] = []
