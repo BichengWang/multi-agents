@@ -333,9 +333,10 @@ def transcript_names(paths: Sequence[str], runs: Sequence[HarnessRun]) -> dict[s
     return names
 
 
-# Artifacts of one solve beyond patch.diff, runs.json and eval.log; a new solve of the pair removes
-# the previous solve's (a grading-only retry keeps them).
-SOLVE_ARTIFACTS = ("candidate-*", "round-*", "subtask-*", "transcript-*")
+# Artifacts of one solve beyond patch.diff and eval.log (which every write replaces); a new solve of
+# the pair removes the previous solve's (a grading-only retry keeps them). runs.json is rewritten
+# only when the solve returned a team result, so a timed-out or crashed solve must not inherit one.
+SOLVE_ARTIFACTS = ("candidate-*", "round-*", "subtask-*", "transcript-*", "runs.json")
 
 
 def _write_artifacts(
@@ -482,7 +483,8 @@ async def run_benchmark(
             transcripts,
         )
         stored = await ledger.append(record)
-        if record["patch"] or result is not None or transcripts:
+        # Once a workspace existed, write even an empty patch: the previous solve's must not stay.
+        if record["stage"] != "workspace":
             await asyncio.to_thread(
                 _write_artifacts, out, redactor, name, task.task_id, record["patch"], result, eval_log,
                 transcripts, new_solve="resumed_from_error" not in record,

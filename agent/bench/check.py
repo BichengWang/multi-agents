@@ -8,9 +8,9 @@ parser. Exit codes are not used: many ``test_cmds`` pipe through ``tee``.
 
 A patch passes iff it applies and introduces no failure against the base commit: every test that
 passed there still passes (a test that no longer runs, e.g. because the build broke, counts as
-failing) and no new test fails. Tests that already failed at the base commit are ignored. The base
-commit's results are computed once per task and shared by every team in the run; the first check
-runs them alongside the candidate.
+failing) and no new test fails. Tests that failed or were skipped at the base commit are ignored,
+even if they now fail. The base commit's results are computed once per task and shared by every
+team in the run; the first check runs them alongside the candidate.
 
 Agents see the check's summary and the tail of its log: the same output running the project's tests
 themselves would give. They never see the hidden tests, ``FAIL_TO_PASS`` / ``PASS_TO_PASS`` or the

@@ -208,6 +208,39 @@ def test_unknown_baseline_is_an_error():
         summarize(records(), baseline="solo:worker=codex")
 
 
+def test_a_baseline_with_results_outside_the_reported_teams_is_not_said_to_have_none():
+    review = "review:coder=claude,reviewer=claude"
+    with pytest.raises(ValueError, match="not among the reported teams") as exc:
+        summarize(records(), baseline="solo:worker=claude", teams=[review])
+    assert "has no results" not in str(exc.value)
+
+
+def test_a_team_without_results_in_the_task_scope_names_the_scope():
+    with pytest.raises(ValueError, match=r"no results for team\(s\) \['solo:worker=claude'\] on the 1 task"):
+        summarize(records(), teams=["solo:worker=claude"], task_ids=["t9"])
+
+
+def test_report_refuses_a_named_team_without_results_instead_of_reporting_every_team(tmp_path):
+    (tmp_path / "results.jsonl").write_text("\n".join(json.dumps(r) for r in records()) + "\n")
+    with pytest.raises(ValueError, match=r"no results for team\(s\) \['solo:worker=codex'\]"):
+        build_report(tmp_path, teams=["solo:worker=codex"])
+    with pytest.raises(ValueError, match="solo:worker=codex"):
+        build_report(tmp_path, teams=["solo:worker=claude", "solo:worker=codex"])
+
+
+def test_a_pair_that_failed_before_any_agent_ran_cost_nothing_when_counted_as_unresolved():
+    recs = [rec(t, team, True, 0.5, 10) for t in ("t1", "t2") for team in ("a", "b")]
+    recs[-1] = {**rec("t2", "b", None, None, None, error="workspace: RuntimeError: pull failed"), "stage": "workspace"}
+    s = summarize(recs, baseline="a", count_errors_as_failures=True)
+    b = s.teams[1]
+    assert b.unpriced == 0 and b.costs == [0.5, 0.0]
+    assert s.paired[0].extra_cost == pytest.approx(-0.5)
+    assert table(render(s))["b"]["Mean cost/task"] == "$0.250"
+    # A solve that was lost to the sandbox may have spent money: its cost stays unknown.
+    recs[-1] = {**recs[-1], "stage": "solve", "usage": {"cost_usd": None}}
+    assert summarize(recs, count_errors_as_failures=True).teams[1].unpriced == 1
+
+
 def test_report_command_reads_results_dir(tmp_path, capsys):
     (tmp_path / "results.jsonl").write_text(
         "\n".join(json.dumps(r) for r in records()) + "\n{torn line", encoding="utf-8"

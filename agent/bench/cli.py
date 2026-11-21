@@ -102,7 +102,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--solve-timeout",
         type=float,
         default=3600.0,
-        help="seconds per team solve before the pair is recorded as errored (default: %(default)s)",
+        help="seconds per team solve; a team that runs out is stopped and graded on what it left "
+        "in the workspace, with meta.timed_out and an unknown cost (default: %(default)s)",
     )
     run.add_argument(
         "--no-retry-errors", action="store_true", help="on resume, do not retry errored pairs"
