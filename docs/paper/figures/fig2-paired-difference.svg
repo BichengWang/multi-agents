@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" role="img" aria-labelledby="t d" font-family="Helvetica, Arial, sans-serif">
+<title id="t">Paired difference in resolve rate, team minus solo</title>
+<desc id="d">Two panels, review minus solo and best of 3 minus solo, in percentage points. Seven rows: all 48 tasks under four grading rules, then three task subsets under the current rule. Each row shows the difference as a dot, the Newcombe 95% interval as a thick bar and the Tango score 95% interval as a thin bar, with wins and losses at the right. Every interval contains zero.</desc>
+<rect x="0" y="0" width="760" height="300" fill="#ffffff"/>
+<text x="226" y="56" font-size="12" fill="#1f2933" text-anchor="end">All 48, current rule</text>
+<text x="226" y="83" font-size="12" fill="#1f2933" text-anchor="end">All 48, rule first published</text>
+<text x="226" y="110" font-size="12" fill="#1f2933" text-anchor="end">All 48, missing test counts as failed</text>
+<text x="226" y="137" font-size="12" fill="#1f2933" text-anchor="end">All 48, both stricter rules</text>
+<text x="226" y="170" font-size="12" fill="#1f2933" text-anchor="end">38, without classes B and C</text>
+<text x="226" y="197" font-size="12" fill="#1f2933" text-anchor="end">31, without all 17 flagged</text>
+<text x="226" y="224" font-size="12" fill="#1f2933" text-anchor="end">38, without langchain4j</text>
+<text x="341" y="22" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="bold">review − solo, points</text>
+<text x="465" y="40" font-size="12" fill="#7b8794" text-anchor="middle">W–L</text>
+<line x1="236" y1="40" x2="236" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="236" y="249" font-size="12" fill="#7b8794" text-anchor="middle">−20</text>
+<line x1="259.3" y1="40" x2="259.3" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="282.7" y1="40" x2="282.7" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="282.7" y="249" font-size="12" fill="#7b8794" text-anchor="middle">−10</text>
+<line x1="306" y1="40" x2="306" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="329.3" y1="40" x2="329.3" y2="234" stroke="#7b8794" stroke-width="1.2"/>
+<text x="329.3" y="249" font-size="12" fill="#7b8794" text-anchor="middle">0</text>
+<line x1="352.7" y1="40" x2="352.7" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="376" y1="40" x2="376" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="376" y="249" font-size="12" fill="#7b8794" text-anchor="middle">+10</text>
+<line x1="399.3" y1="40" x2="399.3" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="422.7" y1="40" x2="422.7" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="422.7" y="249" font-size="12" fill="#7b8794" text-anchor="middle">+20</text>
+<line x1="446" y1="40" x2="446" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="232" y1="149.5" x2="480" y2="149.5" stroke="#7b8794" stroke-width="0.8" stroke-dasharray="3 3"/>
+<rect x="316.7" y="48.5" width="63.7" height="7" fill="#7b8794"/>
+<line x1="312.8" y1="52" x2="394.6" y2="52" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="312.8" y1="47" x2="312.8" y2="57" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="394.6" y1="47" x2="394.6" y2="57" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="348.8" cy="52" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="465" y="56" font-size="12" fill="#1f2933" text-anchor="middle">2–0</text>
+<rect x="267.7" y="75.5" width="104.4" height="7" fill="#7b8794"/>
+<line x1="261" y1="79" x2="377" y2="79" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="261" y1="74" x2="261" y2="84" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="377" y1="74" x2="377" y2="84" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="319.6" cy="79" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="465" y="83" font-size="12" fill="#1f2933" text-anchor="middle">3–4</text>
+<rect x="322.1" y="102.5" width="71.6" height="7" fill="#7b8794"/>
+<line x1="321.8" y1="106" x2="407.9" y2="106" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="321.8" y1="101" x2="321.8" y2="111" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="407.9" y1="101" x2="407.9" y2="111" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="358.5" cy="106" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="465" y="110" font-size="12" fill="#1f2933" text-anchor="middle">3–0</text>
+<rect x="286" y="129.5" width="105.8" height="7" fill="#7b8794"/>
+<line x1="281.7" y1="133" x2="397.7" y2="133" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="281.7" y1="128" x2="281.7" y2="138" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="397.7" y1="128" x2="397.7" y2="138" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="339.1" cy="133" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="465" y="137" font-size="12" fill="#1f2933" text-anchor="middle">4–3</text>
+<rect x="313.8" y="162.5" width="79.2" height="7" fill="#7b8794"/>
+<line x1="308.8" y1="166" x2="410" y2="166" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="308.8" y1="161" x2="308.8" y2="171" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="410" y1="161" x2="410" y2="171" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="353.9" cy="166" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="465" y="170" font-size="12" fill="#1f2933" text-anchor="middle">2–0</text>
+<rect x="300.9" y="189.5" width="87.6" height="7" fill="#7b8794"/>
+<line x1="291.3" y1="193" x2="404.9" y2="193" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="291.3" y1="188" x2="291.3" y2="198" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="404.9" y1="188" x2="404.9" y2="198" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="344.4" cy="193" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="465" y="197" font-size="12" fill="#1f2933" text-anchor="middle">1–0</text>
+<rect x="306" y="216.5" width="46.8" height="7" fill="#7b8794"/>
+<line x1="286.5" y1="220" x2="372.2" y2="220" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="286.5" y1="215" x2="286.5" y2="225" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="372.2" y1="215" x2="372.2" y2="225" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="329.3" cy="220" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="465" y="224" font-size="12" fill="#1f2933" text-anchor="middle">0–0</text>
+<text x="611" y="22" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="bold">best of 3 − solo, points</text>
+<text x="735" y="40" font-size="12" fill="#7b8794" text-anchor="middle">W–L</text>
+<line x1="506" y1="40" x2="506" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="506" y="249" font-size="12" fill="#7b8794" text-anchor="middle">−20</text>
+<line x1="529.3" y1="40" x2="529.3" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="552.7" y1="40" x2="552.7" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="552.7" y="249" font-size="12" fill="#7b8794" text-anchor="middle">−10</text>
+<line x1="576" y1="40" x2="576" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="599.3" y1="40" x2="599.3" y2="234" stroke="#7b8794" stroke-width="1.2"/>
+<text x="599.3" y="249" font-size="12" fill="#7b8794" text-anchor="middle">0</text>
+<line x1="622.7" y1="40" x2="622.7" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="646" y1="40" x2="646" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="646" y="249" font-size="12" fill="#7b8794" text-anchor="middle">+10</text>
+<line x1="669.3" y1="40" x2="669.3" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="692.7" y1="40" x2="692.7" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<text x="692.7" y="249" font-size="12" fill="#7b8794" text-anchor="middle">+20</text>
+<line x1="716" y1="40" x2="716" y2="234" stroke="#d9dee4" stroke-width="1"/>
+<line x1="502" y1="149.5" x2="750" y2="149.5" stroke="#7b8794" stroke-width="0.8" stroke-dasharray="3 3"/>
+<rect x="572" y="48.5" width="73.8" height="7" fill="#7b8794"/>
+<line x1="564.8" y1="52" x2="656.6" y2="52" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="564.8" y1="47" x2="564.8" y2="57" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="656.6" y1="47" x2="656.6" y2="57" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="609.1" cy="52" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="735" y="56" font-size="12" fill="#1f2933" text-anchor="middle">2–1</text>
+<rect x="519" y="75.5" width="103.7" height="7" fill="#7b8794"/>
+<line x1="511" y1="79" x2="625.2" y2="79" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="511" y1="74" x2="511" y2="84" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="625.2" y1="74" x2="625.2" y2="84" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="570.2" cy="79" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="735" y="83" font-size="12" fill="#1f2933" text-anchor="middle">2–5</text>
+<rect x="589.8" y="102.5" width="94.8" height="7" fill="#7b8794"/>
+<line x1="589" y1="106" x2="695.2" y2="106" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="589" y1="101" x2="589" y2="111" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="695.2" y1="101" x2="695.2" y2="111" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="638.2" cy="106" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="735" y="110" font-size="12" fill="#1f2933" text-anchor="middle">5–1</text>
+<rect x="543.1" y="129.5" width="112.4" height="7" fill="#7b8794"/>
+<line x1="538.6" y1="133" x2="660" y2="133" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="538.6" y1="128" x2="538.6" y2="138" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="660" y1="128" x2="660" y2="138" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="599.3" cy="133" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="735" y="137" font-size="12" fill="#1f2933" text-anchor="middle">4–4</text>
+<rect x="583.8" y="162.5" width="79.2" height="7" fill="#7b8794"/>
+<line x1="578.8" y1="166" x2="680" y2="166" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="578.8" y1="161" x2="578.8" y2="171" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="680" y1="161" x2="680" y2="171" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="623.9" cy="166" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="735" y="170" font-size="12" fill="#1f2933" text-anchor="middle">2–0</text>
+<rect x="570.9" y="189.5" width="87.6" height="7" fill="#7b8794"/>
+<line x1="561.3" y1="193" x2="674.9" y2="193" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="561.3" y1="188" x2="561.3" y2="198" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="674.9" y1="188" x2="674.9" y2="198" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="614.4" cy="193" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="735" y="197" font-size="12" fill="#1f2933" text-anchor="middle">1–0</text>
+<rect x="554.9" y="216.5" width="64.8" height="7" fill="#7b8794"/>
+<line x1="536.4" y1="220" x2="631" y2="220" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="536.4" y1="215" x2="536.4" y2="225" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="631" y1="215" x2="631" y2="225" stroke="#1f2933" stroke-width="1.2"/>
+<circle cx="587.1" cy="220" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="735" y="224" font-size="12" fill="#1f2933" text-anchor="middle">0–1</text>
+<circle cx="242" cy="274" r="4.2" fill="#1f2933" stroke="#ffffff" stroke-width="1.2"/>
+<text x="252" y="278" font-size="12" fill="#1f2933">difference</text>
+<rect x="336" y="270.5" width="26" height="7" fill="#7b8794"/>
+<text x="368" y="278" font-size="12" fill="#1f2933">Newcombe 95% interval</text>
+<line x1="526" y1="274" x2="552" y2="274" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="526" y1="269" x2="526" y2="279" stroke="#1f2933" stroke-width="1.2"/>
+<line x1="552" y1="269" x2="552" y2="279" stroke="#1f2933" stroke-width="1.2"/>
+<text x="558" y="278" font-size="12" fill="#1f2933">Tango score 95% interval</text>
+</svg>

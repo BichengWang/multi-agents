@@ -1,0 +1,281 @@
+key,task_id,value,status,source,obtained
+class,JasperFx__wolverine-3582,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,JasperFx__wolverine-3608,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,JasperFx__wolverine-3642,A,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,JasperFx__wolverine-3695,C,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,NVlabs__cuda-oxide-381,C,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,Ombi-app__Ombi-5444,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,OrchardCMS__OrchardCore-19492,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,SubtitleEdit__subtitleedit-12895,C,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,agentscope-ai__agentscope-java-2189,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,agentscope-ai__agentscope-java-2257,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,angularsen__UnitsNet-1699,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,apache__parquet-java-3642,A,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,apache__parquet-java-3669,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,biomejs__biome-10853,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,biomejs__biome-10875,B,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,btraceio__btrace-897,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,colbymchenry__codegraph-1313,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,duckdb__duckdb-23634,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,floci-io__floci-1838,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,floci-io__floci-1870,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,floci-io__floci-1908,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,lance-format__lance-7565,B,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,lance-format__lance-7835,B,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5792,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5799,A,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5806,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5809,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5817,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5847,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5848,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5850,A,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5864,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,langchain4j__langchain4j-5869,A,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,luau-lang__luau-2506,A,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,modelcontextprotocol__rust-sdk-1005,C,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,notionnext-org__NotionNext-4290,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,notionnext-org__NotionNext-4338,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,nunit__nunit-5351,C,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,playcanvas__engine-9002,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,prefix-dev__pixi-6529,B,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,rust-lang__rust-bindgen-3391,A,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,xroche__httrack-584,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,xroche__httrack-599,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,xroche__httrack-610,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,xroche__httrack-789,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,xroche__httrack-803,C,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,xroche__httrack-810,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class,xroche__httrack-817,none,coded,"written matching rule (Appendix C) over the pinned dataset rows and the stored grading logs; a single coding pass, then the rule applied by script, not blind to the first pass",2026-11-22
+class_evidence,JasperFx__wolverine-3642,"hidden test calls `StoreIdentityOf`, which the reference patch adds; 0 of 7 required tests run",coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,JasperFx__wolverine-3695,7 required tests touched by neither patch; the test command skips the project the hidden patch edits,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,NVlabs__cuda-oxide-381,one unit test of another crate; the hidden patch edits a shell script that is never run,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,SubtitleEdit__subtitleedit-12895,one language-detection test decides a scroll-bar task; the six hidden tests never run,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,apache__parquet-java-3642,hidden test calls `hexToBytes`; the reference patch only removes `private` from it; 0 of 182 required tests run,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,biomejs__biome-10875,1 of 2 required tests is declared inside the reference patch; missing for every team,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,lance-format__lance-7565,1 of 2 required tests is a unit test inside the reference patch; the hidden Python test file is never run,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,lance-format__lance-7835,7 of 12 required test ids are defined inside the reference patch; same hidden file,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,langchain4j__langchain4j-5799,"hidden test calls `maskHeaders`, which the reference patch adds; 0 of 2,020 required tests run",coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,langchain4j__langchain4j-5850,"hidden test calls `handleStreamEnd`, which the reference patch adds; 0 of 194 required tests run",coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,langchain4j__langchain4j-5869,"hidden test calls `resolveEndpoint`; solo chose another name, 0 of 1,187 required tests run; both teams used it and resolve",coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,luau-lang__luau-2506,hidden test links against a feature flag only the reference patch defines,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,modelcontextprotocol__rust-sdk-1005,"one serialisation test; the hidden test binary reports ""running 0 tests""",coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,nunit__nunit-5351,three collection-performance tests; the hidden patch adds no test,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,prefix-dev__pixi-6529,2 of 3 required tests are defined inside the reference patch; hidden Python file never run,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,rust-lang__rust-bindgen-3391,hidden test asserts enum variant `NoHeadersProvided`; 0 of 670 required tests run,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_evidence,xroche__httrack-803,`28_local-pause.test` decides a help-text fix; the hidden patch edits a different test,coded,"evidence line of the class, read from the dataset rows and the stored grading logs",2026-11-22
+class_a_scope,langchain4j__langchain4j-5869,solo only,coded,class A applies to solo's pair only: review's and best of 3's final patches contain the symbol and resolve,2026-11-22
+class_a_kind,JasperFx__wolverine-3642,introduces,coded,"added and removed lines of the reference patch: the symbol is new, or an existing private method made accessible",2026-11-22
+class_a_kind,apache__parquet-java-3642,makes accessible,coded,"added and removed lines of the reference patch: the symbol is new, or an existing private method made accessible",2026-11-22
+class_a_kind,langchain4j__langchain4j-5799,introduces,coded,"added and removed lines of the reference patch: the symbol is new, or an existing private method made accessible",2026-11-22
+class_a_kind,langchain4j__langchain4j-5850,introduces,coded,"added and removed lines of the reference patch: the symbol is new, or an existing private method made accessible",2026-11-22
+class_a_kind,langchain4j__langchain4j-5869,introduces,coded,"added and removed lines of the reference patch: the symbol is new, or an existing private method made accessible",2026-11-22
+class_a_kind,luau-lang__luau-2506,introduces,coded,"added and removed lines of the reference patch: the symbol is new, or an existing private method made accessible",2026-11-22
+class_a_kind,rust-lang__rust-bindgen-3391,introduces,coded,"added and removed lines of the reference patch: the symbol is new, or an existing private method made accessible",2026-11-22
+partial_apply,btraceio__btrace-897,yes,coded,agent hunks partly applied on the hidden test file broke its compilation for every arm; outside the 17 flagged tasks,2026-11-22
+class_a_thirdparty_symbol,JasperFx__wolverine-3642,not covered,external,"public third-party SWE-bench-Live MultiLang submissions (Java and Rust), read from their published predictions: a submitted patch adds a line containing the symbol",2026-11-22
+class_a_thirdparty_symbol,apache__parquet-java-3642,yes,external,"public third-party SWE-bench-Live MultiLang submissions (Java and Rust), read from their published predictions: a submitted patch adds a line containing the symbol",2026-11-22
+class_a_thirdparty_symbol,langchain4j__langchain4j-5799,yes,external,"public third-party SWE-bench-Live MultiLang submissions (Java and Rust), read from their published predictions: a submitted patch adds a line containing the symbol",2026-11-22
+class_a_thirdparty_symbol,langchain4j__langchain4j-5850,yes,external,"public third-party SWE-bench-Live MultiLang submissions (Java and Rust), read from their published predictions: a submitted patch adds a line containing the symbol",2026-11-22
+class_a_thirdparty_symbol,langchain4j__langchain4j-5869,yes,external,"public third-party SWE-bench-Live MultiLang submissions (Java and Rust), read from their published predictions: a submitted patch adds a line containing the symbol",2026-11-22
+class_a_thirdparty_symbol,luau-lang__luau-2506,not covered,external,"public third-party SWE-bench-Live MultiLang submissions (Java and Rust), read from their published predictions: a submitted patch adds a line containing the symbol",2026-11-22
+class_a_thirdparty_symbol,rust-lang__rust-bindgen-3391,yes,external,"public third-party SWE-bench-Live MultiLang submissions (Java and Rust), read from their published predictions: a submitted patch adds a line containing the symbol",2026-11-22
+all_fail_issue_states_test,Ombi-app__Ombi-5444,not stated,coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+all_fail_issue_states_test,agentscope-ai__agentscope-java-2257,not stated,coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+all_fail_issue_states_test,floci-io__floci-1908,not stated,coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+all_fail_issue_states_test,notionnext-org__NotionNext-4290,unclear,coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+all_fail_issue_states_test,notionnext-org__NotionNext-4338,stated (page-icon half only),coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+all_fail_issue_states_test,xroche__httrack-610,unclear,coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+all_fail_issue_states_test,xroche__httrack-789,not stated,coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+all_fail_issue_states_test,xroche__httrack-817,unclear,coded,"a single coding pass of the failing required test, the stored logs and the issue text",2026-11-22
+hidden_file_hunks_decide_unresolved,btraceio__btrace-897,solo;review;best,coded,a single coding pass of the stored apply logs and test logs: landed agent hunks stop the hidden test class from compiling,2026-11-21
+hidden_file_hunks_decide_unresolved,nunit__nunit-5351,best,coded,a single coding pass of the stored apply logs and test logs: the landed hunk edits an expected message the hidden tests check,2026-11-21
+issue_created,JasperFx__wolverine-3582,2026-07-22T06:44:18Z,external,"GitHub REST API, created_at of linked issue #3580",2026-11-21
+issue_created,JasperFx__wolverine-3608,2026-07-23T15:22:21Z,external,"GitHub REST API, created_at of linked issue #3599",2026-11-21
+issue_created,JasperFx__wolverine-3642,2026-07-24T11:01:26Z,external,"GitHub REST API, created_at of linked issue #3618",2026-11-21
+issue_created,JasperFx__wolverine-3695,2026-07-28T13:17:14Z,external,earliest timestamp on the public page of linked issue #3680,2026-11-21
+issue_created,NVlabs__cuda-oxide-381,2026-07-12T11:25:22Z,external,"GitHub REST API, created_at of linked issue #380",2026-11-21
+issue_created,Ombi-app__Ombi-5444,2025-06-20T18:11:28Z,external,"GitHub REST API, created_at of linked issue #5239",2026-11-21
+issue_created,OrchardCMS__OrchardCore-19492,2026-06-30T16:12:39Z,external,"GitHub REST API, created_at of linked issue #19487",2026-11-21
+issue_created,SubtitleEdit__subtitleedit-12895,2026-07-28T00:31:33Z,external,earliest timestamp on the public page of linked issue #12894,2026-11-21
+issue_created,agentscope-ai__agentscope-java-2189,2026-07-13T05:46:26Z,external,"GitHub REST API, created_at of linked issue #2168",2026-11-21
+issue_created,agentscope-ai__agentscope-java-2257,2026-07-15T14:37:28Z,external,"GitHub REST API, created_at of linked issue #2235",2026-11-21
+issue_created,angularsen__UnitsNet-1699,2026-04-13T07:04:49Z,external,"GitHub REST API, created_at of linked issue #1652",2026-11-21
+issue_created,apache__parquet-java-3642,2026-07-13T05:40:45Z,external,"GitHub REST API, created_at of linked issue #3659",2026-11-21
+issue_created,apache__parquet-java-3669,2026-07-17T04:51:04Z,external,"GitHub REST API, created_at of linked issue #3671",2026-11-21
+issue_created,biomejs__biome-10853,2026-07-03T00:06:59Z,external,"GitHub REST API, created_at of linked issue #10840",2026-11-21
+issue_created,biomejs__biome-10875,2026-06-29T09:49:59Z,external,"GitHub REST API, created_at of linked issue #10795",2026-11-21
+issue_created,btraceio__btrace-897,2026-07-13T07:56:21Z,external,"GitHub REST API, created_at of linked issue #876",2026-11-21
+issue_created,colbymchenry__codegraph-1313,2026-07-14T11:33:09Z,external,"GitHub REST API, created_at of linked issue #1285",2026-11-21
+issue_created,duckdb__duckdb-23634,2026-07-06T09:29:44Z,external,"GitHub REST API, created_at of linked issue #23633",2026-11-21
+issue_created,floci-io__floci-1838,2026-07-11T09:59:47Z,external,"GitHub REST API, created_at of linked issue #1836",2026-11-21
+issue_created,floci-io__floci-1870,2026-07-04T20:35:39Z,external,"GitHub REST API, created_at of linked issue #1728",2026-11-21
+issue_created,floci-io__floci-1908,2026-07-06T17:46:47Z,external,"GitHub REST API, created_at of linked issue #1756",2026-11-21
+issue_created,lance-format__lance-7565,2026-06-24T02:49:54Z,external,"GitHub REST API, created_at of linked issue #7434",2026-11-21
+issue_created,lance-format__lance-7835,2026-06-25T17:56:53Z,external,"GitHub REST API, created_at of linked issue #7485",2026-11-21
+issue_created,langchain4j__langchain4j-5792,2026-07-17T03:32:25Z,external,"GitHub REST API, created_at of linked issue #5791",2026-11-21
+issue_created,langchain4j__langchain4j-5799,2026-07-19T11:51:50Z,external,"GitHub REST API, created_at of linked issue #5798",2026-11-21
+issue_created,langchain4j__langchain4j-5806,2026-07-20T02:25:43Z,external,"GitHub REST API, created_at of linked issue #5804",2026-11-21
+issue_created,langchain4j__langchain4j-5809,2026-07-20T04:07:15Z,external,"GitHub REST API, created_at of linked issue #5808",2026-11-21
+issue_created,langchain4j__langchain4j-5817,2026-07-21T12:20:10Z,external,"GitHub REST API, created_at of linked issue #5816",2026-11-21
+issue_created,langchain4j__langchain4j-5847,2026-07-27T04:12:19Z,external,"GitHub REST API, created_at of linked issue #5845",2026-11-21
+issue_created,langchain4j__langchain4j-5848,2026-07-27T04:12:27Z,external,"GitHub REST API, created_at of linked issue #5846",2026-11-21
+issue_created,langchain4j__langchain4j-5850,2026-07-27T05:02:06Z,external,"GitHub REST API, created_at of linked issue #5849",2026-11-21
+issue_created,langchain4j__langchain4j-5864,2026-07-28T01:55:59Z,external,"GitHub REST API, created_at of linked issue #5863",2026-11-21
+issue_created,langchain4j__langchain4j-5869,2026-07-28T05:41:09Z,external,earliest timestamp on the public page of linked issue #5865,2026-11-21
+issue_created,luau-lang__luau-2506,2026-07-04T04:23:01Z,external,"GitHub REST API, created_at of linked issue #2493",2026-11-21
+issue_created,modelcontextprotocol__rust-sdk-1005,2026-07-13T17:10:07Z,external,"GitHub REST API, created_at of linked issue #980",2026-11-21
+issue_created,notionnext-org__NotionNext-4290,2026-07-18T09:15:10Z,external,"GitHub REST API, created_at of linked issue #4288",2026-11-21
+issue_created,notionnext-org__NotionNext-4338,2026-07-28T09:00:13Z,external,earliest timestamp on the public page of linked issue #4334,2026-11-21
+issue_created,nunit__nunit-5351,2026-07-17T00:59:32Z,external,"GitHub REST API, created_at of linked issue #5348",2026-11-21
+issue_created,playcanvas__engine-9002,2026-07-01T15:01:57Z,external,"GitHub REST API, created_at of linked issue #8997",2026-11-21
+issue_created,prefix-dev__pixi-6529,2026-07-04T12:44:21Z,external,"GitHub REST API, created_at of linked issue #6527",2026-11-21
+issue_created,rust-lang__rust-bindgen-3391,2025-11-18T14:04:42Z,external,"GitHub REST API, created_at of linked issue #3320",2026-11-21
+issue_created,xroche__httrack-584,2026-07-14T07:10:16Z,external,"GitHub REST API, created_at of linked issue #562",2026-11-21
+issue_created,xroche__httrack-599,2026-07-16T08:15:51Z,external,"GitHub REST API, created_at of linked issue #598",2026-11-21
+issue_created,xroche__httrack-610,2026-07-16T08:32:23Z,external,"GitHub REST API, created_at of linked issue #602",2026-11-21
+issue_created,xroche__httrack-789,2026-07-27T08:05:03Z,external,earliest timestamp on the public page of linked issue #778,2026-11-21
+issue_created,xroche__httrack-803,2026-07-27T08:31:07Z,external,"GitHub REST API, created_at of linked issue #787",2026-11-21
+issue_created,xroche__httrack-810,2026-07-27T09:08:01Z,external,earliest timestamp on the public page of linked issue #798,2026-11-21
+issue_created,xroche__httrack-817,2026-07-27T12:08:52Z,external,earliest timestamp on the public page of linked issue #824,2026-11-21
+pr_created_checked,OrchardCMS__OrchardCore-19492,2026-07-01T12:16:05Z,external,"GitHub REST API, created_at of pull request #19492; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,biomejs__biome-10853,2026-07-04T22:25:00Z,external,"GitHub REST API, created_at of pull request #10853; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,rust-lang__rust-bindgen-3391,2026-07-07T04:11:06Z,external,"GitHub REST API, created_at of pull request #3391; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,NVlabs__cuda-oxide-381,2026-07-12T11:25:25Z,external,"GitHub REST API, created_at of pull request #381; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,xroche__httrack-584,2026-07-15T06:54:50Z,external,"GitHub REST API, created_at of pull request #584; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,apache__parquet-java-3669,2026-07-16T17:58:18Z,external,"GitHub REST API, created_at of pull request #3669; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,lance-format__lance-7835,2026-07-17T23:47:01Z,external,"GitHub REST API, created_at of pull request #7835; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,floci-io__floci-1908,2026-07-19T21:30:03Z,external,"GitHub REST API, created_at of pull request #1908; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,JasperFx__wolverine-3582,2026-07-22T07:22:39Z,external,"GitHub REST API, created_at of pull request #3582; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,langchain4j__langchain4j-5847,2026-07-27T04:12:52Z,external,"GitHub REST API, created_at of pull request #5847; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,xroche__httrack-803,2026-07-27T11:39:52Z,external,"GitHub REST API, created_at of pull request #803; equal to the dataset row's created_at",2026-11-21
+pr_created_checked,langchain4j__langchain4j-5864,2026-07-28T01:57:50Z,external,"GitHub REST API, created_at of pull request #5864; equal to the dataset row's created_at",2026-11-21
+root_instruction_file,JasperFx__wolverine-3582,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,JasperFx__wolverine-3608,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,JasperFx__wolverine-3642,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,JasperFx__wolverine-3695,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,NVlabs__cuda-oxide-381,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,Ombi-app__Ombi-5444,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,OrchardCMS__OrchardCore-19492,AGENTS.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,SubtitleEdit__subtitleedit-12895,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,agentscope-ai__agentscope-java-2189,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,agentscope-ai__agentscope-java-2257,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,angularsen__UnitsNet-1699,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,apache__parquet-java-3642,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,apache__parquet-java-3669,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,biomejs__biome-10853,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,biomejs__biome-10875,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,btraceio__btrace-897,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,colbymchenry__codegraph-1313,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,duckdb__duckdb-23634,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,floci-io__floci-1838,AGENTS.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,floci-io__floci-1870,AGENTS.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,floci-io__floci-1908,AGENTS.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,lance-format__lance-7565,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,lance-format__lance-7835,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5792,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5799,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5806,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5809,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5817,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5847,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5848,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5850,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5864,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,langchain4j__langchain4j-5869,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,luau-lang__luau-2506,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,modelcontextprotocol__rust-sdk-1005,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,notionnext-org__NotionNext-4290,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,notionnext-org__NotionNext-4338,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,nunit__nunit-5351,AGENTS.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,playcanvas__engine-9002,AGENTS.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,prefix-dev__pixi-6529,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,rust-lang__rust-bindgen-3391,none,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,xroche__httrack-584,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,xroche__httrack-599,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,xroche__httrack-610,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,xroche__httrack-789,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,xroche__httrack-803,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,xroche__httrack-810,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+root_instruction_file,xroche__httrack-817,CLAUDE.md,external,"GitHub REST API git tree of the task repository at its base commit (root CLAUDE.md, else root AGENTS.md)",2026-11-22
+fix_trailer_credits_model,JasperFx__wolverine-3582,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,JasperFx__wolverine-3608,Claude Opus 4.8,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,JasperFx__wolverine-3642,Claude Opus 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,JasperFx__wolverine-3695,Claude Opus 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,NVlabs__cuda-oxide-381,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,Ombi-app__Ombi-5444,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,OrchardCMS__OrchardCore-19492,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,SubtitleEdit__subtitleedit-12895,Claude Fable 5; Claude Opus 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,agentscope-ai__agentscope-java-2189,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,agentscope-ai__agentscope-java-2257,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,angularsen__UnitsNet-1699,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,apache__parquet-java-3642,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,apache__parquet-java-3669,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,biomejs__biome-10853,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,biomejs__biome-10875,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,btraceio__btrace-897,Claude Opus 4.8,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,colbymchenry__codegraph-1313,Claude Fable 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,duckdb__duckdb-23634,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,floci-io__floci-1838,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,floci-io__floci-1870,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,floci-io__floci-1908,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,lance-format__lance-7565,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,lance-format__lance-7835,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5792,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5799,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5806,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5809,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5817,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5847,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5848,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5850,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5864,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,langchain4j__langchain4j-5869,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,luau-lang__luau-2506,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,modelcontextprotocol__rust-sdk-1005,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,notionnext-org__NotionNext-4290,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,notionnext-org__NotionNext-4338,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,nunit__nunit-5351,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,playcanvas__engine-9002,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,prefix-dev__pixi-6529,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,rust-lang__rust-bindgen-3391,none found,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,xroche__httrack-584,Claude Opus 4.8,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,xroche__httrack-599,Claude Opus 4.8,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,xroche__httrack-610,Claude Opus 4.8,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,xroche__httrack-789,Claude Opus 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,xroche__httrack-803,Claude Opus 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,xroche__httrack-810,Claude Opus 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+fix_trailer_credits_model,xroche__httrack-817,Claude Opus 5,external,"commit-message trailers of the fix commits listed in the dataset row's commit_urls, read from their public .patch pages",2026-11-22
+repo_hooks.tasks_with_hook,,0,external,"GitHub REST API git tree of each task repository at its base commit (the public tree; that the sandbox copy held the same files is verified for biome only): no hook in a .claude/settings.json (biome's holds permission rules only) or in the frontmatter of any skill or subagent file, and no .mcp.json",2026-11-22
+pool.tasks,,231,dataset,rows of SWE-bench-Live/MultiLang at revision 3638632e8153 with created_at on or after 2026-07-01,2026-11-22
+pool.repos,,57,dataset,distinct repositories of those 231 rows,2026-11-22
+pool.rust_tasks,,68,dataset,Rust rows among those 231,2026-11-22
+pool.class_b_rule,,19,coded,"class B by the written rule over the 231 rows, before the declaration check",2026-11-22
+pool.class_b,,15,coded,"class B by the written rule over the 231 rows (pool.class_b_rule), confirmed by a scripted declaration check: the reference patch declares a function named by the required test's leaf on an added line of a file the hidden test patch does not touch",2026-11-22
+pool.class_b_rust,,15,coded,Rust tasks among the 15 confirmed class B tasks,2026-11-22
+pool.class_c_rule,,28,coded,class C by the written rule over the 231 rows,2026-11-22
+pool.class_c_checked,,23,coded,class C after a single coding pass of the 22 flagged tasks outside the pilot (17 kept) plus the 6 pilot tasks,2026-11-22
+class_a.static_screen_flagged,,13,coded,tasks flagged by the static screen for symbols on added lines of both the reference and the hidden test patch,2026-11-22
+class_a.static_screen_confirmed,,6,coded,"flagged tasks that are class A couplings, by a single coding pass of the 13",2026-11-22
+dataset.issue_chars_median,,1515,dataset,"median length of the 48 issue texts after strip(), characters",2026-11-22
+dataset.ref_lines_median,,26,dataset,median changed lines of the 48 reference patches,2026-11-22
+dataset.ref_lines_q1,,13.8,dataset,first quartile (linear interpolation) of changed lines of the 48 reference patches,2026-11-22
+dataset.ref_lines_q3,,59.2,dataset,third quartile (linear interpolation) of changed lines of the 48 reference patches,2026-11-22
+dataset.ref_lines_min,,4,dataset,"smallest reference patch of the 48, changed lines",2026-11-22
+dataset.ref_lines_max,,1475,dataset,"largest reference patch of the 48, changed lines",2026-11-22
+dataset.ref_single_file,,28,dataset,reference patches of the 48 that change one file,2026-11-22
+dataset.dropped_ref_lines_median,,55,dataset,median changed lines of the reference patches of the 22 dropped tasks,2026-11-22
+selection.rust_dropped,,10,dataset,Rust tasks among the 22 sampled tasks that failed reference-patch validation,2026-11-22
+review.approved_unresolved_reports_tests,,13,coded,"of the 19 approvals of unresolved patches, messages that report passing tests that exercise the change; a single coding pass of the full messages",2026-11-21
+review.approved_resolved_reports_tests,,19,coded,"of the 28 approvals of resolving patches, messages that report passing tests that exercise the change; a single coding pass of the full messages",2026-11-21
+review.approved_unresolved_says_not_run,,8,coded,"lower bound: of the 19 approvals of unresolved patches, messages that say something relevant was not run; a single coding pass",2026-11-21
+review.rejections_functional,,8,coded,"of the 14 reviewer rejections, those that claim a functional defect; a single coding pass",2026-11-21
+review.rejections_tests_only,,6,coded,"of the 14 reviewer rejections, those that ask only for tests, verification or clean-up; a single coding pass",2026-11-21
+background.messages,,10,coded,"lower bound: final messages (of 458) that answer a background monitor or end a self-scheduled loop; keyword search over the full messages in artifacts.tar.gz, every match read",2026-11-22
+leak.pairs_compared,,141,dataset,final pairs compared with the reference patch of the dataset row: those with a reference added line of 25 or more characters outside the hidden-test files (all but the three of langchain4j__langchain4j-5817),2026-11-22
+leak.verbatim_median,,0.076,dataset,median share of the reference patch's added lines reproduced verbatim by the final patch,2026-11-22
+leak.pairs_ge_half,,26,dataset,pairs reproducing at least half of the reference patch's added lines verbatim,2026-11-22
+leak.tasks_ge_half,,9,dataset,tasks on which those 26 pairs fall,2026-11-22
+leak.ge_half_failing,,4,dataset,"of those 26 pairs, the ones graded unresolved",2026-11-22
+leak.online_build_runs,,10,coded,"a single coding pass of the final messages (full text in artifacts.tar.gz) that mention online, network or internet: code-writing runs whose message says it ran, or tried to run, a build tool online",2026-11-22
+leak.online_build_tasks,,4,coded,tasks on which those 10 runs fall,2026-11-22
