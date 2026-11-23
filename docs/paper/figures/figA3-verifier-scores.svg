@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" role="img" aria-labelledby="t d" font-family="Helvetica, Arial, sans-serif">
+<title id="t">Verifier scores by outcome</title>
+<desc id="d">Panel a: the reviewer's score of the 48 returned review patches, stacked by resolved and unresolved. Panel b: the 144 judge scores as outlined bars, with the 48 chosen candidates overlaid and stacked by resolved and unresolved, and the counts of unique and tied top scores.</desc>
+<rect x="0" y="0" width="760" height="360" fill="#ffffff"/>
+<line x1="60" y1="272" x2="360" y2="272" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="54" y="276" font-size="12" fill="#7b8794" text-anchor="end">0</text>
+<line x1="60" y1="228" x2="360" y2="228" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="54" y="232" font-size="12" fill="#7b8794" text-anchor="end">5</text>
+<line x1="60" y1="184" x2="360" y2="184" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="54" y="188" font-size="12" fill="#7b8794" text-anchor="end">10</text>
+<line x1="60" y1="140" x2="360" y2="140" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="54" y="144" font-size="12" fill="#7b8794" text-anchor="end">15</text>
+<line x1="60" y1="96" x2="360" y2="96" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="54" y="100" font-size="12" fill="#7b8794" text-anchor="end">20</text>
+<line x1="60" y1="52" x2="360" y2="52" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="54" y="56" font-size="12" fill="#7b8794" text-anchor="end">25</text>
+<text x="69.4" y="288" font-size="12" fill="#7b8794" text-anchor="middle">2</text>
+<text x="106.9" y="288" font-size="12" fill="#7b8794" text-anchor="middle">3</text>
+<text x="144.4" y="288" font-size="12" fill="#7b8794" text-anchor="middle">4</text>
+<text x="181.9" y="288" font-size="12" fill="#7b8794" text-anchor="middle">5</text>
+<text x="219.4" y="288" font-size="12" fill="#7b8794" text-anchor="middle">6</text>
+<text x="256.9" y="288" font-size="12" fill="#7b8794" text-anchor="middle">7</text>
+<text x="294.4" y="288" font-size="12" fill="#7b8794" text-anchor="middle">8</text>
+<text x="331.9" y="288" font-size="12" fill="#7b8794" text-anchor="middle">9</text>
+<rect x="138.5" y="263.2" width="11.8" height="8.8" fill="#1f2933"/>
+<rect x="251.5" y="263.2" width="10.8" height="8.8" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="270.2" y="263.2" width="10.8" height="8.8" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="288.5" y="166.4" width="11.8" height="105.6" fill="#1f2933"/>
+<rect x="289" y="87.2" width="10.8" height="79.2" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="307.2" y="236.8" width="11.8" height="35.2" fill="#1f2933"/>
+<rect x="307.8" y="219.2" width="10.8" height="17.6" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="326" y="166.4" width="11.8" height="105.6" fill="#1f2933"/>
+<rect x="326.5" y="113.6" width="10.8" height="52.8" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<line x1="60" y1="272" x2="360" y2="272" stroke="#7b8794" stroke-width="1"/>
+<text x="60" y="24" font-size="13" fill="#1f2933" font-weight="bold">a. Reviewer, 48 returned patches</text>
+<text x="210" y="306" font-size="12" fill="#7b8794" text-anchor="middle">score</text>
+<line x1="410" y1="272" x2="740" y2="272" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="404" y="276" font-size="12" fill="#7b8794" text-anchor="end">0</text>
+<line x1="410" y1="238.2" x2="740" y2="238.2" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="404" y="242.2" font-size="12" fill="#7b8794" text-anchor="end">10</text>
+<line x1="410" y1="204.3" x2="740" y2="204.3" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="404" y="208.3" font-size="12" fill="#7b8794" text-anchor="end">20</text>
+<line x1="410" y1="170.5" x2="740" y2="170.5" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="404" y="174.5" font-size="12" fill="#7b8794" text-anchor="end">30</text>
+<line x1="410" y1="136.6" x2="740" y2="136.6" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="404" y="140.6" font-size="12" fill="#7b8794" text-anchor="end">40</text>
+<line x1="410" y1="102.8" x2="740" y2="102.8" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="404" y="106.8" font-size="12" fill="#7b8794" text-anchor="end">50</text>
+<line x1="410" y1="68.9" x2="740" y2="68.9" stroke="#d9dee4" stroke-width="0.8"/>
+<text x="404" y="72.9" font-size="12" fill="#7b8794" text-anchor="end">60</text>
+<text x="420.3" y="288" font-size="12" fill="#7b8794" text-anchor="middle">2</text>
+<text x="461.6" y="288" font-size="12" fill="#7b8794" text-anchor="middle">3</text>
+<text x="502.8" y="288" font-size="12" fill="#7b8794" text-anchor="middle">4</text>
+<text x="544.1" y="288" font-size="12" fill="#7b8794" text-anchor="middle">5</text>
+<text x="585.3" y="288" font-size="12" fill="#7b8794" text-anchor="middle">6</text>
+<text x="626.6" y="288" font-size="12" fill="#7b8794" text-anchor="middle">7</text>
+<text x="667.8" y="288" font-size="12" fill="#7b8794" text-anchor="middle">8</text>
+<text x="709.1" y="288" font-size="12" fill="#7b8794" text-anchor="middle">9</text>
+<rect x="411" y="265.2" width="18.6" height="6.8" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="452.2" y="268.6" width="18.6" height="3.4" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="454.8" y="268.6" width="13.6" height="3.4" fill="#1f2933"/>
+<rect x="534.8" y="255.1" width="18.6" height="16.9" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="576" y="244.9" width="18.6" height="27.1" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="579" y="268.6" width="12.6" height="3.4" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="617.2" y="248.3" width="18.6" height="23.7" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="620.2" y="268.6" width="12.6" height="3.4" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="637.9" y="244.9" width="18.6" height="27.1" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="640.4" y="265.2" width="13.6" height="6.8" fill="#1f2933"/>
+<rect x="640.9" y="261.8" width="12.6" height="3.4" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="658.5" y="204.3" width="18.6" height="67.7" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="661" y="261.8" width="13.6" height="10.2" fill="#1f2933"/>
+<rect x="661.5" y="251.7" width="12.6" height="10.2" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="679.1" y="184" width="18.6" height="88" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="681.6" y="258.5" width="13.6" height="13.5" fill="#1f2933"/>
+<rect x="682.1" y="244.9" width="12.6" height="13.5" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="699.8" y="65.5" width="18.6" height="206.5" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="702.2" y="221.2" width="13.6" height="50.8" fill="#1f2933"/>
+<rect x="702.8" y="194.2" width="12.6" height="27.1" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<rect x="720.4" y="251.7" width="18.6" height="20.3" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<rect x="722.9" y="261.8" width="13.6" height="10.2" fill="#1f2933"/>
+<rect x="723.4" y="255.1" width="12.6" height="6.8" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<line x1="410" y1="272" x2="740" y2="272" stroke="#7b8794" stroke-width="1"/>
+<text x="410" y="24" font-size="13" fill="#1f2933" font-weight="bold">b. Judge, 144 candidates; 48 chosen</text>
+<text x="575" y="306" font-size="12" fill="#7b8794" text-anchor="middle">score</text>
+<text x="16" y="162" font-size="12" fill="#7b8794" text-anchor="middle" transform="rotate(-90 16 162)">patches</text>
+<rect x="418" y="58" width="172" height="62" fill="#ffffff" stroke="#d9dee4" stroke-width="1"/>
+<text x="426" y="74" font-size="12" fill="#1f2933">Top score per task:</text>
+<text x="426" y="91" font-size="12" fill="#1f2933">unique 16, two-way tie 17,</text>
+<text x="426" y="108" font-size="12" fill="#1f2933">three-way tie 15</text>
+<rect x="60" y="334" width="12" height="10" fill="#1f2933"/>
+<text x="78" y="344" font-size="12" fill="#1f2933">resolved (review 29, chosen 28)</text>
+<rect x="330" y="334" width="12" height="10" fill="#e4e7eb" stroke="#1f2933" stroke-width="1"/>
+<text x="348" y="344" font-size="12" fill="#1f2933">unresolved (review 19, chosen 20)</text>
+<rect x="600" y="334" width="12" height="10" fill="none" stroke="#7b8794" stroke-width="1.2"/>
+<text x="618" y="344" font-size="12" fill="#1f2933">all 144 judge scores</text>
+</svg>

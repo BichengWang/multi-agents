@@ -1,0 +1,3979 @@
+{
+ "_about": {
+  "bootstrap_resamples": 200000,
+  "inputs": [
+   "results/2026-10-haiku-pilot/results.jsonl.gz",
+   "results/2026-10-haiku-pilot/gold.jsonl",
+   "results/2026-10-haiku-pilot/meta.json",
+   "results/2026-10-haiku-pilot/artifacts.tar.gz",
+   "docs/paper/labels.csv"
+  ],
+  "price_usd_per_million": {
+   "cache_read": 0.01,
+   "output": 0.5,
+   "uncached": 0.125
+  },
+  "rounding": "integers as they are; other numbers to six significant digits",
+  "sandbox_usd_per_hour": 0.668,
+  "seed": 20261029
+ },
+ "_tags": {
+  "agreement.review_best_pct": "REC",
+  "agreement.solo_best_pct": "REC",
+  "agreement.solo_review_pct": "REC",
+  "auc.judge_chosen": "REC",
+  "auc.judge_chosen.boot95": "REC",
+  "auc.judge_chosen.boot_used": "REC",
+  "auc.review_final": "REC",
+  "auc.review_final.boot95": "REC",
+  "auc.review_final.boot_used": "REC",
+  "auc.review_first": "REC",
+  "auc.review_first.boot95": "REC",
+  "auc.review_first.boot_used": "REC",
+  "band.rollout_total_billed.coder1": "REC",
+  "band.rollout_total_billed.solo": "REC",
+  "band.rollout_total_billed.worker1": "REC",
+  "band.rollout_total_billed.worker2": "REC",
+  "band.rollout_total_billed.worker3": "REC",
+  "band.same_config.base_geomean": "PRICE",
+  "band.same_config.base_total": "PRICE",
+  "band.same_config.billed_geomean": "REC",
+  "band.same_config.billed_total": "REC",
+  "byclass.judge.flag.A": "LAB",
+  "byclass.judge.flag.B": "LAB",
+  "byclass.judge.flag.C": "LAB",
+  "byclass.judge.flag.unflagged": "LAB",
+  "byclass.review.final.A": "LAB",
+  "byclass.review.final.B": "LAB",
+  "byclass.review.final.C": "LAB",
+  "byclass.review.final.unflagged": "LAB",
+  "byclass.review.first.A": "LAB",
+  "byclass.review.first.B": "LAB",
+  "byclass.review.first.C": "LAB",
+  "byclass.review.first.unflagged": "LAB",
+  "bylang.C": "REC",
+  "bylang.C#": "REC",
+  "bylang.C++": "REC",
+  "bylang.Java": "REC",
+  "bylang.JavaScript": "REC",
+  "bylang.Rust": "REC",
+  "bylang_first.C": "REC",
+  "bylang_first.C#": "REC",
+  "bylang_first.C++": "REC",
+  "bylang_first.Java": "REC",
+  "bylang_first.JavaScript": "REC",
+  "bylang_first.Rust": "REC",
+  "case.JasperFx__wolverine-3695.best.applied": "REC",
+  "case.JasperFx__wolverine-3695.best.chosen": "REC",
+  "case.JasperFx__wolverine-3695.best.f2p": "REC",
+  "case.JasperFx__wolverine-3695.best.p2p_failed": "REC",
+  "case.JasperFx__wolverine-3695.best.resolved": "REC",
+  "case.JasperFx__wolverine-3695.best.scores": "REC",
+  "case.JasperFx__wolverine-3695.review.applied": "REC",
+  "case.JasperFx__wolverine-3695.review.f2p": "REC",
+  "case.JasperFx__wolverine-3695.review.p2p_failed": "REC",
+  "case.JasperFx__wolverine-3695.review.resolved": "REC",
+  "case.JasperFx__wolverine-3695.review.returned_round": "REC",
+  "case.JasperFx__wolverine-3695.review.scores": "REC",
+  "case.JasperFx__wolverine-3695.solo.applied": "REC",
+  "case.JasperFx__wolverine-3695.solo.f2p": "REC",
+  "case.JasperFx__wolverine-3695.solo.p2p_failed": "REC",
+  "case.JasperFx__wolverine-3695.solo.resolved": "REC",
+  "case.langchain4j__langchain4j-5806.best.applied": "REC",
+  "case.langchain4j__langchain4j-5806.best.chosen": "REC",
+  "case.langchain4j__langchain4j-5806.best.f2p": "REC",
+  "case.langchain4j__langchain4j-5806.best.p2p_failed": "REC",
+  "case.langchain4j__langchain4j-5806.best.resolved": "REC",
+  "case.langchain4j__langchain4j-5806.best.scores": "REC",
+  "case.langchain4j__langchain4j-5806.review.applied": "REC",
+  "case.langchain4j__langchain4j-5806.review.f2p": "REC",
+  "case.langchain4j__langchain4j-5806.review.p2p_failed": "REC",
+  "case.langchain4j__langchain4j-5806.review.resolved": "REC",
+  "case.langchain4j__langchain4j-5806.review.returned_round": "REC",
+  "case.langchain4j__langchain4j-5806.review.scores": "REC",
+  "case.langchain4j__langchain4j-5806.solo.applied": "REC",
+  "case.langchain4j__langchain4j-5806.solo.f2p": "REC",
+  "case.langchain4j__langchain4j-5806.solo.p2p_failed": "REC",
+  "case.langchain4j__langchain4j-5806.solo.resolved": "REC",
+  "case.langchain4j__langchain4j-5869.best.applied": "REC",
+  "case.langchain4j__langchain4j-5869.best.chosen": "REC",
+  "case.langchain4j__langchain4j-5869.best.f2p": "REC",
+  "case.langchain4j__langchain4j-5869.best.p2p_failed": "REC",
+  "case.langchain4j__langchain4j-5869.best.resolved": "REC",
+  "case.langchain4j__langchain4j-5869.best.scores": "REC",
+  "case.langchain4j__langchain4j-5869.review.applied": "REC",
+  "case.langchain4j__langchain4j-5869.review.f2p": "REC",
+  "case.langchain4j__langchain4j-5869.review.p2p_failed": "REC",
+  "case.langchain4j__langchain4j-5869.review.resolved": "REC",
+  "case.langchain4j__langchain4j-5869.review.returned_round": "REC",
+  "case.langchain4j__langchain4j-5869.review.scores": "REC",
+  "case.langchain4j__langchain4j-5869.solo.applied": "REC",
+  "case.langchain4j__langchain4j-5869.solo.f2p": "REC",
+  "case.langchain4j__langchain4j-5869.solo.p2p_failed": "REC",
+  "case.langchain4j__langchain4j-5869.solo.resolved": "REC",
+  "case.nunit__nunit-5351.best.applied": "REC",
+  "case.nunit__nunit-5351.best.chosen": "REC",
+  "case.nunit__nunit-5351.best.f2p": "REC",
+  "case.nunit__nunit-5351.best.p2p_failed": "REC",
+  "case.nunit__nunit-5351.best.resolved": "REC",
+  "case.nunit__nunit-5351.best.scores": "REC",
+  "case.nunit__nunit-5351.review.applied": "REC",
+  "case.nunit__nunit-5351.review.f2p": "REC",
+  "case.nunit__nunit-5351.review.p2p_failed": "REC",
+  "case.nunit__nunit-5351.review.resolved": "REC",
+  "case.nunit__nunit-5351.review.returned_round": "REC",
+  "case.nunit__nunit-5351.review.scores": "REC",
+  "case.nunit__nunit-5351.solo.applied": "REC",
+  "case.nunit__nunit-5351.solo.f2p": "REC",
+  "case.nunit__nunit-5351.solo.p2p_failed": "REC",
+  "case.nunit__nunit-5351.solo.resolved": "REC",
+  "case.xroche__httrack-789.best.applied": "REC",
+  "case.xroche__httrack-789.best.chosen": "REC",
+  "case.xroche__httrack-789.best.f2p": "REC",
+  "case.xroche__httrack-789.best.p2p_failed": "REC",
+  "case.xroche__httrack-789.best.resolved": "REC",
+  "case.xroche__httrack-789.best.scores": "REC",
+  "case.xroche__httrack-789.review.applied": "REC",
+  "case.xroche__httrack-789.review.f2p": "REC",
+  "case.xroche__httrack-789.review.p2p_failed": "REC",
+  "case.xroche__httrack-789.review.resolved": "REC",
+  "case.xroche__httrack-789.review.returned_round": "REC",
+  "case.xroche__httrack-789.review.scores": "REC",
+  "case.xroche__httrack-789.solo.applied": "REC",
+  "case.xroche__httrack-789.solo.f2p": "REC",
+  "case.xroche__httrack-789.solo.p2p_failed": "REC",
+  "case.xroche__httrack-789.solo.resolved": "REC",
+  "change_requests.first_rule_resolved": "REC",
+  "change_requests.one_round_resolved": "REC",
+  "change_requests.resolved": "REC",
+  "change_requests.same_set": "REC",
+  "change_requests.tasks": "REC",
+  "cheaper_tasks.billed.best": "REC",
+  "cheaper_tasks.billed.review": "REC",
+  "class.a_kind": "LAB",
+  "class.a_static_screen": "LAB",
+  "class.a_thirdparty": "LAB",
+  "class.behavioural_not_stated": "LAB",
+  "class.counts.A": "LAB",
+  "class.counts.B": "LAB",
+  "class.counts.C": "LAB",
+  "class.counts.flagged": "LAB",
+  "class.decidable_from_rows": "LAB",
+  "class.discordant_flagged": "LAB",
+  "class.outcomes.A": "LAB",
+  "class.outcomes.B": "LAB",
+  "class.outcomes.C": "LAB",
+  "class.outcomes.unflagged": "LAB",
+  "class.rust_flagged": "LAB",
+  "class.share_pct.A": "LAB",
+  "class.share_pct.B": "LAB",
+  "class.share_pct.C": "LAB",
+  "classC.approved_resolved": "LAB",
+  "cluster.boot_zero_share_exact_pct.review": "REC",
+  "cluster.cr95.best_pts": "REC",
+  "cluster.cr95.review_pts": "REC",
+  "cluster.loo_repo.best_pts": "REC",
+  "cluster.loo_repo.review_pts": "REC",
+  "cluster.nonzero_repos.best": "REC",
+  "cluster.nonzero_repos.review": "REC",
+  "cluster.repo_boot90.best_pts": "REC",
+  "cluster.repo_boot90.review_pts": "REC",
+  "cluster.repo_boot95.best_pts": "REC",
+  "cluster.repo_boot95.review_pts": "REC",
+  "cluster.repo_boot_le0_pct.best": "REC",
+  "cluster.repo_boot_le0_pct.review": "REC",
+  "cost.base.mean.best": "PRICE",
+  "cost.base.mean.review": "PRICE",
+  "cost.base.mean.solo": "PRICE",
+  "cost.base.total.best": "PRICE",
+  "cost.base.total.review": "PRICE",
+  "cost.base.total.solo": "PRICE",
+  "cost.billed.mean.best": "REC",
+  "cost.billed.mean.review": "REC",
+  "cost.billed.mean.solo": "REC",
+  "cost.billed.median.best": "REC",
+  "cost.billed.median.review": "REC",
+  "cost.billed.median.solo": "REC",
+  "cost.billed.total.best": "REC",
+  "cost.billed.total.review": "REC",
+  "cost.billed.total.solo": "REC",
+  "costlier.base.best": "PRICE",
+  "costlier.base.review": "PRICE",
+  "costlier.billed.best": "REC",
+  "costlier.billed.review": "REC",
+  "costliest.share_billed_pct.best": "REC",
+  "costliest.share_billed_pct.review": "REC",
+  "costliest.share_billed_pct.solo": "REC",
+  "costliest.task.best": "REC",
+  "costliest.task.review": "REC",
+  "costliest.task.solo": "REC",
+  "coverage.newcombe90_pct": "ARITH",
+  "coverage.points": "ARITH",
+  "coverage.tables": "ARITH",
+  "coverage.tango90_pct": "ARITH",
+  "cp.upper95_2of48_pct": "ARITH",
+  "current_equals_test_only": "REC",
+  "discordant.best_losses": "REC",
+  "discordant.best_wins": "REC",
+  "discordant.ids": "REC",
+  "discordant.review_wins": "REC",
+  "equivalence.margin_needed_pts": "REC",
+  "failure_class.f2p_first.all": "REC",
+  "failure_class.f2p_first.best": "REC",
+  "failure_class.f2p_first.review": "REC",
+  "failure_class.f2p_first.solo": "REC",
+  "failure_class.report.all": "REC",
+  "failure_class.report.best": "REC",
+  "failure_class.report.review": "REC",
+  "failure_class.report.solo": "REC",
+  "fig2.all_newcombe_contain_zero": "LAB",
+  "fig2.min_exact_p": "LAB",
+  "final.started_day1": "REC",
+  "final.started_day2": "REC",
+  "final.started_range.day1": "REC",
+  "final.started_range.day2": "REC",
+  "geomean.base.best": "PRICE",
+  "geomean.base.best.t95": "PRICE",
+  "geomean.base.review": "PRICE",
+  "geomean.base.review.t95": "PRICE",
+  "geomean.billed.best": "REC",
+  "geomean.billed.best.t95": "REC",
+  "geomean.billed.review": "REC",
+  "geomean.billed.review.t95": "REC",
+  "gold.error": "REC",
+  "gold.invalid": "REC",
+  "gold.invalid_by_failure.f2p_failed": "REC",
+  "gold.invalid_by_failure.none": "REC",
+  "gold.invalid_by_failure.p2p_only": "REC",
+  "gold.sampled": "REC",
+  "gold.valid": "REC",
+  "grading.minutes_median": "REC",
+  "grading.minutes_p90": "REC",
+  "hidden_file.decides_unresolved": "LAB",
+  "hidden_file.hunks_kept": "REC",
+  "hidden_file.hunks_kept_resolved": "REC",
+  "hidden_file.touch": "REC",
+  "hidden_file.touch_by_arm.best": "REC",
+  "hidden_file.touch_by_arm.review": "REC",
+  "hidden_file.touch_by_arm.solo": "REC",
+  "httrack789.multiple_of_solo": "REC",
+  "httrack789.review_cost": "REC",
+  "instruction_files.agents_md_only": "LAB",
+  "instruction_files.citing_tasks_have_file": "LAB",
+  "instruction_files.claude_md": "LAB",
+  "instruction_files.either": "LAB",
+  "instruction_files.langchain4j_none": "LAB",
+  "instruction_files.messages_citing": "REC",
+  "instruction_files.tasks_citing": "REC",
+  "instruction_files.verdicts_citing": "REC",
+  "interval.cluster.90.best_pts": "REC",
+  "interval.cluster.90.review_pts": "REC",
+  "interval.cluster.95.best_pts": "REC",
+  "interval.cluster.95.review_pts": "REC",
+  "interval.exact.90.best_pts": "REC",
+  "interval.exact.90.review_pts": "REC",
+  "interval.exact.95.best_pts": "REC",
+  "interval.exact.95.review_pts": "REC",
+  "interval.newcombe.90.best_pts": "REC",
+  "interval.newcombe.90.review_pts": "REC",
+  "interval.newcombe.95.best_pts": "REC",
+  "interval.newcombe.95.review_pts": "REC",
+  "interval.tango.90.best_pts": "REC",
+  "interval.tango.90.review_pts": "REC",
+  "interval.tango.95.best_pts": "REC",
+  "interval.tango.95.review_pts": "REC",
+  "issues.after_pr": "LAB",
+  "issues.before_cutoff": "LAB",
+  "issues.before_cutoff_ids": "LAB",
+  "issues.resolved_each": "LAB",
+  "judge.chosen": "REC",
+  "judge.flag.pass_all_right": "REC",
+  "judge.flag.passed": "REC",
+  "judge.flag.precision_pct": "REC",
+  "judge.flag.right": "REC",
+  "judge.flag.share_resolved_pct": "REC",
+  "judge.flag.unresolved": "REC",
+  "judge.flag_x_outcome": "REC",
+  "judge.passed_flags_true": "REC",
+  "judge.resolved_by_top": "REC",
+  "judge.tiebreak_c1": "REC",
+  "judge.tiebreak_c2": "REC",
+  "judge.tied": "REC",
+  "judge.top": "REC",
+  "judge.unique_c1": "REC",
+  "kappa.review_best": "REC",
+  "kappa.solo_best": "REC",
+  "kappa.solo_review": "REC",
+  "label.background.messages": "LAB",
+  "label.dataset.dropped_ref_lines_median": "LAB",
+  "label.dataset.issue_chars_median": "LAB",
+  "label.dataset.ref_lines_max": "LAB",
+  "label.dataset.ref_lines_median": "LAB",
+  "label.dataset.ref_lines_min": "LAB",
+  "label.dataset.ref_lines_q1": "LAB",
+  "label.dataset.ref_lines_q3": "LAB",
+  "label.dataset.ref_single_file": "LAB",
+  "label.leak.ge_half_failing": "LAB",
+  "label.leak.online_build_runs": "LAB",
+  "label.leak.online_build_tasks": "LAB",
+  "label.leak.pairs_compared": "LAB",
+  "label.leak.pairs_ge_half": "LAB",
+  "label.leak.tasks_ge_half": "LAB",
+  "label.leak.verbatim_median": "LAB",
+  "label.review.approved_resolved_reports_tests": "LAB",
+  "label.review.approved_unresolved_reports_tests": "LAB",
+  "label.review.approved_unresolved_says_not_run": "LAB",
+  "label.review.rejections_functional": "LAB",
+  "label.review.rejections_tests_only": "LAB",
+  "lance7835.solo.billed_over_base": "PRICE",
+  "lance7835.solo.cost_usd": "REC",
+  "lance7835.solo.input_tokens": "REC",
+  "lance7835.solo.resolved": "REC",
+  "lance7835.solo.share_base_pct": "PRICE",
+  "lance7835.solo.share_billed_pct": "REC",
+  "loo.base.best": "PRICE",
+  "loo.base.review": "PRICE",
+  "loo.billed.best": "REC",
+  "loo.billed.review": "REC",
+  "median_ratio.base.best": "PRICE",
+  "median_ratio.base.review": "PRICE",
+  "median_ratio.billed.best": "REC",
+  "median_ratio.billed.review": "REC",
+  "missing_p2p.class_c_movers": "LAB",
+  "missing_p2p.listed_tests": "REC",
+  "missing_p2p.missing_tests": "REC",
+  "missing_p2p.move_tasks": "REC",
+  "missing_p2p.moves": "REC",
+  "missing_p2p.records": "REC",
+  "missing_p2p.share_pct": "REC",
+  "missing_p2p.tasks": "REC",
+  "nineteen.by_cause": "LAB",
+  "nineteen.equal_all_fail_tasks": "REC",
+  "nineteen.n": "REC",
+  "noise.gain_in_sd": "ARITH",
+  "noise.p_second_ahead1": "ARITH",
+  "noise.p_second_ahead2": "ARITH",
+  "noise.p_second_ahead2_wilson": "ARITH",
+  "noise.r1_tasks": "REC",
+  "noise.replicate.disagree": "REC",
+  "noise.replicate.pct": "REC",
+  "noise.replicate.review_wins_round1": "REC",
+  "noise.replicate.tasks_are_team_wins": "REC",
+  "noise.replicate.wilson95_pct": "REC",
+  "noise.replicate_first_rule.disagree": "REC",
+  "noise.replicate_first_rule.pct": "REC",
+  "noise.replicate_first_rule.wilson95_pct": "REC",
+  "noise.sd_diff_pts": "ARITH",
+  "noise.sd_diff_wilson_pts": "ARITH",
+  "noise.tiebreak_c1.disagree": "REC",
+  "noise.tiebreak_c1.tasks": "REC",
+  "onesided.gain10.best": "REC",
+  "onesided.gain10.best.range": "REC",
+  "onesided.gain10.review": "REC",
+  "onesided.gain10.review.range": "REC",
+  "onesided.gain15.best": "REC",
+  "onesided.gain15.best.range": "REC",
+  "onesided.gain15.max": "REC",
+  "onesided.gain15.missing.best": "REC",
+  "onesided.gain15.missing.best.exact": "REC",
+  "onesided.gain15.missing.best.range": "REC",
+  "onesided.gain15.missing.review": "REC",
+  "onesided.gain15.missing.review.exact": "REC",
+  "onesided.gain15.missing.review.range": "REC",
+  "onesided.gain15.noBC.best": "LAB",
+  "onesided.gain15.noBC.best.exact": "LAB",
+  "onesided.gain15.noBC.best.range": "LAB",
+  "onesided.gain15.noBC.review": "LAB",
+  "onesided.gain15.noBC.review.exact": "LAB",
+  "onesided.gain15.noBC.review.range": "LAB",
+  "onesided.gain15.review": "REC",
+  "onesided.gain15.review.range": "REC",
+  "onesided.gain20.best": "REC",
+  "onesided.gain20.best.range": "REC",
+  "onesided.gain20.review": "REC",
+  "onesided.gain20.review.range": "REC",
+  "onesided.gain5.best": "REC",
+  "onesided.gain5.best.range": "REC",
+  "onesided.gain5.review": "REC",
+  "onesided.gain5.review.range": "REC",
+  "onesided.loss10.best": "REC",
+  "onesided.loss10.best.range": "REC",
+  "onesided.loss10.rejected_both": "REC",
+  "onesided.loss10.review": "REC",
+  "onesided.loss10.review.range": "REC",
+  "onesided.loss15.best": "REC",
+  "onesided.loss15.best.range": "REC",
+  "onesided.loss15.review": "REC",
+  "onesided.loss15.review.range": "REC",
+  "onesided.loss5.best": "REC",
+  "onesided.loss5.best.range": "REC",
+  "onesided.loss5.review": "REC",
+  "onesided.loss5.review.range": "REC",
+  "overlap.agree": "REC",
+  "overlap.all3": "REC",
+  "overlap.none": "REC",
+  "overlap.other_patterns": "REC",
+  "overlap.review_best_only": "REC",
+  "overlap.solo_review_only": "REC",
+  "overlap.union": "REC",
+  "overlap.union_equals_review": "REC",
+  "p.wins_le2_given_gain10": "ARITH",
+  "pair.best.both": "REC",
+  "pair.best.diff_pts": "REC",
+  "pair.best.discordant": "REC",
+  "pair.best.losses": "REC",
+  "pair.best.mcnemar_exact": "REC",
+  "pair.best.mcnemar_midp": "REC",
+  "pair.best.n": "REC",
+  "pair.best.neither": "REC",
+  "pair.best.newcombe90_pts": "REC",
+  "pair.best.newcombe95_pts": "REC",
+  "pair.best.tango90_pts": "REC",
+  "pair.best.tango95_pts": "REC",
+  "pair.best.wins": "REC",
+  "pair.review.both": "REC",
+  "pair.review.diff_pts": "REC",
+  "pair.review.discordant": "REC",
+  "pair.review.losses": "REC",
+  "pair.review.mcnemar_exact": "REC",
+  "pair.review.mcnemar_midp": "REC",
+  "pair.review.n": "REC",
+  "pair.review.neither": "REC",
+  "pair.review.newcombe90_pts": "REC",
+  "pair.review.newcombe95_pts": "REC",
+  "pair.review.tango90_pts": "REC",
+  "pair.review.tango95_pts": "REC",
+  "pair.review.wins": "REC",
+  "pair.review_vs_best.both": "REC",
+  "pair.review_vs_best.diff_pts": "REC",
+  "pair.review_vs_best.losses": "REC",
+  "pair.review_vs_best.mcnemar_exact": "REC",
+  "pair.review_vs_best.mcnemar_midp": "REC",
+  "pair.review_vs_best.n": "REC",
+  "pair.review_vs_best.neither": "REC",
+  "pair.review_vs_best.newcombe90_pts": "REC",
+  "pair.review_vs_best.newcombe95_pts": "REC",
+  "pair.review_vs_best.tango90_pts": "REC",
+  "pair.review_vs_best.tango95_pts": "REC",
+  "pair.review_vs_best.wins": "REC",
+  "partial.resolved_first_rule": "REC",
+  "partial.tasks": "REC",
+  "per_task.model_plus_sandbox.best": "ARITH",
+  "per_task.model_plus_sandbox.review": "ARITH",
+  "per_task.model_plus_sandbox.solo": "ARITH",
+  "plan.cost_three_arms.124": "ARITH",
+  "plan.cost_three_arms.341": "ARITH",
+  "plan.cost_three_arms.72": "ARITH",
+  "plan.grading_per_task": "ARITH",
+  "plan.three_arms_per_task": "ARITH",
+  "plan.valid_expected": "LAB",
+  "plan.valid_fresh": "LAB",
+  "plan.valid_fresh_wilson95": "LAB",
+  "pool.class_b.count": "LAB",
+  "pool.class_b.pct": "LAB",
+  "pool.class_b.wilson95_pct": "LAB",
+  "pool.class_b_rule": "LAB",
+  "pool.class_b_rust": "LAB",
+  "pool.class_c_checked.count": "LAB",
+  "pool.class_c_checked.pct": "LAB",
+  "pool.class_c_checked.wilson95_pct": "LAB",
+  "pool.class_c_rule": "LAB",
+  "pool.repos": "LAB",
+  "pool.tasks": "LAB",
+  "power.asymptotic.min_discordant": "ARITH",
+  "power.midp.min_discordant": "ARITH",
+  "power.midp.min_discordant_p": "ARITH",
+  "power.midp.min_gain80_pts.0": "ARITH",
+  "power.midp.min_gain80_pts.2of39": "ARITH",
+  "power.midp.min_gain80_pts.wilson_hi": "ARITH",
+  "power.midp.n48.10": "ARITH",
+  "power.midp.n48.15": "ARITH",
+  "power.midp.n48.20": "ARITH",
+  "power.midp.n48.5": "ARITH",
+  "power.midp.n80.0.10": "ARITH",
+  "power.midp.n80.0.15": "ARITH",
+  "power.midp.n80.0.5": "ARITH",
+  "power.midp.n80.2of39.10": "ARITH",
+  "power.midp.n80.2of39.15": "ARITH",
+  "power.midp.n80.2of39.5": "ARITH",
+  "power.midp.n80.wilson_hi.10": "ARITH",
+  "power.midp.n80.wilson_hi.15": "ARITH",
+  "power.midp.n80.wilson_hi.5": "ARITH",
+  "power.midp.size_n48": "ARITH",
+  "power.min_discordant": "ARITH",
+  "power.min_discordant_p": "ARITH",
+  "power.min_gain80_pts.0": "ARITH",
+  "power.min_gain80_pts.2of39": "ARITH",
+  "power.min_gain80_pts.wilson_hi": "ARITH",
+  "power.n48.10": "ARITH",
+  "power.n48.15": "ARITH",
+  "power.n48.20": "ARITH",
+  "power.n48.5": "ARITH",
+  "power.n80.0.10": "ARITH",
+  "power.n80.0.15": "ARITH",
+  "power.n80.0.5": "ARITH",
+  "power.n80.2of39.10": "ARITH",
+  "power.n80.2of39.15": "ARITH",
+  "power.n80.2of39.5": "ARITH",
+  "power.n80.6of39.10": "ARITH",
+  "power.n80.6of39.15": "ARITH",
+  "power.n80.6of39.5": "ARITH",
+  "power.n80.wilson_hi.10": "ARITH",
+  "power.n80.wilson_hi.15": "ARITH",
+  "power.n80.wilson_hi.5": "ARITH",
+  "power.n80_fixed_psi.20.10": "ARITH",
+  "power.n80_fixed_psi.20.15": "ARITH",
+  "power.n80_fixed_psi.20.5": "ARITH",
+  "power.n80_fixed_psi.30.10": "ARITH",
+  "power.n80_fixed_psi.30.15": "ARITH",
+  "power.n80_fixed_psi.30.5": "ARITH",
+  "power.noise_levels": "ARITH",
+  "power.p_ge6_discordant_pct": "ARITH",
+  "power.size_n48": "ARITH",
+  "pr_date.checked": "LAB",
+  "price_step.resumed_coder_runs": "REC",
+  "price_step.share_pct.best": "PRICE",
+  "price_step.share_pct.resumed_coder": "PRICE",
+  "price_step.share_pct.review": "PRICE",
+  "price_step.share_pct.solo": "PRICE",
+  "price_step.share_pct.solo_without_lance": "PRICE",
+  "pricefit.above_billed_share_pct": "PRICE",
+  "pricefit.above_runs": "PRICE",
+  "pricefit.above_tasks": "PRICE",
+  "pricefit.at_base": "PRICE",
+  "pricefit.at_five": "PRICE",
+  "pricefit.below_base": "PRICE",
+  "pricefit.between": "PRICE",
+  "pricefit.billed_over_base_all": "PRICE",
+  "pricefit.higher_rate_share_pct": "PRICE",
+  "pricefit.ratio_range": "PRICE",
+  "pricefit.runs": "PRICE",
+  "ratio.base.best": "PRICE",
+  "ratio.base.best.boot95": "PRICE",
+  "ratio.base.review": "PRICE",
+  "ratio.base.review.boot95": "PRICE",
+  "ratio.billed.best": "REC",
+  "ratio.billed.best.boot95": "REC",
+  "ratio.billed.review": "REC",
+  "ratio.billed.review.boot95": "REC",
+  "ratio.model_plus_sandbox.best": "ARITH",
+  "ratio.model_plus_sandbox.best.boot95": "ARITH",
+  "ratio.model_plus_sandbox.review": "ARITH",
+  "ratio.model_plus_sandbox.review.boot95": "ARITH",
+  "ratio_of_medians.base.best": "PRICE",
+  "ratio_of_medians.base.review": "PRICE",
+  "ratio_of_medians.billed.best": "REC",
+  "ratio_of_medians.billed.review": "REC",
+  "records.final": "REC",
+  "records.superseded": "REC",
+  "records.total": "REC",
+  "redaction.flagged": "REC",
+  "redaction.patch_redacted": "REC",
+  "regrade.all_records_marked": "REC",
+  "regrade.by_arm.best": "REC",
+  "regrade.by_arm.review": "REC",
+  "regrade.by_arm.solo": "REC",
+  "regrade.changed": "REC",
+  "regrade.only_current_share_pct": "REC",
+  "regrade.resolved_total": "REC",
+  "regrade.tasks": "REC",
+  "regrade.tasks_all_three_changed": "REC",
+  "regrade.to_resolved": "REC",
+  "regrade.to_unresolved": "REC",
+  "rejected.all_in_hidden_files": "REC",
+  "rejected.by_arm.best": "REC",
+  "rejected.by_arm.review": "REC",
+  "rejected.by_arm.solo": "REC",
+  "rejected.patches": "REC",
+  "rejected.resolved_current": "REC",
+  "rejected.tasks": "REC",
+  "repo_hooks.tasks_with_hook": "LAB",
+  "repos.eff_clusters": "REC",
+  "repos.n": "REC",
+  "repos.top2": "REC",
+  "repos.top2_names": "REC",
+  "repos.top2_share_pct": "REC",
+  "resolved.best.count": "REC",
+  "resolved.best.pct": "REC",
+  "resolved.best.wilson95_pct": "REC",
+  "resolved.both_strict.best": "REC",
+  "resolved.both_strict.review": "REC",
+  "resolved.both_strict.solo": "REC",
+  "resolved.first_rule.best": "REC",
+  "resolved.first_rule.review": "REC",
+  "resolved.first_rule.solo": "REC",
+  "resolved.missing_test.best": "REC",
+  "resolved.missing_test.review": "REC",
+  "resolved.missing_test.solo": "REC",
+  "resolved.review.count": "REC",
+  "resolved.review.pct": "REC",
+  "resolved.review.wilson95_pct": "REC",
+  "resolved.solo.count": "REC",
+  "resolved.solo.pct": "REC",
+  "resolved.solo.wilson95_pct": "REC",
+  "review.ended_by_approval_or_three_rounds": "REC",
+  "review.final.pass_all_right": "REC",
+  "review.final.passed": "REC",
+  "review.final.precision_pct": "REC",
+  "review.final.right": "REC",
+  "review.final.share_resolved_pct": "REC",
+  "review.final.unresolved": "REC",
+  "review.final_approved": "REC",
+  "review.final_x_outcome": "REC",
+  "review.first.pass_all_right": "REC",
+  "review.first.passed": "REC",
+  "review.first.precision_pct": "REC",
+  "review.first.right": "REC",
+  "review.first.share_resolved_pct": "REC",
+  "review.first.unresolved": "REC",
+  "review.first_approved": "REC",
+  "review.first_approved_pct": "REC",
+  "review.first_x_outcome": "REC",
+  "review.not_approved_tasks": "REC",
+  "review.passing": "REC",
+  "review.patch_over_40k": "REC",
+  "review.rejections": "REC",
+  "review.reviews": "REC",
+  "review.rounds": "REC",
+  "revision.coder_share_billed_pct": "REC",
+  "revision.later_runs": "REC",
+  "revision.nine_tasks.review_share_pct": "REC",
+  "revision.nine_tasks.review_usd": "REC",
+  "revision.nine_tasks.solo_usd": "REC",
+  "revision.one_round.review_over_solo_base": "PRICE",
+  "revision.one_round.review_over_solo_billed": "REC",
+  "revision.share_base_pct": "PRICE",
+  "revision.share_billed_pct": "REC",
+  "rule.both.all48.best.both": "REC",
+  "rule.both.all48.best.diff_pts": "REC",
+  "rule.both.all48.best.losses": "REC",
+  "rule.both.all48.best.mcnemar_exact": "REC",
+  "rule.both.all48.best.mcnemar_midp": "REC",
+  "rule.both.all48.best.n": "REC",
+  "rule.both.all48.best.neither": "REC",
+  "rule.both.all48.best.newcombe90_pts": "REC",
+  "rule.both.all48.best.newcombe95_pts": "REC",
+  "rule.both.all48.best.tango90_pts": "REC",
+  "rule.both.all48.best.tango95_pts": "REC",
+  "rule.both.all48.best.wins": "REC",
+  "rule.both.all48.resolved": "REC",
+  "rule.both.all48.review.both": "REC",
+  "rule.both.all48.review.diff_pts": "REC",
+  "rule.both.all48.review.losses": "REC",
+  "rule.both.all48.review.mcnemar_exact": "REC",
+  "rule.both.all48.review.mcnemar_midp": "REC",
+  "rule.both.all48.review.n": "REC",
+  "rule.both.all48.review.neither": "REC",
+  "rule.both.all48.review.newcombe90_pts": "REC",
+  "rule.both.all48.review.newcombe95_pts": "REC",
+  "rule.both.all48.review.tango90_pts": "REC",
+  "rule.both.all48.review.tango95_pts": "REC",
+  "rule.both.all48.review.wins": "REC",
+  "rule.both.issue41.best.both": "LAB",
+  "rule.both.issue41.best.diff_pts": "LAB",
+  "rule.both.issue41.best.losses": "LAB",
+  "rule.both.issue41.best.mcnemar_exact": "LAB",
+  "rule.both.issue41.best.mcnemar_midp": "LAB",
+  "rule.both.issue41.best.n": "LAB",
+  "rule.both.issue41.best.neither": "LAB",
+  "rule.both.issue41.best.newcombe90_pts": "LAB",
+  "rule.both.issue41.best.newcombe95_pts": "LAB",
+  "rule.both.issue41.best.tango90_pts": "LAB",
+  "rule.both.issue41.best.tango95_pts": "LAB",
+  "rule.both.issue41.best.wins": "LAB",
+  "rule.both.issue41.resolved": "LAB",
+  "rule.both.issue41.review.both": "LAB",
+  "rule.both.issue41.review.diff_pts": "LAB",
+  "rule.both.issue41.review.losses": "LAB",
+  "rule.both.issue41.review.mcnemar_exact": "LAB",
+  "rule.both.issue41.review.mcnemar_midp": "LAB",
+  "rule.both.issue41.review.n": "LAB",
+  "rule.both.issue41.review.neither": "LAB",
+  "rule.both.issue41.review.newcombe90_pts": "LAB",
+  "rule.both.issue41.review.newcombe95_pts": "LAB",
+  "rule.both.issue41.review.tango90_pts": "LAB",
+  "rule.both.issue41.review.tango95_pts": "LAB",
+  "rule.both.issue41.review.wins": "LAB",
+  "rule.both.noBC.best.both": "LAB",
+  "rule.both.noBC.best.diff_pts": "LAB",
+  "rule.both.noBC.best.losses": "LAB",
+  "rule.both.noBC.best.mcnemar_exact": "LAB",
+  "rule.both.noBC.best.mcnemar_midp": "LAB",
+  "rule.both.noBC.best.n": "LAB",
+  "rule.both.noBC.best.neither": "LAB",
+  "rule.both.noBC.best.newcombe90_pts": "LAB",
+  "rule.both.noBC.best.newcombe95_pts": "LAB",
+  "rule.both.noBC.best.tango90_pts": "LAB",
+  "rule.both.noBC.best.tango95_pts": "LAB",
+  "rule.both.noBC.best.wins": "LAB",
+  "rule.both.noBC.resolved": "LAB",
+  "rule.both.noBC.review.both": "LAB",
+  "rule.both.noBC.review.diff_pts": "LAB",
+  "rule.both.noBC.review.losses": "LAB",
+  "rule.both.noBC.review.mcnemar_exact": "LAB",
+  "rule.both.noBC.review.mcnemar_midp": "LAB",
+  "rule.both.noBC.review.n": "LAB",
+  "rule.both.noBC.review.neither": "LAB",
+  "rule.both.noBC.review.newcombe90_pts": "LAB",
+  "rule.both.noBC.review.newcombe95_pts": "LAB",
+  "rule.both.noBC.review.tango90_pts": "LAB",
+  "rule.both.noBC.review.tango95_pts": "LAB",
+  "rule.both.noBC.review.wins": "LAB",
+  "rule.both.noflag.best.both": "LAB",
+  "rule.both.noflag.best.diff_pts": "LAB",
+  "rule.both.noflag.best.losses": "LAB",
+  "rule.both.noflag.best.mcnemar_exact": "LAB",
+  "rule.both.noflag.best.mcnemar_midp": "LAB",
+  "rule.both.noflag.best.n": "LAB",
+  "rule.both.noflag.best.neither": "LAB",
+  "rule.both.noflag.best.newcombe90_pts": "LAB",
+  "rule.both.noflag.best.newcombe95_pts": "LAB",
+  "rule.both.noflag.best.tango90_pts": "LAB",
+  "rule.both.noflag.best.tango95_pts": "LAB",
+  "rule.both.noflag.best.wins": "LAB",
+  "rule.both.noflag.resolved": "LAB",
+  "rule.both.noflag.review.both": "LAB",
+  "rule.both.noflag.review.diff_pts": "LAB",
+  "rule.both.noflag.review.losses": "LAB",
+  "rule.both.noflag.review.mcnemar_exact": "LAB",
+  "rule.both.noflag.review.mcnemar_midp": "LAB",
+  "rule.both.noflag.review.n": "LAB",
+  "rule.both.noflag.review.neither": "LAB",
+  "rule.both.noflag.review.newcombe90_pts": "LAB",
+  "rule.both.noflag.review.newcombe95_pts": "LAB",
+  "rule.both.noflag.review.tango90_pts": "LAB",
+  "rule.both.noflag.review.tango95_pts": "LAB",
+  "rule.both.noflag.review.wins": "LAB",
+  "rule.both.nolangchain.best.both": "REC",
+  "rule.both.nolangchain.best.diff_pts": "REC",
+  "rule.both.nolangchain.best.losses": "REC",
+  "rule.both.nolangchain.best.mcnemar_exact": "REC",
+  "rule.both.nolangchain.best.mcnemar_midp": "REC",
+  "rule.both.nolangchain.best.n": "REC",
+  "rule.both.nolangchain.best.neither": "REC",
+  "rule.both.nolangchain.best.newcombe90_pts": "REC",
+  "rule.both.nolangchain.best.newcombe95_pts": "REC",
+  "rule.both.nolangchain.best.tango90_pts": "REC",
+  "rule.both.nolangchain.best.tango95_pts": "REC",
+  "rule.both.nolangchain.best.wins": "REC",
+  "rule.both.nolangchain.resolved": "REC",
+  "rule.both.nolangchain.review.both": "REC",
+  "rule.both.nolangchain.review.diff_pts": "REC",
+  "rule.both.nolangchain.review.losses": "REC",
+  "rule.both.nolangchain.review.mcnemar_exact": "REC",
+  "rule.both.nolangchain.review.mcnemar_midp": "REC",
+  "rule.both.nolangchain.review.n": "REC",
+  "rule.both.nolangchain.review.neither": "REC",
+  "rule.both.nolangchain.review.newcombe90_pts": "REC",
+  "rule.both.nolangchain.review.newcombe95_pts": "REC",
+  "rule.both.nolangchain.review.tango90_pts": "REC",
+  "rule.both.nolangchain.review.tango95_pts": "REC",
+  "rule.both.nolangchain.review.wins": "REC",
+  "rule.current.all48.best.both": "REC",
+  "rule.current.all48.best.diff_pts": "REC",
+  "rule.current.all48.best.losses": "REC",
+  "rule.current.all48.best.mcnemar_exact": "REC",
+  "rule.current.all48.best.mcnemar_midp": "REC",
+  "rule.current.all48.best.n": "REC",
+  "rule.current.all48.best.neither": "REC",
+  "rule.current.all48.best.newcombe90_pts": "REC",
+  "rule.current.all48.best.newcombe95_pts": "REC",
+  "rule.current.all48.best.tango90_pts": "REC",
+  "rule.current.all48.best.tango95_pts": "REC",
+  "rule.current.all48.best.wins": "REC",
+  "rule.current.all48.resolved": "REC",
+  "rule.current.all48.review.both": "REC",
+  "rule.current.all48.review.diff_pts": "REC",
+  "rule.current.all48.review.losses": "REC",
+  "rule.current.all48.review.mcnemar_exact": "REC",
+  "rule.current.all48.review.mcnemar_midp": "REC",
+  "rule.current.all48.review.n": "REC",
+  "rule.current.all48.review.neither": "REC",
+  "rule.current.all48.review.newcombe90_pts": "REC",
+  "rule.current.all48.review.newcombe95_pts": "REC",
+  "rule.current.all48.review.tango90_pts": "REC",
+  "rule.current.all48.review.tango95_pts": "REC",
+  "rule.current.all48.review.wins": "REC",
+  "rule.current.issue41.best.both": "LAB",
+  "rule.current.issue41.best.diff_pts": "LAB",
+  "rule.current.issue41.best.losses": "LAB",
+  "rule.current.issue41.best.mcnemar_exact": "LAB",
+  "rule.current.issue41.best.mcnemar_midp": "LAB",
+  "rule.current.issue41.best.n": "LAB",
+  "rule.current.issue41.best.neither": "LAB",
+  "rule.current.issue41.best.newcombe90_pts": "LAB",
+  "rule.current.issue41.best.newcombe95_pts": "LAB",
+  "rule.current.issue41.best.tango90_pts": "LAB",
+  "rule.current.issue41.best.tango95_pts": "LAB",
+  "rule.current.issue41.best.wins": "LAB",
+  "rule.current.issue41.resolved": "LAB",
+  "rule.current.issue41.review.both": "LAB",
+  "rule.current.issue41.review.diff_pts": "LAB",
+  "rule.current.issue41.review.losses": "LAB",
+  "rule.current.issue41.review.mcnemar_exact": "LAB",
+  "rule.current.issue41.review.mcnemar_midp": "LAB",
+  "rule.current.issue41.review.n": "LAB",
+  "rule.current.issue41.review.neither": "LAB",
+  "rule.current.issue41.review.newcombe90_pts": "LAB",
+  "rule.current.issue41.review.newcombe95_pts": "LAB",
+  "rule.current.issue41.review.tango90_pts": "LAB",
+  "rule.current.issue41.review.tango95_pts": "LAB",
+  "rule.current.issue41.review.wins": "LAB",
+  "rule.current.noBC.best.both": "LAB",
+  "rule.current.noBC.best.diff_pts": "LAB",
+  "rule.current.noBC.best.losses": "LAB",
+  "rule.current.noBC.best.mcnemar_exact": "LAB",
+  "rule.current.noBC.best.mcnemar_midp": "LAB",
+  "rule.current.noBC.best.n": "LAB",
+  "rule.current.noBC.best.neither": "LAB",
+  "rule.current.noBC.best.newcombe90_pts": "LAB",
+  "rule.current.noBC.best.newcombe95_pts": "LAB",
+  "rule.current.noBC.best.tango90_pts": "LAB",
+  "rule.current.noBC.best.tango95_pts": "LAB",
+  "rule.current.noBC.best.wins": "LAB",
+  "rule.current.noBC.resolved": "LAB",
+  "rule.current.noBC.review.both": "LAB",
+  "rule.current.noBC.review.diff_pts": "LAB",
+  "rule.current.noBC.review.losses": "LAB",
+  "rule.current.noBC.review.mcnemar_exact": "LAB",
+  "rule.current.noBC.review.mcnemar_midp": "LAB",
+  "rule.current.noBC.review.n": "LAB",
+  "rule.current.noBC.review.neither": "LAB",
+  "rule.current.noBC.review.newcombe90_pts": "LAB",
+  "rule.current.noBC.review.newcombe95_pts": "LAB",
+  "rule.current.noBC.review.tango90_pts": "LAB",
+  "rule.current.noBC.review.tango95_pts": "LAB",
+  "rule.current.noBC.review.wins": "LAB",
+  "rule.current.noflag.best.both": "LAB",
+  "rule.current.noflag.best.diff_pts": "LAB",
+  "rule.current.noflag.best.losses": "LAB",
+  "rule.current.noflag.best.mcnemar_exact": "LAB",
+  "rule.current.noflag.best.mcnemar_midp": "LAB",
+  "rule.current.noflag.best.n": "LAB",
+  "rule.current.noflag.best.neither": "LAB",
+  "rule.current.noflag.best.newcombe90_pts": "LAB",
+  "rule.current.noflag.best.newcombe95_pts": "LAB",
+  "rule.current.noflag.best.tango90_pts": "LAB",
+  "rule.current.noflag.best.tango95_pts": "LAB",
+  "rule.current.noflag.best.wins": "LAB",
+  "rule.current.noflag.resolved": "LAB",
+  "rule.current.noflag.review.both": "LAB",
+  "rule.current.noflag.review.diff_pts": "LAB",
+  "rule.current.noflag.review.losses": "LAB",
+  "rule.current.noflag.review.mcnemar_exact": "LAB",
+  "rule.current.noflag.review.mcnemar_midp": "LAB",
+  "rule.current.noflag.review.n": "LAB",
+  "rule.current.noflag.review.neither": "LAB",
+  "rule.current.noflag.review.newcombe90_pts": "LAB",
+  "rule.current.noflag.review.newcombe95_pts": "LAB",
+  "rule.current.noflag.review.tango90_pts": "LAB",
+  "rule.current.noflag.review.tango95_pts": "LAB",
+  "rule.current.noflag.review.wins": "LAB",
+  "rule.current.nolangchain.best.both": "REC",
+  "rule.current.nolangchain.best.diff_pts": "REC",
+  "rule.current.nolangchain.best.losses": "REC",
+  "rule.current.nolangchain.best.mcnemar_exact": "REC",
+  "rule.current.nolangchain.best.mcnemar_midp": "REC",
+  "rule.current.nolangchain.best.n": "REC",
+  "rule.current.nolangchain.best.neither": "REC",
+  "rule.current.nolangchain.best.newcombe90_pts": "REC",
+  "rule.current.nolangchain.best.newcombe95_pts": "REC",
+  "rule.current.nolangchain.best.tango90_pts": "REC",
+  "rule.current.nolangchain.best.tango95_pts": "REC",
+  "rule.current.nolangchain.best.wins": "REC",
+  "rule.current.nolangchain.resolved": "REC",
+  "rule.current.nolangchain.review.both": "REC",
+  "rule.current.nolangchain.review.diff_pts": "REC",
+  "rule.current.nolangchain.review.losses": "REC",
+  "rule.current.nolangchain.review.mcnemar_exact": "REC",
+  "rule.current.nolangchain.review.mcnemar_midp": "REC",
+  "rule.current.nolangchain.review.n": "REC",
+  "rule.current.nolangchain.review.neither": "REC",
+  "rule.current.nolangchain.review.newcombe90_pts": "REC",
+  "rule.current.nolangchain.review.newcombe95_pts": "REC",
+  "rule.current.nolangchain.review.tango90_pts": "REC",
+  "rule.current.nolangchain.review.tango95_pts": "REC",
+  "rule.current.nolangchain.review.wins": "REC",
+  "rule.first.all48.best.both": "REC",
+  "rule.first.all48.best.diff_pts": "REC",
+  "rule.first.all48.best.losses": "REC",
+  "rule.first.all48.best.mcnemar_exact": "REC",
+  "rule.first.all48.best.mcnemar_midp": "REC",
+  "rule.first.all48.best.n": "REC",
+  "rule.first.all48.best.neither": "REC",
+  "rule.first.all48.best.newcombe90_pts": "REC",
+  "rule.first.all48.best.newcombe95_pts": "REC",
+  "rule.first.all48.best.tango90_pts": "REC",
+  "rule.first.all48.best.tango95_pts": "REC",
+  "rule.first.all48.best.wins": "REC",
+  "rule.first.all48.resolved": "REC",
+  "rule.first.all48.review.both": "REC",
+  "rule.first.all48.review.diff_pts": "REC",
+  "rule.first.all48.review.losses": "REC",
+  "rule.first.all48.review.mcnemar_exact": "REC",
+  "rule.first.all48.review.mcnemar_midp": "REC",
+  "rule.first.all48.review.n": "REC",
+  "rule.first.all48.review.neither": "REC",
+  "rule.first.all48.review.newcombe90_pts": "REC",
+  "rule.first.all48.review.newcombe95_pts": "REC",
+  "rule.first.all48.review.tango90_pts": "REC",
+  "rule.first.all48.review.tango95_pts": "REC",
+  "rule.first.all48.review.wins": "REC",
+  "rule.first.issue41.best.both": "LAB",
+  "rule.first.issue41.best.diff_pts": "LAB",
+  "rule.first.issue41.best.losses": "LAB",
+  "rule.first.issue41.best.mcnemar_exact": "LAB",
+  "rule.first.issue41.best.mcnemar_midp": "LAB",
+  "rule.first.issue41.best.n": "LAB",
+  "rule.first.issue41.best.neither": "LAB",
+  "rule.first.issue41.best.newcombe90_pts": "LAB",
+  "rule.first.issue41.best.newcombe95_pts": "LAB",
+  "rule.first.issue41.best.tango90_pts": "LAB",
+  "rule.first.issue41.best.tango95_pts": "LAB",
+  "rule.first.issue41.best.wins": "LAB",
+  "rule.first.issue41.resolved": "LAB",
+  "rule.first.issue41.review.both": "LAB",
+  "rule.first.issue41.review.diff_pts": "LAB",
+  "rule.first.issue41.review.losses": "LAB",
+  "rule.first.issue41.review.mcnemar_exact": "LAB",
+  "rule.first.issue41.review.mcnemar_midp": "LAB",
+  "rule.first.issue41.review.n": "LAB",
+  "rule.first.issue41.review.neither": "LAB",
+  "rule.first.issue41.review.newcombe90_pts": "LAB",
+  "rule.first.issue41.review.newcombe95_pts": "LAB",
+  "rule.first.issue41.review.tango90_pts": "LAB",
+  "rule.first.issue41.review.tango95_pts": "LAB",
+  "rule.first.issue41.review.wins": "LAB",
+  "rule.first.noBC.best.both": "LAB",
+  "rule.first.noBC.best.diff_pts": "LAB",
+  "rule.first.noBC.best.losses": "LAB",
+  "rule.first.noBC.best.mcnemar_exact": "LAB",
+  "rule.first.noBC.best.mcnemar_midp": "LAB",
+  "rule.first.noBC.best.n": "LAB",
+  "rule.first.noBC.best.neither": "LAB",
+  "rule.first.noBC.best.newcombe90_pts": "LAB",
+  "rule.first.noBC.best.newcombe95_pts": "LAB",
+  "rule.first.noBC.best.tango90_pts": "LAB",
+  "rule.first.noBC.best.tango95_pts": "LAB",
+  "rule.first.noBC.best.wins": "LAB",
+  "rule.first.noBC.resolved": "LAB",
+  "rule.first.noBC.review.both": "LAB",
+  "rule.first.noBC.review.diff_pts": "LAB",
+  "rule.first.noBC.review.losses": "LAB",
+  "rule.first.noBC.review.mcnemar_exact": "LAB",
+  "rule.first.noBC.review.mcnemar_midp": "LAB",
+  "rule.first.noBC.review.n": "LAB",
+  "rule.first.noBC.review.neither": "LAB",
+  "rule.first.noBC.review.newcombe90_pts": "LAB",
+  "rule.first.noBC.review.newcombe95_pts": "LAB",
+  "rule.first.noBC.review.tango90_pts": "LAB",
+  "rule.first.noBC.review.tango95_pts": "LAB",
+  "rule.first.noBC.review.wins": "LAB",
+  "rule.first.noflag.best.both": "LAB",
+  "rule.first.noflag.best.diff_pts": "LAB",
+  "rule.first.noflag.best.losses": "LAB",
+  "rule.first.noflag.best.mcnemar_exact": "LAB",
+  "rule.first.noflag.best.mcnemar_midp": "LAB",
+  "rule.first.noflag.best.n": "LAB",
+  "rule.first.noflag.best.neither": "LAB",
+  "rule.first.noflag.best.newcombe90_pts": "LAB",
+  "rule.first.noflag.best.newcombe95_pts": "LAB",
+  "rule.first.noflag.best.tango90_pts": "LAB",
+  "rule.first.noflag.best.tango95_pts": "LAB",
+  "rule.first.noflag.best.wins": "LAB",
+  "rule.first.noflag.resolved": "LAB",
+  "rule.first.noflag.review.both": "LAB",
+  "rule.first.noflag.review.diff_pts": "LAB",
+  "rule.first.noflag.review.losses": "LAB",
+  "rule.first.noflag.review.mcnemar_exact": "LAB",
+  "rule.first.noflag.review.mcnemar_midp": "LAB",
+  "rule.first.noflag.review.n": "LAB",
+  "rule.first.noflag.review.neither": "LAB",
+  "rule.first.noflag.review.newcombe90_pts": "LAB",
+  "rule.first.noflag.review.newcombe95_pts": "LAB",
+  "rule.first.noflag.review.tango90_pts": "LAB",
+  "rule.first.noflag.review.tango95_pts": "LAB",
+  "rule.first.noflag.review.wins": "LAB",
+  "rule.first.nolangchain.best.both": "REC",
+  "rule.first.nolangchain.best.diff_pts": "REC",
+  "rule.first.nolangchain.best.losses": "REC",
+  "rule.first.nolangchain.best.mcnemar_exact": "REC",
+  "rule.first.nolangchain.best.mcnemar_midp": "REC",
+  "rule.first.nolangchain.best.n": "REC",
+  "rule.first.nolangchain.best.neither": "REC",
+  "rule.first.nolangchain.best.newcombe90_pts": "REC",
+  "rule.first.nolangchain.best.newcombe95_pts": "REC",
+  "rule.first.nolangchain.best.tango90_pts": "REC",
+  "rule.first.nolangchain.best.tango95_pts": "REC",
+  "rule.first.nolangchain.best.wins": "REC",
+  "rule.first.nolangchain.resolved": "REC",
+  "rule.first.nolangchain.review.both": "REC",
+  "rule.first.nolangchain.review.diff_pts": "REC",
+  "rule.first.nolangchain.review.losses": "REC",
+  "rule.first.nolangchain.review.mcnemar_exact": "REC",
+  "rule.first.nolangchain.review.mcnemar_midp": "REC",
+  "rule.first.nolangchain.review.n": "REC",
+  "rule.first.nolangchain.review.neither": "REC",
+  "rule.first.nolangchain.review.newcombe90_pts": "REC",
+  "rule.first.nolangchain.review.newcombe95_pts": "REC",
+  "rule.first.nolangchain.review.tango90_pts": "REC",
+  "rule.first.nolangchain.review.tango95_pts": "REC",
+  "rule.first.nolangchain.review.wins": "REC",
+  "rule.missing.all48.best.both": "REC",
+  "rule.missing.all48.best.diff_pts": "REC",
+  "rule.missing.all48.best.losses": "REC",
+  "rule.missing.all48.best.mcnemar_exact": "REC",
+  "rule.missing.all48.best.mcnemar_midp": "REC",
+  "rule.missing.all48.best.n": "REC",
+  "rule.missing.all48.best.neither": "REC",
+  "rule.missing.all48.best.newcombe90_pts": "REC",
+  "rule.missing.all48.best.newcombe95_pts": "REC",
+  "rule.missing.all48.best.tango90_pts": "REC",
+  "rule.missing.all48.best.tango95_pts": "REC",
+  "rule.missing.all48.best.wins": "REC",
+  "rule.missing.all48.resolved": "REC",
+  "rule.missing.all48.review.both": "REC",
+  "rule.missing.all48.review.diff_pts": "REC",
+  "rule.missing.all48.review.losses": "REC",
+  "rule.missing.all48.review.mcnemar_exact": "REC",
+  "rule.missing.all48.review.mcnemar_midp": "REC",
+  "rule.missing.all48.review.n": "REC",
+  "rule.missing.all48.review.neither": "REC",
+  "rule.missing.all48.review.newcombe90_pts": "REC",
+  "rule.missing.all48.review.newcombe95_pts": "REC",
+  "rule.missing.all48.review.tango90_pts": "REC",
+  "rule.missing.all48.review.tango95_pts": "REC",
+  "rule.missing.all48.review.wins": "REC",
+  "rule.missing.issue41.best.both": "LAB",
+  "rule.missing.issue41.best.diff_pts": "LAB",
+  "rule.missing.issue41.best.losses": "LAB",
+  "rule.missing.issue41.best.mcnemar_exact": "LAB",
+  "rule.missing.issue41.best.mcnemar_midp": "LAB",
+  "rule.missing.issue41.best.n": "LAB",
+  "rule.missing.issue41.best.neither": "LAB",
+  "rule.missing.issue41.best.newcombe90_pts": "LAB",
+  "rule.missing.issue41.best.newcombe95_pts": "LAB",
+  "rule.missing.issue41.best.tango90_pts": "LAB",
+  "rule.missing.issue41.best.tango95_pts": "LAB",
+  "rule.missing.issue41.best.wins": "LAB",
+  "rule.missing.issue41.resolved": "LAB",
+  "rule.missing.issue41.review.both": "LAB",
+  "rule.missing.issue41.review.diff_pts": "LAB",
+  "rule.missing.issue41.review.losses": "LAB",
+  "rule.missing.issue41.review.mcnemar_exact": "LAB",
+  "rule.missing.issue41.review.mcnemar_midp": "LAB",
+  "rule.missing.issue41.review.n": "LAB",
+  "rule.missing.issue41.review.neither": "LAB",
+  "rule.missing.issue41.review.newcombe90_pts": "LAB",
+  "rule.missing.issue41.review.newcombe95_pts": "LAB",
+  "rule.missing.issue41.review.tango90_pts": "LAB",
+  "rule.missing.issue41.review.tango95_pts": "LAB",
+  "rule.missing.issue41.review.wins": "LAB",
+  "rule.missing.noBC.best.both": "LAB",
+  "rule.missing.noBC.best.diff_pts": "LAB",
+  "rule.missing.noBC.best.losses": "LAB",
+  "rule.missing.noBC.best.mcnemar_exact": "LAB",
+  "rule.missing.noBC.best.mcnemar_midp": "LAB",
+  "rule.missing.noBC.best.n": "LAB",
+  "rule.missing.noBC.best.neither": "LAB",
+  "rule.missing.noBC.best.newcombe90_pts": "LAB",
+  "rule.missing.noBC.best.newcombe95_pts": "LAB",
+  "rule.missing.noBC.best.tango90_pts": "LAB",
+  "rule.missing.noBC.best.tango95_pts": "LAB",
+  "rule.missing.noBC.best.wins": "LAB",
+  "rule.missing.noBC.resolved": "LAB",
+  "rule.missing.noBC.review.both": "LAB",
+  "rule.missing.noBC.review.diff_pts": "LAB",
+  "rule.missing.noBC.review.losses": "LAB",
+  "rule.missing.noBC.review.mcnemar_exact": "LAB",
+  "rule.missing.noBC.review.mcnemar_midp": "LAB",
+  "rule.missing.noBC.review.n": "LAB",
+  "rule.missing.noBC.review.neither": "LAB",
+  "rule.missing.noBC.review.newcombe90_pts": "LAB",
+  "rule.missing.noBC.review.newcombe95_pts": "LAB",
+  "rule.missing.noBC.review.tango90_pts": "LAB",
+  "rule.missing.noBC.review.tango95_pts": "LAB",
+  "rule.missing.noBC.review.wins": "LAB",
+  "rule.missing.noflag.best.both": "LAB",
+  "rule.missing.noflag.best.diff_pts": "LAB",
+  "rule.missing.noflag.best.losses": "LAB",
+  "rule.missing.noflag.best.mcnemar_exact": "LAB",
+  "rule.missing.noflag.best.mcnemar_midp": "LAB",
+  "rule.missing.noflag.best.n": "LAB",
+  "rule.missing.noflag.best.neither": "LAB",
+  "rule.missing.noflag.best.newcombe90_pts": "LAB",
+  "rule.missing.noflag.best.newcombe95_pts": "LAB",
+  "rule.missing.noflag.best.tango90_pts": "LAB",
+  "rule.missing.noflag.best.tango95_pts": "LAB",
+  "rule.missing.noflag.best.wins": "LAB",
+  "rule.missing.noflag.resolved": "LAB",
+  "rule.missing.noflag.review.both": "LAB",
+  "rule.missing.noflag.review.diff_pts": "LAB",
+  "rule.missing.noflag.review.losses": "LAB",
+  "rule.missing.noflag.review.mcnemar_exact": "LAB",
+  "rule.missing.noflag.review.mcnemar_midp": "LAB",
+  "rule.missing.noflag.review.n": "LAB",
+  "rule.missing.noflag.review.neither": "LAB",
+  "rule.missing.noflag.review.newcombe90_pts": "LAB",
+  "rule.missing.noflag.review.newcombe95_pts": "LAB",
+  "rule.missing.noflag.review.tango90_pts": "LAB",
+  "rule.missing.noflag.review.tango95_pts": "LAB",
+  "rule.missing.noflag.review.wins": "LAB",
+  "rule.missing.nolangchain.best.both": "REC",
+  "rule.missing.nolangchain.best.diff_pts": "REC",
+  "rule.missing.nolangchain.best.losses": "REC",
+  "rule.missing.nolangchain.best.mcnemar_exact": "REC",
+  "rule.missing.nolangchain.best.mcnemar_midp": "REC",
+  "rule.missing.nolangchain.best.n": "REC",
+  "rule.missing.nolangchain.best.neither": "REC",
+  "rule.missing.nolangchain.best.newcombe90_pts": "REC",
+  "rule.missing.nolangchain.best.newcombe95_pts": "REC",
+  "rule.missing.nolangchain.best.tango90_pts": "REC",
+  "rule.missing.nolangchain.best.tango95_pts": "REC",
+  "rule.missing.nolangchain.best.wins": "REC",
+  "rule.missing.nolangchain.resolved": "REC",
+  "rule.missing.nolangchain.review.both": "REC",
+  "rule.missing.nolangchain.review.diff_pts": "REC",
+  "rule.missing.nolangchain.review.losses": "REC",
+  "rule.missing.nolangchain.review.mcnemar_exact": "REC",
+  "rule.missing.nolangchain.review.mcnemar_midp": "REC",
+  "rule.missing.nolangchain.review.n": "REC",
+  "rule.missing.nolangchain.review.neither": "REC",
+  "rule.missing.nolangchain.review.newcombe90_pts": "REC",
+  "rule.missing.nolangchain.review.newcombe95_pts": "REC",
+  "rule.missing.nolangchain.review.tango90_pts": "REC",
+  "rule.missing.nolangchain.review.tango95_pts": "REC",
+  "rule.missing.nolangchain.review.wins": "REC",
+  "run.allow_unpriced": "REC",
+  "run.backend": "REC",
+  "run.check_base_commit": "REC",
+  "run.concurrency": "REC",
+  "run.dataset_revision": "REC",
+  "run.gold_file": "REC",
+  "run.invocations": "REC",
+  "run.isolate_history": "REC",
+  "run.max_cost_usd": "REC",
+  "run.seed": "REC",
+  "run.since": "REC",
+  "run.solve_timeout_s": "REC",
+  "run_order.excess_as_reads_usd": "PRICE",
+  "run_order.solo_base_drop_pct": "PRICE",
+  "run_order.solo_first": "REC",
+  "run_order.solo_higher": "REC",
+  "run_order.solo_review_best": "REC",
+  "run_order.uncached_ratio": "REC",
+  "run_order.uncached_ratio.t95": "REC",
+  "run_order.uncached_ratio_totals": "REC",
+  "run_order.understatement_factor": "PRICE",
+  "runs.by_role.best_judge": "REC",
+  "runs.by_role.best_worker": "REC",
+  "runs.by_role.review_coder": "REC",
+  "runs.by_role.review_reviewer": "REC",
+  "runs.by_role.solo_worker": "REC",
+  "runs.exit0": "REC",
+  "runs.total": "REC",
+  "sandbox.grading_hours.best": "REC",
+  "sandbox.grading_hours.review": "REC",
+  "sandbox.grading_hours.solo": "REC",
+  "sandbox.solve_hours.best": "REC",
+  "sandbox.solve_hours.review": "REC",
+  "sandbox.solve_hours.solo": "REC",
+  "scores.between_share_pct": "REC",
+  "scores.icc": "REC",
+  "scores.judge_all": "REC",
+  "scores.judge_ge8_pct": "REC",
+  "scores.judge_mean": "REC",
+  "scores.judge_median": "REC",
+  "scores.means_by_outcome.judge_chosen": "REC",
+  "scores.means_by_outcome.review_final": "REC",
+  "scores.means_by_outcome.review_first": "REC",
+  "scores.r_review_judge": "REC",
+  "scores.review_returned": "REC",
+  "selection.dropped": "REC",
+  "selection.dropped_as_unresolved_pct": "REC",
+  "selection.repos_mixed": "REC",
+  "selection.repos_sampled": "REC",
+  "selection.rust_dropped": "LAB",
+  "selection.rust_share_kept_pct": "REC",
+  "selection.rust_share_pool_pct": "LAB",
+  "sens.min_exact_p.appB": "LAB",
+  "sens.sign_count.appB": "LAB",
+  "set.all48.n": "REC",
+  "set.issue41.n": "LAB",
+  "set.noBC.n": "LAB",
+  "set.noflag.n": "LAB",
+  "set.nolangchain.n": "REC",
+  "share.role.base.best_pct": "PRICE",
+  "share.role.base.review_pct": "PRICE",
+  "share.role.billed.best_pct": "REC",
+  "share.role.billed.review_pct": "REC",
+  "sign_test.base.best": "PRICE",
+  "sign_test.base.review": "PRICE",
+  "sign_test.billed.best": "REC",
+  "sign_test.billed.review": "REC",
+  "superseded.cost_usd": "REC",
+  "superseded.graded": "REC",
+  "superseded.graded_resolved": "REC",
+  "superseded.graded_same_verdict": "REC",
+  "superseded.mid_run": "REC",
+  "superseded.no_model": "REC",
+  "superseded.started_range": "REC",
+  "superseded.swap_resolved.best": "REC",
+  "superseded.swap_resolved.review": "REC",
+  "superseded.swap_resolved.solo": "REC",
+  "superseded.with_cost": "REC",
+  "tasks.age_days_median": "REC",
+  "tasks.age_days_range": "REC",
+  "tasks.created_range": "REC",
+  "tasks.f2p_max": "REC",
+  "tasks.f2p_median": "REC",
+  "tasks.f2p_one": "REC",
+  "tasks.f2p_over100": "REC",
+  "tasks.languages.C": "REC",
+  "tasks.languages.C#": "REC",
+  "tasks.languages.C++": "REC",
+  "tasks.languages.Java": "REC",
+  "tasks.languages.JavaScript": "REC",
+  "tasks.languages.Rust": "REC",
+  "tasks.n": "REC",
+  "tasks.p2p_median": "REC",
+  "tasks.p2p_range": "REC",
+  "time.geomean_ratio.best": "REC",
+  "time.geomean_ratio.best.t95": "REC",
+  "time.geomean_ratio.review": "REC",
+  "time.geomean_ratio.review.t95": "REC",
+  "time.longest_min": "REC",
+  "time.longest_pair": "REC",
+  "time.mean_s.best": "REC",
+  "time.mean_s.review": "REC",
+  "time.mean_s.solo": "REC",
+  "time.median_s.best": "REC",
+  "time.median_s.review": "REC",
+  "time.median_s.solo": "REC",
+  "time.reached_limit": "REC",
+  "time.slower.best": "REC",
+  "time.slower.review": "REC",
+  "tokens.cache_read_share_pct.all": "REC",
+  "tokens.cache_read_share_pct.best": "REC",
+  "tokens.cache_read_share_pct.review": "REC",
+  "tokens.cache_read_share_pct.solo": "REC",
+  "tokens.input.best": "REC",
+  "tokens.input.review": "REC",
+  "tokens.input.solo": "REC",
+  "tokens.output.best": "REC",
+  "tokens.output.review": "REC",
+  "tokens.output.solo": "REC",
+  "tokens.ratio.input.best": "REC",
+  "tokens.ratio.input.review": "REC",
+  "tokens.ratio.output.best": "REC",
+  "tokens.ratio.output.review": "REC",
+  "total.billed_all_records": "REC",
+  "total.billed_final": "REC",
+  "trailer_credit.resolved_each": "LAB",
+  "trailer_credit.tasks": "LAB",
+  "unflagged.auc.judge_chosen": "LAB",
+  "unflagged.auc.judge_chosen.boot95": "LAB",
+  "unflagged.auc.judge_chosen.boot_used": "LAB",
+  "unflagged.auc.review_final": "LAB",
+  "unflagged.auc.review_final.boot95": "LAB",
+  "unflagged.auc.review_final.boot_used": "LAB",
+  "unflagged.judge_flag": "LAB",
+  "unflagged.judge_flag.passed": "LAB",
+  "unflagged.judge_flag.unresolved": "LAB",
+  "unflagged.n": "LAB",
+  "unflagged.review_final": "LAB",
+  "unflagged.review_final.passed": "LAB",
+  "unflagged.review_final.unresolved": "LAB",
+  "unflagged.review_first": "LAB",
+  "unflagged.review_first.passed": "LAB",
+  "unflagged.review_first.unresolved": "LAB",
+  "unresolved.total": "REC",
+  "upper.cluster.90.best_pts": "REC",
+  "upper.cluster.90.review_pts": "REC",
+  "upper.cluster.95.best_pts": "REC",
+  "upper.cluster.95.review_pts": "REC",
+  "upper.exact.90.best_pts": "REC",
+  "upper.exact.90.missing.best_pts": "REC",
+  "upper.exact.90.missing.review_pts": "REC",
+  "upper.exact.90.noBC.best_pts": "LAB",
+  "upper.exact.90.noBC.review_pts": "LAB",
+  "upper.exact.90.review_pts": "REC",
+  "upper.exact.95.best_pts": "REC",
+  "upper.exact.95.review_pts": "REC",
+  "upper.newcombe.90.best_pts": "REC",
+  "upper.newcombe.90.review_pts": "REC",
+  "upper.newcombe.95.best_pts": "REC",
+  "upper.newcombe.95.review_pts": "REC",
+  "upper.tango.90.best_pts": "REC",
+  "upper.tango.90.review_pts": "REC",
+  "upper.tango.95.best_pts": "REC",
+  "upper.tango.95.review_pts": "REC",
+  "verdicts.nowrite_cited": "REC",
+  "verdicts.nowrite_cited_by_role": "REC",
+  "verdicts.nowrite_cited_stored": "REC",
+  "verdicts.nowrite_keywords": "REC",
+  "verdicts.parsed": "REC",
+  "verdicts.stored_messages_cut": "REC",
+  "without_lance.base.best": "PRICE",
+  "without_lance.base.review": "PRICE",
+  "without_lance.billed.best": "REC",
+  "without_lance.billed.review": "REC"
+ },
+ "agreement.review_best_pct": 97.9167,
+ "agreement.solo_best_pct": 93.75,
+ "agreement.solo_review_pct": 95.8333,
+ "auc.judge_chosen": 0.566964,
+ "auc.judge_chosen.boot95": [
+  0.407343,
+  0.724074
+ ],
+ "auc.judge_chosen.boot_used": 200000,
+ "auc.review_final": 0.577132,
+ "auc.review_final.boot95": [
+  0.416992,
+  0.731092
+ ],
+ "auc.review_final.boot_used": 200000,
+ "auc.review_first": 0.557169,
+ "auc.review_first.boot95": [
+  0.391534,
+  0.72037
+ ],
+ "auc.review_first.boot_used": 200000,
+ "band.rollout_total_billed.coder1": 1.65659,
+ "band.rollout_total_billed.solo": 2.94774,
+ "band.rollout_total_billed.worker1": 1.33086,
+ "band.rollout_total_billed.worker2": 2.8648,
+ "band.rollout_total_billed.worker3": 1.72185,
+ "band.same_config.base_geomean": 1.07902,
+ "band.same_config.base_total": 1.36682,
+ "band.same_config.billed_geomean": 1.13386,
+ "band.same_config.billed_total": 2.21492,
+ "byclass.judge.flag.A": [
+  1,
+  6,
+  0,
+  0
+ ],
+ "byclass.judge.flag.B": [
+  0,
+  3,
+  0,
+  1
+ ],
+ "byclass.judge.flag.C": [
+  4,
+  1,
+  1,
+  0
+ ],
+ "byclass.judge.flag.unflagged": [
+  22,
+  6,
+  0,
+  3
+ ],
+ "byclass.review.final.A": [
+  1,
+  6,
+  0,
+  0
+ ],
+ "byclass.review.final.B": [
+  0,
+  4,
+  0,
+  0
+ ],
+ "byclass.review.final.C": [
+  5,
+  0,
+  1,
+  0
+ ],
+ "byclass.review.final.unflagged": [
+  22,
+  9,
+  0,
+  0
+ ],
+ "byclass.review.first.A": [
+  1,
+  6,
+  0,
+  0
+ ],
+ "byclass.review.first.B": [
+  0,
+  4,
+  0,
+  0
+ ],
+ "byclass.review.first.C": [
+  3,
+  0,
+  3,
+  0
+ ],
+ "byclass.review.first.unflagged": [
+  20,
+  5,
+  2,
+  4
+ ],
+ "bylang.C": [
+  8,
+  5,
+  5,
+  5
+ ],
+ "bylang.C#": [
+  9,
+  7,
+  7,
+  6
+ ],
+ "bylang.C++": [
+  2,
+  1,
+  1,
+  1
+ ],
+ "bylang.Java": [
+  18,
+  10,
+  12,
+  12
+ ],
+ "bylang.JavaScript": [
+  3,
+  1,
+  1,
+  1
+ ],
+ "bylang.Rust": [
+  8,
+  3,
+  3,
+  3
+ ],
+ "bylang_first.C": [
+  4,
+  2,
+  3
+ ],
+ "bylang_first.C#": [
+  5,
+  5,
+  4
+ ],
+ "bylang_first.C++": [
+  1,
+  0,
+  1
+ ],
+ "bylang_first.Java": [
+  7,
+  8,
+  6
+ ],
+ "bylang_first.JavaScript": [
+  0,
+  1,
+  0
+ ],
+ "bylang_first.Rust": [
+  3,
+  3,
+  3
+ ],
+ "case.JasperFx__wolverine-3695.best.applied": true,
+ "case.JasperFx__wolverine-3695.best.chosen": 3,
+ "case.JasperFx__wolverine-3695.best.f2p": [
+  7,
+  0,
+  0
+ ],
+ "case.JasperFx__wolverine-3695.best.p2p_failed": 0,
+ "case.JasperFx__wolverine-3695.best.resolved": true,
+ "case.JasperFx__wolverine-3695.best.scores": [
+  2.0,
+  2.0,
+  3.0
+ ],
+ "case.JasperFx__wolverine-3695.review.applied": true,
+ "case.JasperFx__wolverine-3695.review.f2p": [
+  7,
+  0,
+  0
+ ],
+ "case.JasperFx__wolverine-3695.review.p2p_failed": 0,
+ "case.JasperFx__wolverine-3695.review.resolved": true,
+ "case.JasperFx__wolverine-3695.review.returned_round": 2,
+ "case.JasperFx__wolverine-3695.review.scores": [
+  2.0,
+  4.0,
+  4.0
+ ],
+ "case.JasperFx__wolverine-3695.solo.applied": true,
+ "case.JasperFx__wolverine-3695.solo.f2p": [
+  7,
+  0,
+  0
+ ],
+ "case.JasperFx__wolverine-3695.solo.p2p_failed": 0,
+ "case.JasperFx__wolverine-3695.solo.resolved": true,
+ "case.langchain4j__langchain4j-5806.best.applied": true,
+ "case.langchain4j__langchain4j-5806.best.chosen": 1,
+ "case.langchain4j__langchain4j-5806.best.f2p": [
+  2237,
+  0,
+  0
+ ],
+ "case.langchain4j__langchain4j-5806.best.p2p_failed": 0,
+ "case.langchain4j__langchain4j-5806.best.resolved": true,
+ "case.langchain4j__langchain4j-5806.best.scores": [
+  9.0,
+  9.0,
+  9.0
+ ],
+ "case.langchain4j__langchain4j-5806.review.applied": true,
+ "case.langchain4j__langchain4j-5806.review.f2p": [
+  2237,
+  0,
+  0
+ ],
+ "case.langchain4j__langchain4j-5806.review.p2p_failed": 0,
+ "case.langchain4j__langchain4j-5806.review.resolved": true,
+ "case.langchain4j__langchain4j-5806.review.returned_round": 1,
+ "case.langchain4j__langchain4j-5806.review.scores": [
+  9.0
+ ],
+ "case.langchain4j__langchain4j-5806.solo.applied": true,
+ "case.langchain4j__langchain4j-5806.solo.f2p": [
+  2,
+  0,
+  2235
+ ],
+ "case.langchain4j__langchain4j-5806.solo.p2p_failed": 1,
+ "case.langchain4j__langchain4j-5806.solo.resolved": false,
+ "case.langchain4j__langchain4j-5869.best.applied": false,
+ "case.langchain4j__langchain4j-5869.best.chosen": 3,
+ "case.langchain4j__langchain4j-5869.best.f2p": [
+  1187,
+  0,
+  0
+ ],
+ "case.langchain4j__langchain4j-5869.best.p2p_failed": 0,
+ "case.langchain4j__langchain4j-5869.best.resolved": true,
+ "case.langchain4j__langchain4j-5869.best.scores": [
+  8.5,
+  8.5,
+  9.0
+ ],
+ "case.langchain4j__langchain4j-5869.review.applied": true,
+ "case.langchain4j__langchain4j-5869.review.f2p": [
+  1187,
+  0,
+  0
+ ],
+ "case.langchain4j__langchain4j-5869.review.p2p_failed": 0,
+ "case.langchain4j__langchain4j-5869.review.resolved": true,
+ "case.langchain4j__langchain4j-5869.review.returned_round": 1,
+ "case.langchain4j__langchain4j-5869.review.scores": [
+  8.0
+ ],
+ "case.langchain4j__langchain4j-5869.solo.applied": true,
+ "case.langchain4j__langchain4j-5869.solo.f2p": [
+  0,
+  0,
+  1187
+ ],
+ "case.langchain4j__langchain4j-5869.solo.p2p_failed": 0,
+ "case.langchain4j__langchain4j-5869.solo.resolved": false,
+ "case.nunit__nunit-5351.best.applied": false,
+ "case.nunit__nunit-5351.best.chosen": 2,
+ "case.nunit__nunit-5351.best.f2p": [
+  3,
+  0,
+  0
+ ],
+ "case.nunit__nunit-5351.best.p2p_failed": 4,
+ "case.nunit__nunit-5351.best.resolved": false,
+ "case.nunit__nunit-5351.best.scores": [
+  8.5,
+  9.0,
+  5.0
+ ],
+ "case.nunit__nunit-5351.review.applied": false,
+ "case.nunit__nunit-5351.review.f2p": [
+  3,
+  0,
+  0
+ ],
+ "case.nunit__nunit-5351.review.p2p_failed": 0,
+ "case.nunit__nunit-5351.review.resolved": true,
+ "case.nunit__nunit-5351.review.returned_round": 2,
+ "case.nunit__nunit-5351.review.scores": [
+  6.0,
+  9.0
+ ],
+ "case.nunit__nunit-5351.solo.applied": false,
+ "case.nunit__nunit-5351.solo.f2p": [
+  3,
+  0,
+  0
+ ],
+ "case.nunit__nunit-5351.solo.p2p_failed": 0,
+ "case.nunit__nunit-5351.solo.resolved": true,
+ "case.xroche__httrack-789.best.applied": true,
+ "case.xroche__httrack-789.best.chosen": 2,
+ "case.xroche__httrack-789.best.f2p": [
+  1,
+  1,
+  0
+ ],
+ "case.xroche__httrack-789.best.p2p_failed": 0,
+ "case.xroche__httrack-789.best.resolved": false,
+ "case.xroche__httrack-789.best.scores": [
+  7.0,
+  7.5,
+  6.0
+ ],
+ "case.xroche__httrack-789.review.applied": true,
+ "case.xroche__httrack-789.review.f2p": [
+  0,
+  0,
+  2
+ ],
+ "case.xroche__httrack-789.review.p2p_failed": 0,
+ "case.xroche__httrack-789.review.resolved": false,
+ "case.xroche__httrack-789.review.returned_round": 3,
+ "case.xroche__httrack-789.review.scores": [
+  5.0,
+  7.0,
+  8.0
+ ],
+ "case.xroche__httrack-789.solo.applied": true,
+ "case.xroche__httrack-789.solo.f2p": [
+  1,
+  1,
+  0
+ ],
+ "case.xroche__httrack-789.solo.p2p_failed": 0,
+ "case.xroche__httrack-789.solo.resolved": false,
+ "change_requests.first_rule_resolved": [
+  4,
+  3
+ ],
+ "change_requests.one_round_resolved": [
+  22,
+  24
+ ],
+ "change_requests.resolved": [
+  5,
+  5
+ ],
+ "change_requests.same_set": true,
+ "change_requests.tasks": 9,
+ "cheaper_tasks.billed.best": [
+  "lance-format__lance-7835",
+  "prefix-dev__pixi-6529"
+ ],
+ "cheaper_tasks.billed.review": [
+  "lance-format__lance-7565",
+  "lance-format__lance-7835",
+  "luau-lang__luau-2506",
+  "modelcontextprotocol__rust-sdk-1005",
+  "prefix-dev__pixi-6529"
+ ],
+ "class.a_kind": [
+  6,
+  1
+ ],
+ "class.a_static_screen": [
+  6,
+  13
+ ],
+ "class.a_thirdparty": [
+  5,
+  5
+ ],
+ "class.behavioural_not_stated": [
+  4,
+  8
+ ],
+ "class.counts.A": 7,
+ "class.counts.B": 4,
+ "class.counts.C": 6,
+ "class.counts.flagged": 17,
+ "class.decidable_from_rows": 10,
+ "class.discordant_flagged": [
+  2,
+  3
+ ],
+ "class.outcomes.A": [
+  0,
+  1,
+  1
+ ],
+ "class.outcomes.B": [
+  0,
+  0,
+  0
+ ],
+ "class.outcomes.C": [
+  6,
+  6,
+  5
+ ],
+ "class.outcomes.unflagged": [
+  21,
+  22,
+  22
+ ],
+ "class.rust_flagged": [
+  7,
+  8
+ ],
+ "class.share_pct.A": 14.5833,
+ "class.share_pct.B": 8.33333,
+ "class.share_pct.C": 12.5,
+ "classC.approved_resolved": 5,
+ "cluster.boot_zero_share_exact_pct.review": 35.9734,
+ "cluster.cr95.best_pts": [
+  -7.07587,
+  11.2425
+ ],
+ "cluster.cr95.review_pts": [
+  -3.08484,
+  11.4182
+ ],
+ "cluster.loo_repo.best_pts": [
+  -2.63158,
+  4.25532
+ ],
+ "cluster.loo_repo.review_pts": [
+  0.0,
+  4.87805
+ ],
+ "cluster.nonzero_repos.best": 2,
+ "cluster.nonzero_repos.review": 1,
+ "cluster.repo_boot90.best_pts": [
+  -5.71429,
+  8.16327
+ ],
+ "cluster.repo_boot90.review_pts": [
+  0.0,
+  9.23077
+ ],
+ "cluster.repo_boot95.best_pts": [
+  -7.31707,
+  9.23077
+ ],
+ "cluster.repo_boot95.review_pts": [
+  0.0,
+  10.1695
+ ],
+ "cluster.repo_boot_le0_pct.best": 46.1679,
+ "cluster.repo_boot_le0_pct.review": 35.9734,
+ "cost.base.mean.best": 0.107442,
+ "cost.base.mean.review": 0.050962,
+ "cost.base.mean.solo": 0.0273818,
+ "cost.base.total.best": 5.15722,
+ "cost.base.total.review": 2.44618,
+ "cost.base.total.solo": 1.31433,
+ "cost.billed.mean.best": 0.166533,
+ "cost.billed.mean.review": 0.0984474,
+ "cost.billed.mean.solo": 0.0614113,
+ "cost.billed.median.best": 0.0700796,
+ "cost.billed.median.review": 0.019018,
+ "cost.billed.median.solo": 0.0113024,
+ "cost.billed.total.best": 7.9936,
+ "cost.billed.total.review": 4.72547,
+ "cost.billed.total.solo": 2.94774,
+ "costlier.base.best": 48,
+ "costlier.base.review": 44,
+ "costlier.billed.best": 46,
+ "costlier.billed.review": 43,
+ "costliest.share_billed_pct.best": 14.8664,
+ "costliest.share_billed_pct.review": 15.9612,
+ "costliest.share_billed_pct.solo": 47.1062,
+ "costliest.task.best": "lance-format__lance-7835",
+ "costliest.task.review": "xroche__httrack-789",
+ "costliest.task.solo": "lance-format__lance-7835",
+ "coverage.newcombe90_pct": [
+  5.08194,
+  11.2643
+ ],
+ "coverage.points": 15,
+ "coverage.tables": 20825,
+ "coverage.tango90_pct": [
+  0.0,
+  5.71679
+ ],
+ "cp.upper95_2of48_pct": 12.5414,
+ "current_equals_test_only": 144,
+ "discordant.best_losses": [
+  "nunit__nunit-5351"
+ ],
+ "discordant.best_wins": [
+  "langchain4j__langchain4j-5806",
+  "langchain4j__langchain4j-5869"
+ ],
+ "discordant.ids": [
+  "langchain4j__langchain4j-5806",
+  "langchain4j__langchain4j-5869",
+  "nunit__nunit-5351"
+ ],
+ "discordant.review_wins": [
+  "langchain4j__langchain4j-5806",
+  "langchain4j__langchain4j-5869"
+ ],
+ "equivalence.margin_needed_pts": [
+  8.75458,
+  12.5414
+ ],
+ "failure_class.f2p_first.all": [
+  23,
+  36,
+  1
+ ],
+ "failure_class.f2p_first.best": [
+  7,
+  12,
+  1
+ ],
+ "failure_class.f2p_first.review": [
+  8,
+  11,
+  0
+ ],
+ "failure_class.f2p_first.solo": [
+  8,
+  13,
+  0
+ ],
+ "failure_class.report.all": [
+  20,
+  33,
+  7
+ ],
+ "failure_class.report.best": [
+  6,
+  12,
+  2
+ ],
+ "failure_class.report.review": [
+  7,
+  10,
+  2
+ ],
+ "failure_class.report.solo": [
+  7,
+  11,
+  3
+ ],
+ "fig2.all_newcombe_contain_zero": true,
+ "fig2.min_exact_p": 0.21875,
+ "final.started_day1": 34,
+ "final.started_day2": 110,
+ "final.started_range.day1": [
+  "2026-10-29T17:54:03Z",
+  "2026-10-29T19:05:17Z"
+ ],
+ "final.started_range.day2": [
+  "2026-10-31T01:43:12Z",
+  "2026-10-31T04:24:41Z"
+ ],
+ "geomean.base.best": 5.15151,
+ "geomean.base.best.t95": [
+  4.49646,
+  5.902
+ ],
+ "geomean.base.review": 1.971,
+ "geomean.base.review.t95": [
+  1.60272,
+  2.4239
+ ],
+ "geomean.billed.best": 5.13709,
+ "geomean.billed.best.t95": [
+  4.27535,
+  6.17253
+ ],
+ "geomean.billed.review": 2.08703,
+ "geomean.billed.review.t95": [
+  1.55849,
+  2.79481
+ ],
+ "gold.error": 1,
+ "gold.invalid": 21,
+ "gold.invalid_by_failure.f2p_failed": 7,
+ "gold.invalid_by_failure.none": 2,
+ "gold.invalid_by_failure.p2p_only": 12,
+ "gold.sampled": 70,
+ "gold.valid": 48,
+ "grading.minutes_median": 3.59865,
+ "grading.minutes_p90": 11.5013,
+ "hidden_file.decides_unresolved": 4,
+ "hidden_file.hunks_kept": 34,
+ "hidden_file.hunks_kept_resolved": 14,
+ "hidden_file.touch": 71,
+ "hidden_file.touch_by_arm.best": 24,
+ "hidden_file.touch_by_arm.review": 25,
+ "hidden_file.touch_by_arm.solo": 22,
+ "httrack789.multiple_of_solo": 33.6774,
+ "httrack789.review_cost": 0.754242,
+ "instruction_files.agents_md_only": 6,
+ "instruction_files.citing_tasks_have_file": true,
+ "instruction_files.claude_md": 19,
+ "instruction_files.either": 25,
+ "instruction_files.langchain4j_none": true,
+ "instruction_files.messages_citing": 40,
+ "instruction_files.tasks_citing": 16,
+ "instruction_files.verdicts_citing": 15,
+ "interval.cluster.90.best_pts": [
+  -5.50039,
+  9.66705
+ ],
+ "interval.cluster.90.review_pts": [
+  -1.8375,
+  10.1708
+ ],
+ "interval.cluster.95.best_pts": [
+  -7.07587,
+  11.2425
+ ],
+ "interval.cluster.95.review_pts": [
+  -3.08484,
+  11.4182
+ ],
+ "interval.exact.90.best_pts": [
+  -5.66827,
+  10.2514
+ ],
+ "interval.exact.90.review_pts": [
+  -1.65877,
+  12.5414
+ ],
+ "interval.exact.95.best_pts": [
+  -7.47655,
+  13.2134
+ ],
+ "interval.exact.95.review_pts": [
+  -3.84615,
+  14.2541
+ ],
+ "interval.newcombe.90.best_pts": [
+  -4.63794,
+  8.75458
+ ],
+ "interval.newcombe.90.review_pts": [
+  -1.62934,
+  9.8973
+ ],
+ "interval.newcombe.95.best_pts": [
+  -5.86345,
+  9.96036
+ ],
+ "interval.newcombe.95.review_pts": [
+  -2.70246,
+  10.944
+ ],
+ "interval.tango.90.best_pts": [
+  -5.27765,
+  10.1138
+ ],
+ "interval.tango.90.review_pts": [
+  -1.39145,
+  11.8359
+ ],
+ "interval.tango.95.best_pts": [
+  -7.3896,
+  12.2772
+ ],
+ "interval.tango.95.review_pts": [
+  -3.5521,
+  13.9757
+ ],
+ "issues.after_pr": [
+  "apache__parquet-java-3642",
+  "apache__parquet-java-3669"
+ ],
+ "issues.before_cutoff": 7,
+ "issues.before_cutoff_ids": [
+  "Ombi-app__Ombi-5444",
+  "OrchardCMS__OrchardCore-19492",
+  "angularsen__UnitsNet-1699",
+  "biomejs__biome-10875",
+  "lance-format__lance-7565",
+  "lance-format__lance-7835",
+  "rust-lang__rust-bindgen-3391"
+ ],
+ "issues.resolved_each": [
+  2,
+  2,
+  2
+ ],
+ "judge.chosen": [
+  29,
+  12,
+  7
+ ],
+ "judge.flag.pass_all_right": 28,
+ "judge.flag.passed": 43,
+ "judge.flag.precision_pct": 62.7907,
+ "judge.flag.right": 31,
+ "judge.flag.share_resolved_pct": 58.3333,
+ "judge.flag.unresolved": 20,
+ "judge.flag_x_outcome": [
+  27,
+  16,
+  1,
+  4
+ ],
+ "judge.passed_flags_true": 122,
+ "judge.resolved_by_top": [
+  8,
+  12,
+  8
+ ],
+ "judge.tiebreak_c1": 25,
+ "judge.tiebreak_c2": 7,
+ "judge.tied": 32,
+ "judge.top": [
+  16,
+  17,
+  15
+ ],
+ "judge.unique_c1": 4,
+ "kappa.review_best": 0.956835,
+ "kappa.solo_best": 0.87234,
+ "kappa.solo_review": 0.914439,
+ "label.background.messages": 10,
+ "label.dataset.dropped_ref_lines_median": 55,
+ "label.dataset.issue_chars_median": 1515,
+ "label.dataset.ref_lines_max": 1475,
+ "label.dataset.ref_lines_median": 26,
+ "label.dataset.ref_lines_min": 4,
+ "label.dataset.ref_lines_q1": 13.8,
+ "label.dataset.ref_lines_q3": 59.2,
+ "label.dataset.ref_single_file": 28,
+ "label.leak.ge_half_failing": 4,
+ "label.leak.online_build_runs": 10,
+ "label.leak.online_build_tasks": 4,
+ "label.leak.pairs_compared": 141,
+ "label.leak.pairs_ge_half": 26,
+ "label.leak.tasks_ge_half": 9,
+ "label.leak.verbatim_median": 0.076,
+ "label.review.approved_resolved_reports_tests": 19,
+ "label.review.approved_unresolved_reports_tests": 13,
+ "label.review.approved_unresolved_says_not_run": 8,
+ "label.review.rejections_functional": 8,
+ "label.review.rejections_tests_only": 6,
+ "lance7835.solo.billed_over_base": 4.36967,
+ "lance7835.solo.cost_usd": 1.38857,
+ "lance7835.solo.input_tokens": 20137270,
+ "lance7835.solo.resolved": false,
+ "lance7835.solo.share_base_pct": 24.1778,
+ "lance7835.solo.share_billed_pct": 47.1062,
+ "loo.base.best": [
+  3.76823,
+  4.67633
+ ],
+ "loo.base.review": [
+  1.69846,
+  2.34549
+ ],
+ "loo.billed.best": [
+  2.43937,
+  4.36465
+ ],
+ "loo.billed.review": [
+  1.35753,
+  2.86914
+ ],
+ "median_ratio.base.best": 4.91241,
+ "median_ratio.base.review": 1.72567,
+ "median_ratio.billed.best": 5.44102,
+ "median_ratio.billed.review": 1.7401,
+ "missing_p2p.class_c_movers": 3,
+ "missing_p2p.listed_tests": 657666,
+ "missing_p2p.missing_tests": 1477,
+ "missing_p2p.move_tasks": 4,
+ "missing_p2p.moves": 8,
+ "missing_p2p.records": 21,
+ "missing_p2p.share_pct": 0.224582,
+ "missing_p2p.tasks": 9,
+ "nineteen.by_cause": [
+  6,
+  4,
+  1,
+  8,
+  0
+ ],
+ "nineteen.equal_all_fail_tasks": true,
+ "nineteen.n": 19,
+ "noise.gain_in_sd": [
+  1.27475,
+  0.637377
+ ],
+ "noise.p_second_ahead1": 0.365183,
+ "noise.p_second_ahead2": 0.15763,
+ "noise.p_second_ahead2_wilson": [
+  0.0340616,
+  0.296806
+ ],
+ "noise.r1_tasks": 39,
+ "noise.replicate.disagree": 2,
+ "noise.replicate.pct": 5.12821,
+ "noise.replicate.review_wins_round1": true,
+ "noise.replicate.tasks_are_team_wins": true,
+ "noise.replicate.wilson95_pct": [
+  1.4178,
+  16.8856
+ ],
+ "noise.replicate_first_rule.disagree": 6,
+ "noise.replicate_first_rule.pct": 15.3846,
+ "noise.replicate_first_rule.wilson95_pct": [
+  7.24747,
+  29.7295
+ ],
+ "noise.sd_diff_pts": 3.2686,
+ "noise.sd_diff_wilson_pts": [
+  1.71865,
+  5.93114
+ ],
+ "noise.tiebreak_c1.disagree": 1,
+ "noise.tiebreak_c1.tasks": 25,
+ "onesided.gain10.best": {
+  "exact": 0.0554446,
+  "tango": 0.0518226
+ },
+ "onesided.gain10.best.range": [
+  0.0518226,
+  0.0554446
+ ],
+ "onesided.gain10.review": {
+  "exact": 0.128903,
+  "tango": 0.0889659
+ },
+ "onesided.gain10.review.range": [
+  0.0889659,
+  0.128903
+ ],
+ "onesided.gain15.best": {
+  "exact": 0.0109913,
+  "tango": 0.0100716
+ },
+ "onesided.gain15.best.range": [
+  0.0100716,
+  0.0109913
+ ],
+ "onesided.gain15.max": 0.0196504,
+ "onesided.gain15.missing.best": {
+  "exact": 0.141384,
+  "tango": 0.120667
+ },
+ "onesided.gain15.missing.best.exact": 0.141384,
+ "onesided.gain15.missing.best.range": [
+  0.120667,
+  0.141384
+ ],
+ "onesided.gain15.missing.review": {
+  "exact": 0.0571679,
+  "tango": 0.0447775
+ },
+ "onesided.gain15.missing.review.exact": 0.0571679,
+ "onesided.gain15.missing.review.range": [
+  0.0447775,
+  0.0571679
+ ],
+ "onesided.gain15.noBC.best": {
+  "exact": 0.0615447,
+  "tango": 0.0463863
+ },
+ "onesided.gain15.noBC.best.exact": 0.0615447,
+ "onesided.gain15.noBC.best.range": [
+  0.0463863,
+  0.0615447
+ ],
+ "onesided.gain15.noBC.review": {
+  "exact": 0.0615447,
+  "tango": 0.0463863
+ },
+ "onesided.gain15.noBC.review.exact": 0.0615447,
+ "onesided.gain15.noBC.review.range": [
+  0.0463863,
+  0.0615447
+ ],
+ "onesided.gain15.review": {
+  "exact": 0.0196504,
+  "tango": 0.0177777
+ },
+ "onesided.gain15.review.range": [
+  0.0177777,
+  0.0196504
+ ],
+ "onesided.gain20.best": {
+  "exact": 0.00209037,
+  "tango": 0.00167015
+ },
+ "onesided.gain20.best.range": [
+  0.00167015,
+  0.00209037
+ ],
+ "onesided.gain20.review": {
+  "exact": 0.00384284,
+  "tango": 0.00304947
+ },
+ "onesided.gain20.review.range": [
+  0.00304947,
+  0.00384284
+ ],
+ "onesided.gain5.best": {
+  "exact": 0.306256,
+  "tango": 0.233743
+ },
+ "onesided.gain5.best.range": [
+  0.233743,
+  0.306256
+ ],
+ "onesided.gain5.review": {
+  "exact": 0.567046,
+  "tango": 0.395541
+ },
+ "onesided.gain5.review.range": [
+  0.395541,
+  0.567046
+ ],
+ "onesided.loss10.best": {
+  "exact": 0.0124462,
+  "tango": 0.0104671
+ },
+ "onesided.loss10.best.range": [
+  0.0104671,
+  0.0124462
+ ],
+ "onesided.loss10.rejected_both": true,
+ "onesided.loss10.review": {
+  "exact": 0.00310799,
+  "tango": 0.00299127
+ },
+ "onesided.loss10.review.range": [
+  0.00299127,
+  0.00310799
+ ],
+ "onesided.loss15.best": {
+  "exact": 0.00207064,
+  "tango": 0.00181697
+ },
+ "onesided.loss15.best.range": [
+  0.00181697,
+  0.00207064
+ ],
+ "onesided.loss15.review": {
+  "exact": 0.00062893,
+  "tango": 0.000501091
+ },
+ "onesided.loss15.review.range": [
+  0.000501091,
+  0.00062893
+ ],
+ "onesided.loss5.best": {
+  "exact": 0.0609252,
+  "tango": 0.054756
+ },
+ "onesided.loss5.best.range": [
+  0.054756,
+  0.0609252
+ ],
+ "onesided.loss5.review": {
+  "exact": 0.0161216,
+  "tango": 0.0156943
+ },
+ "onesided.loss5.review.range": [
+  0.0156943,
+  0.0161216
+ ],
+ "overlap.agree": 45,
+ "overlap.all3": 26,
+ "overlap.none": 19,
+ "overlap.other_patterns": 0,
+ "overlap.review_best_only": 2,
+ "overlap.solo_review_only": 1,
+ "overlap.union": 29,
+ "overlap.union_equals_review": true,
+ "p.wins_le2_given_gain10": 0.128903,
+ "pair.best.both": 26,
+ "pair.best.diff_pts": 2.08333,
+ "pair.best.discordant": 3,
+ "pair.best.losses": 1,
+ "pair.best.mcnemar_exact": 1.0,
+ "pair.best.mcnemar_midp": 0.625,
+ "pair.best.n": 48,
+ "pair.best.neither": 19,
+ "pair.best.newcombe90_pts": [
+  -4.63794,
+  8.75458
+ ],
+ "pair.best.newcombe95_pts": [
+  -5.86345,
+  9.96036
+ ],
+ "pair.best.tango90_pts": [
+  -5.27765,
+  10.1138
+ ],
+ "pair.best.tango95_pts": [
+  -7.3896,
+  12.2772
+ ],
+ "pair.best.wins": 2,
+ "pair.review.both": 27,
+ "pair.review.diff_pts": 4.16667,
+ "pair.review.discordant": 2,
+ "pair.review.losses": 0,
+ "pair.review.mcnemar_exact": 0.5,
+ "pair.review.mcnemar_midp": 0.25,
+ "pair.review.n": 48,
+ "pair.review.neither": 19,
+ "pair.review.newcombe90_pts": [
+  -1.62934,
+  9.8973
+ ],
+ "pair.review.newcombe95_pts": [
+  -2.70246,
+  10.944
+ ],
+ "pair.review.tango90_pts": [
+  -1.39145,
+  11.8359
+ ],
+ "pair.review.tango95_pts": [
+  -3.5521,
+  13.9757
+ ],
+ "pair.review.wins": 2,
+ "pair.review_vs_best.both": 28,
+ "pair.review_vs_best.diff_pts": 2.08333,
+ "pair.review_vs_best.losses": 0,
+ "pair.review_vs_best.mcnemar_exact": 1.0,
+ "pair.review_vs_best.mcnemar_midp": 0.5,
+ "pair.review_vs_best.n": 48,
+ "pair.review_vs_best.neither": 19,
+ "pair.review_vs_best.newcombe90_pts": [
+  -2.71785,
+  6.87423
+ ],
+ "pair.review_vs_best.newcombe95_pts": [
+  -3.62379,
+  7.7752
+ ],
+ "pair.review_vs_best.tango90_pts": [
+  -3.36362,
+  8.81398
+ ],
+ "pair.review_vs_best.tango95_pts": [
+  -5.48105,
+  10.8992
+ ],
+ "pair.review_vs_best.wins": 1,
+ "partial.resolved_first_rule": [
+  2,
+  3,
+  2
+ ],
+ "partial.tasks": 11,
+ "per_task.model_plus_sandbox.best": 0.468531,
+ "per_task.model_plus_sandbox.review": 0.220249,
+ "per_task.model_plus_sandbox.solo": 0.114826,
+ "plan.cost_three_arms.124": 99.6472,
+ "plan.cost_three_arms.341": 274.03,
+ "plan.cost_three_arms.72": 57.8597,
+ "plan.grading_per_task": 0.198533,
+ "plan.three_arms_per_task": 0.803607,
+ "plan.valid_expected": 158.4,
+ "plan.valid_fresh": 110.4,
+ "plan.valid_fresh_wilson95": [
+  91.7263,
+  125.963
+ ],
+ "pool.class_b.count": 15,
+ "pool.class_b.pct": 6.49351,
+ "pool.class_b.wilson95_pct": [
+  3.97429,
+  10.4361
+ ],
+ "pool.class_b_rule": 19,
+ "pool.class_b_rust": [
+  15,
+  68
+ ],
+ "pool.class_c_checked.count": 23,
+ "pool.class_c_checked.pct": 9.95671,
+ "pool.class_c_checked.wilson95_pct": [
+  6.72659,
+  14.4969
+ ],
+ "pool.class_c_rule": 28,
+ "pool.repos": 57,
+ "pool.tasks": 231,
+ "power.asymptotic.min_discordant": 4,
+ "power.midp.min_discordant": 5,
+ "power.midp.min_discordant_p": 0.03125,
+ "power.midp.min_gain80_pts.0": 13.7,
+ "power.midp.min_gain80_pts.2of39": 18.3,
+ "power.midp.min_gain80_pts.wilson_hi": 25.2,
+ "power.midp.n48.10": 0.396508,
+ "power.midp.n48.15": 0.671135,
+ "power.midp.n48.20": 0.852228,
+ "power.midp.n48.5": 0.117702,
+ "power.midp.n80.0.10": 66,
+ "power.midp.n80.0.15": 44,
+ "power.midp.n80.0.5": 134,
+ "power.midp.n80.2of39.10": 108,
+ "power.midp.n80.2of39.15": 63,
+ "power.midp.n80.2of39.5": 309,
+ "power.midp.n80.wilson_hi.10": 205,
+ "power.midp.n80.wilson_hi.15": 108,
+ "power.midp.n80.wilson_hi.5": 681,
+ "power.midp.size_n48": 0.0050136,
+ "power.min_discordant": 6,
+ "power.min_discordant_p": 0.03125,
+ "power.min_gain80_pts.0": 16.0,
+ "power.min_gain80_pts.2of39": 20.5,
+ "power.min_gain80_pts.wilson_hi": 27.4,
+ "power.n48.10": 0.27978,
+ "power.n48.15": 0.563207,
+ "power.n48.20": 0.783479,
+ "power.n48.5": 0.0581073,
+ "power.n80.0.10": 78,
+ "power.n80.0.15": 52,
+ "power.n80.0.5": 157,
+ "power.n80.2of39.10": 124,
+ "power.n80.2of39.15": 72,
+ "power.n80.2of39.5": 341,
+ "power.n80.6of39.10": 210,
+ "power.n80.6of39.15": 113,
+ "power.n80.6of39.5": 669,
+ "power.n80.wilson_hi.10": 222,
+ "power.n80.wilson_hi.15": 118,
+ "power.n80.wilson_hi.5": 718,
+ "power.n80_fixed_psi.20.10": 168,
+ "power.n80_fixed_psi.20.15": 72,
+ "power.n80_fixed_psi.20.5": 658,
+ "power.n80_fixed_psi.30.10": 249,
+ "power.n80_fixed_psi.30.15": 112,
+ "power.n80_fixed_psi.30.5": 975,
+ "power.noise_levels": {
+  "0": 0.0,
+  "2of39": 0.0512821,
+  "6of39": 0.153846,
+  "wilson_hi": 0.168856
+ },
+ "power.p_ge6_discordant_pct": 3.52542,
+ "power.size_n48": 0.000928886,
+ "pr_date.checked": 12,
+ "price_step.resumed_coder_runs": 13,
+ "price_step.share_pct.best": 13.7496,
+ "price_step.share_pct.resumed_coder": 63.1922,
+ "price_step.share_pct.review": 23.2945,
+ "price_step.share_pct.solo": 31.0695,
+ "price_step.share_pct.solo_without_lance": 14.1142,
+ "pricefit.above_billed_share_pct": 65.3126,
+ "pricefit.above_runs": 37,
+ "pricefit.above_tasks": 14,
+ "pricefit.at_base": 421,
+ "pricefit.at_five": 5,
+ "pricefit.below_base": 0,
+ "pricefit.between": 32,
+ "pricefit.billed_over_base_all": 1.75682,
+ "pricefit.higher_rate_share_pct": 43.0789,
+ "pricefit.ratio_range": [
+  0.999875,
+  4.9999
+ ],
+ "pricefit.runs": 458,
+ "ratio.base.best": 3.92386,
+ "ratio.base.best.boot95": [
+  2.93703,
+  5.41139
+ ],
+ "ratio.base.review": 1.86117,
+ "ratio.base.review.boot95": [
+  1.15869,
+  3.06403
+ ],
+ "ratio.billed.best": 2.71177,
+ "ratio.billed.best.boot95": [
+  1.61065,
+  6.02123
+ ],
+ "ratio.billed.review": 1.60308,
+ "ratio.billed.review.boot95": [
+  0.686147,
+  4.8972
+ ],
+ "ratio.model_plus_sandbox.best": 4.08034,
+ "ratio.model_plus_sandbox.best.boot95": [
+  2.81246,
+  6.92018
+ ],
+ "ratio.model_plus_sandbox.review": 1.91811,
+ "ratio.model_plus_sandbox.review.boot95": [
+  1.03605,
+  4.28698
+ ],
+ "ratio_of_medians.base.best": 6.20042,
+ "ratio_of_medians.base.review": 1.68269,
+ "ratio_of_medians.billed.best": 6.20043,
+ "ratio_of_medians.billed.review": 1.68266,
+ "records.final": 144,
+ "records.superseded": 107,
+ "records.total": 251,
+ "redaction.flagged": 12,
+ "redaction.patch_redacted": 0,
+ "regrade.all_records_marked": true,
+ "regrade.by_arm.best": 11,
+ "regrade.by_arm.review": 10,
+ "regrade.by_arm.solo": 7,
+ "regrade.changed": 28,
+ "regrade.only_current_share_pct": 33.3333,
+ "regrade.resolved_total": 84,
+ "regrade.tasks": 14,
+ "regrade.tasks_all_three_changed": 4,
+ "regrade.to_resolved": 28,
+ "regrade.to_unresolved": 0,
+ "rejected.all_in_hidden_files": 49,
+ "rejected.by_arm.best": 18,
+ "rejected.by_arm.review": 17,
+ "rejected.by_arm.solo": 14,
+ "rejected.patches": 49,
+ "rejected.resolved_current": 28,
+ "rejected.tasks": 21,
+ "repo_hooks.tasks_with_hook": 0,
+ "repos.eff_clusters": 11.0769,
+ "repos.n": 23,
+ "repos.top2": [
+  10,
+  7
+ ],
+ "repos.top2_names": [
+  "langchain4j/langchain4j",
+  "xroche/httrack"
+ ],
+ "repos.top2_share_pct": 35.4167,
+ "resolved.best.count": 28,
+ "resolved.best.pct": 58.3333,
+ "resolved.best.wilson95_pct": [
+  44.2813,
+  71.1503
+ ],
+ "resolved.both_strict.best": 16,
+ "resolved.both_strict.review": 17,
+ "resolved.both_strict.solo": 16,
+ "resolved.first_rule.best": 17,
+ "resolved.first_rule.review": 19,
+ "resolved.first_rule.solo": 20,
+ "resolved.missing_test.best": 27,
+ "resolved.missing_test.review": 26,
+ "resolved.missing_test.solo": 23,
+ "resolved.review.count": 29,
+ "resolved.review.pct": 60.4167,
+ "resolved.review.wilson95_pct": [
+  46.3104,
+  72.9792
+ ],
+ "resolved.solo.count": 27,
+ "resolved.solo.pct": 56.25,
+ "resolved.solo.wilson95_pct": [
+  42.275,
+  69.2987
+ ],
+ "review.ended_by_approval_or_three_rounds": true,
+ "review.final.pass_all_right": 29,
+ "review.final.passed": 47,
+ "review.final.precision_pct": 59.5745,
+ "review.final.right": 28,
+ "review.final.share_resolved_pct": 60.4167,
+ "review.final.unresolved": 19,
+ "review.final_approved": 47,
+ "review.final_x_outcome": [
+  28,
+  19,
+  1,
+  0
+ ],
+ "review.first.pass_all_right": 29,
+ "review.first.passed": 39,
+ "review.first.precision_pct": 61.5385,
+ "review.first.right": 28,
+ "review.first.share_resolved_pct": 60.4167,
+ "review.first.unresolved": 19,
+ "review.first_approved": 39,
+ "review.first_approved_pct": 81.25,
+ "review.first_x_outcome": [
+  24,
+  15,
+  5,
+  4
+ ],
+ "review.not_approved_tasks": [
+  "JasperFx__wolverine-3695"
+ ],
+ "review.passing": 47,
+ "review.patch_over_40k": 3,
+ "review.rejections": 14,
+ "review.reviews": 61,
+ "review.rounds": [
+  39,
+  5,
+  4
+ ],
+ "revision.coder_share_billed_pct": 46.2661,
+ "revision.later_runs": 26,
+ "revision.nine_tasks.review_share_pct": 64.2179,
+ "revision.nine_tasks.review_usd": 3.0346,
+ "revision.nine_tasks.solo_usd": 0.29552,
+ "revision.one_round.review_over_solo_base": 1.11602,
+ "revision.one_round.review_over_solo_billed": 0.637531,
+ "revision.share_base_pct": 33.3223,
+ "revision.share_billed_pct": 50.4003,
+ "rule.both.all48.best.both": 12,
+ "rule.both.all48.best.diff_pts": 0.0,
+ "rule.both.all48.best.losses": 4,
+ "rule.both.all48.best.mcnemar_exact": 1.0,
+ "rule.both.all48.best.mcnemar_midp": 1.0,
+ "rule.both.all48.best.n": 48,
+ "rule.both.all48.best.neither": 28,
+ "rule.both.all48.best.newcombe90_pts": [
+  -10.1592,
+  10.1592
+ ],
+ "rule.both.all48.best.newcombe95_pts": [
+  -12.0432,
+  12.0432
+ ],
+ "rule.both.all48.best.tango90_pts": [
+  -10.6139,
+  10.6139
+ ],
+ "rule.both.all48.best.tango95_pts": [
+  -13.0099,
+  13.0099
+ ],
+ "rule.both.all48.best.wins": 4,
+ "rule.both.all48.resolved": [
+  16,
+  17,
+  16
+ ],
+ "rule.both.all48.review.both": 13,
+ "rule.both.all48.review.diff_pts": 2.08333,
+ "rule.both.all48.review.losses": 3,
+ "rule.both.all48.review.mcnemar_exact": 1.0,
+ "rule.both.all48.review.mcnemar_midp": 0.726562,
+ "rule.both.all48.review.n": 48,
+ "rule.both.all48.review.neither": 28,
+ "rule.both.all48.review.newcombe90_pts": [
+  -7.50709,
+  11.622
+ ],
+ "rule.both.all48.review.newcombe95_pts": [
+  -9.29089,
+  13.3846
+ ],
+ "rule.both.all48.review.tango90_pts": [
+  -7.87895,
+  12.2949
+ ],
+ "rule.both.all48.review.tango95_pts": [
+  -10.204,
+  14.6482
+ ],
+ "rule.both.all48.review.wins": 4,
+ "rule.both.issue41.best.both": 11,
+ "rule.both.issue41.best.diff_pts": 0.0,
+ "rule.both.issue41.best.losses": 4,
+ "rule.both.issue41.best.mcnemar_exact": 1.0,
+ "rule.both.issue41.best.mcnemar_midp": 1.0,
+ "rule.both.issue41.best.n": 41,
+ "rule.both.issue41.best.neither": 22,
+ "rule.both.issue41.best.newcombe90_pts": [
+  -11.7748,
+  11.7748
+ ],
+ "rule.both.issue41.best.newcombe95_pts": [
+  -13.9044,
+  13.9044
+ ],
+ "rule.both.issue41.best.tango90_pts": [
+  -12.3139,
+  12.3139
+ ],
+ "rule.both.issue41.best.tango95_pts": [
+  -15.0408,
+  15.0408
+ ],
+ "rule.both.issue41.best.wins": 4,
+ "rule.both.issue41.resolved": [
+  15,
+  16,
+  15
+ ],
+ "rule.both.issue41.review.both": 12,
+ "rule.both.issue41.review.diff_pts": 2.43902,
+ "rule.both.issue41.review.losses": 3,
+ "rule.both.issue41.review.mcnemar_exact": 1.0,
+ "rule.both.issue41.review.mcnemar_midp": 0.726562,
+ "rule.both.issue41.review.n": 41,
+ "rule.both.issue41.review.neither": 22,
+ "rule.both.issue41.review.newcombe90_pts": [
+  -8.6909,
+  13.4635
+ ],
+ "rule.both.issue41.review.newcombe95_pts": [
+  -10.7118,
+  15.4432
+ ],
+ "rule.both.issue41.review.tango90_pts": [
+  -9.14717,
+  14.2546
+ ],
+ "rule.both.issue41.review.tango95_pts": [
+  -11.8051,
+  16.9233
+ ],
+ "rule.both.issue41.review.wins": 4,
+ "rule.both.noBC.best.both": 10,
+ "rule.both.noBC.best.diff_pts": -5.26316,
+ "rule.both.noBC.best.losses": 4,
+ "rule.both.noBC.best.mcnemar_exact": 0.6875,
+ "rule.both.noBC.best.mcnemar_midp": 0.453125,
+ "rule.both.noBC.best.n": 38,
+ "rule.both.noBC.best.neither": 22,
+ "rule.both.noBC.best.newcombe90_pts": [
+  -16.3528,
+  6.01023
+ ],
+ "rule.both.noBC.best.newcombe95_pts": [
+  -18.3643,
+  8.09565
+ ],
+ "rule.both.noBC.best.tango90_pts": [
+  -17.3675,
+  6.22293
+ ],
+ "rule.both.noBC.best.tango95_pts": [
+  -20.1335,
+  8.96603
+ ],
+ "rule.both.noBC.best.wins": 2,
+ "rule.both.noBC.resolved": [
+  14,
+  14,
+  12
+ ],
+ "rule.both.noBC.review.both": 11,
+ "rule.both.noBC.review.diff_pts": 0.0,
+ "rule.both.noBC.review.losses": 3,
+ "rule.both.noBC.review.mcnemar_exact": 1.0,
+ "rule.both.noBC.review.mcnemar_midp": 1.0,
+ "rule.both.noBC.review.n": 38,
+ "rule.both.noBC.review.neither": 21,
+ "rule.both.noBC.review.newcombe90_pts": [
+  -11.2026,
+  11.2026
+ ],
+ "rule.both.noBC.review.newcombe95_pts": [
+  -13.2273,
+  13.2273
+ ],
+ "rule.both.noBC.review.tango90_pts": [
+  -11.9226,
+  11.9226
+ ],
+ "rule.both.noBC.review.tango95_pts": [
+  -14.695,
+  14.695
+ ],
+ "rule.both.noBC.review.wins": 3,
+ "rule.both.noflag.best.both": 10,
+ "rule.both.noflag.best.diff_pts": -6.45161,
+ "rule.both.noflag.best.losses": 4,
+ "rule.both.noflag.best.mcnemar_exact": 0.6875,
+ "rule.both.noflag.best.mcnemar_midp": 0.453125,
+ "rule.both.noflag.best.n": 31,
+ "rule.both.noflag.best.neither": 15,
+ "rule.both.noflag.best.newcombe90_pts": [
+  -19.629,
+  7.17799
+ ],
+ "rule.both.noflag.best.newcombe95_pts": [
+  -21.8777,
+  9.59661
+ ],
+ "rule.both.noflag.best.tango90_pts": [
+  -20.9275,
+  7.53306
+ ],
+ "rule.both.noflag.best.tango95_pts": [
+  -24.124,
+  10.7918
+ ],
+ "rule.both.noflag.best.wins": 2,
+ "rule.both.noflag.resolved": [
+  14,
+  13,
+  12
+ ],
+ "rule.both.noflag.review.both": 11,
+ "rule.both.noflag.review.diff_pts": -3.22581,
+ "rule.both.noflag.review.losses": 3,
+ "rule.both.noflag.review.mcnemar_exact": 1.0,
+ "rule.both.noflag.review.mcnemar_midp": 0.6875,
+ "rule.both.noflag.review.n": 31,
+ "rule.both.noflag.review.neither": 15,
+ "rule.both.noflag.review.newcombe90_pts": [
+  -15.5933,
+  9.35566
+ ],
+ "rule.both.noflag.review.newcombe95_pts": [
+  -17.7176,
+  11.5603
+ ],
+ "rule.both.noflag.review.tango90_pts": [
+  -16.904,
+  10.0891
+ ],
+ "rule.both.noflag.review.tango95_pts": [
+  -20.0684,
+  13.2742
+ ],
+ "rule.both.noflag.review.wins": 2,
+ "rule.both.nolangchain.best.both": 8,
+ "rule.both.nolangchain.best.diff_pts": 0.0,
+ "rule.both.nolangchain.best.losses": 3,
+ "rule.both.nolangchain.best.mcnemar_exact": 1.0,
+ "rule.both.nolangchain.best.mcnemar_midp": 1.0,
+ "rule.both.nolangchain.best.n": 38,
+ "rule.both.nolangchain.best.neither": 24,
+ "rule.both.nolangchain.best.newcombe90_pts": [
+  -11.4136,
+  11.4136
+ ],
+ "rule.both.nolangchain.best.newcombe95_pts": [
+  -13.5671,
+  13.5671
+ ],
+ "rule.both.nolangchain.best.tango90_pts": [
+  -11.9226,
+  11.9226
+ ],
+ "rule.both.nolangchain.best.tango95_pts": [
+  -14.695,
+  14.695
+ ],
+ "rule.both.nolangchain.best.wins": 3,
+ "rule.both.nolangchain.resolved": [
+  11,
+  11,
+  11
+ ],
+ "rule.both.nolangchain.review.both": 9,
+ "rule.both.nolangchain.review.diff_pts": 0.0,
+ "rule.both.nolangchain.review.losses": 2,
+ "rule.both.nolangchain.review.mcnemar_exact": 1.0,
+ "rule.both.nolangchain.review.mcnemar_midp": 1.0,
+ "rule.both.nolangchain.review.n": 38,
+ "rule.both.nolangchain.review.neither": 25,
+ "rule.both.nolangchain.review.newcombe90_pts": [
+  -9.76154,
+  9.76154
+ ],
+ "rule.both.nolangchain.review.newcombe95_pts": [
+  -11.651,
+  11.651
+ ],
+ "rule.both.nolangchain.review.tango90_pts": [
+  -10.4638,
+  10.4638
+ ],
+ "rule.both.nolangchain.review.tango95_pts": [
+  -13.1172,
+  13.1172
+ ],
+ "rule.both.nolangchain.review.wins": 2,
+ "rule.current.all48.best.both": 26,
+ "rule.current.all48.best.diff_pts": 2.08333,
+ "rule.current.all48.best.losses": 1,
+ "rule.current.all48.best.mcnemar_exact": 1.0,
+ "rule.current.all48.best.mcnemar_midp": 0.625,
+ "rule.current.all48.best.n": 48,
+ "rule.current.all48.best.neither": 19,
+ "rule.current.all48.best.newcombe90_pts": [
+  -4.63794,
+  8.75458
+ ],
+ "rule.current.all48.best.newcombe95_pts": [
+  -5.86345,
+  9.96036
+ ],
+ "rule.current.all48.best.tango90_pts": [
+  -5.27765,
+  10.1138
+ ],
+ "rule.current.all48.best.tango95_pts": [
+  -7.3896,
+  12.2772
+ ],
+ "rule.current.all48.best.wins": 2,
+ "rule.current.all48.resolved": [
+  27,
+  29,
+  28
+ ],
+ "rule.current.all48.review.both": 27,
+ "rule.current.all48.review.diff_pts": 4.16667,
+ "rule.current.all48.review.losses": 0,
+ "rule.current.all48.review.mcnemar_exact": 0.5,
+ "rule.current.all48.review.mcnemar_midp": 0.25,
+ "rule.current.all48.review.n": 48,
+ "rule.current.all48.review.neither": 19,
+ "rule.current.all48.review.newcombe90_pts": [
+  -1.62934,
+  9.8973
+ ],
+ "rule.current.all48.review.newcombe95_pts": [
+  -2.70246,
+  10.944
+ ],
+ "rule.current.all48.review.tango90_pts": [
+  -1.39145,
+  11.8359
+ ],
+ "rule.current.all48.review.tango95_pts": [
+  -3.5521,
+  13.9757
+ ],
+ "rule.current.all48.review.wins": 2,
+ "rule.current.issue41.best.both": 24,
+ "rule.current.issue41.best.diff_pts": 2.43902,
+ "rule.current.issue41.best.losses": 1,
+ "rule.current.issue41.best.mcnemar_exact": 1.0,
+ "rule.current.issue41.best.mcnemar_midp": 0.625,
+ "rule.current.issue41.best.n": 41,
+ "rule.current.issue41.best.neither": 14,
+ "rule.current.issue41.best.newcombe90_pts": [
+  -5.47763,
+  10.3094
+ ],
+ "rule.current.issue41.best.newcombe95_pts": [
+  -6.94455,
+  11.7571
+ ],
+ "rule.current.issue41.best.tango90_pts": [
+  -6.12682,
+  11.7261
+ ],
+ "rule.current.issue41.best.tango95_pts": [
+  -8.54781,
+  14.1852
+ ],
+ "rule.current.issue41.best.wins": 2,
+ "rule.current.issue41.resolved": [
+  25,
+  27,
+  26
+ ],
+ "rule.current.issue41.review.both": 25,
+ "rule.current.issue41.review.diff_pts": 4.87805,
+ "rule.current.issue41.review.losses": 0,
+ "rule.current.issue41.review.mcnemar_exact": 0.5,
+ "rule.current.issue41.review.mcnemar_midp": 0.25,
+ "rule.current.issue41.review.n": 41,
+ "rule.current.issue41.review.neither": 14,
+ "rule.current.issue41.review.newcombe90_pts": [
+  -1.95692,
+  11.6934
+ ],
+ "rule.current.issue41.review.newcombe95_pts": [
+  -3.25786,
+  12.9818
+ ],
+ "rule.current.issue41.review.tango90_pts": [
+  -1.61431,
+  13.715
+ ],
+ "rule.current.issue41.review.tango95_pts": [
+  -4.1066,
+  16.139
+ ],
+ "rule.current.issue41.review.wins": 2,
+ "rule.current.noBC.best.both": 21,
+ "rule.current.noBC.best.diff_pts": 5.26316,
+ "rule.current.noBC.best.losses": 0,
+ "rule.current.noBC.best.mcnemar_exact": 0.5,
+ "rule.current.noBC.best.mcnemar_midp": 0.25,
+ "rule.current.noBC.best.n": 38,
+ "rule.current.noBC.best.neither": 15,
+ "rule.current.noBC.best.newcombe90_pts": [
+  -1.9997,
+  12.3868
+ ],
+ "rule.current.noBC.best.newcombe95_pts": [
+  -3.32235,
+  13.6549
+ ],
+ "rule.current.noBC.best.tango90_pts": [
+  -1.73329,
+  14.7161
+ ],
+ "rule.current.noBC.best.tango95_pts": [
+  -4.40104,
+  17.2855
+ ],
+ "rule.current.noBC.best.wins": 2,
+ "rule.current.noBC.resolved": [
+  21,
+  23,
+  23
+ ],
+ "rule.current.noBC.review.both": 21,
+ "rule.current.noBC.review.diff_pts": 5.26316,
+ "rule.current.noBC.review.losses": 0,
+ "rule.current.noBC.review.mcnemar_exact": 0.5,
+ "rule.current.noBC.review.mcnemar_midp": 0.25,
+ "rule.current.noBC.review.n": 38,
+ "rule.current.noBC.review.neither": 15,
+ "rule.current.noBC.review.newcombe90_pts": [
+  -1.9997,
+  12.3868
+ ],
+ "rule.current.noBC.review.newcombe95_pts": [
+  -3.32235,
+  13.6549
+ ],
+ "rule.current.noBC.review.tango90_pts": [
+  -1.73329,
+  14.7161
+ ],
+ "rule.current.noBC.review.tango95_pts": [
+  -4.40104,
+  17.2855
+ ],
+ "rule.current.noBC.review.wins": 2,
+ "rule.current.noflag.best.both": 21,
+ "rule.current.noflag.best.diff_pts": 3.22581,
+ "rule.current.noflag.best.losses": 0,
+ "rule.current.noflag.best.mcnemar_exact": 1.0,
+ "rule.current.noflag.best.mcnemar_midp": 0.5,
+ "rule.current.noflag.best.n": 31,
+ "rule.current.noflag.best.neither": 9,
+ "rule.current.noflag.best.newcombe90_pts": [
+  -4.49394,
+  11.0742
+ ],
+ "rule.current.noflag.best.newcombe95_pts": [
+  -6.0848,
+  12.6955
+ ],
+ "rule.current.noflag.best.tango90_pts": [
+  -5.06013,
+  13.2378
+ ],
+ "rule.current.noflag.best.tango95_pts": [
+  -8.1554,
+  16.1941
+ ],
+ "rule.current.noflag.best.wins": 1,
+ "rule.current.noflag.resolved": [
+  21,
+  22,
+  22
+ ],
+ "rule.current.noflag.review.both": 21,
+ "rule.current.noflag.review.diff_pts": 3.22581,
+ "rule.current.noflag.review.losses": 0,
+ "rule.current.noflag.review.mcnemar_exact": 1.0,
+ "rule.current.noflag.review.mcnemar_midp": 0.5,
+ "rule.current.noflag.review.n": 31,
+ "rule.current.noflag.review.neither": 9,
+ "rule.current.noflag.review.newcombe90_pts": [
+  -4.49394,
+  11.0742
+ ],
+ "rule.current.noflag.review.newcombe95_pts": [
+  -6.0848,
+  12.6955
+ ],
+ "rule.current.noflag.review.tango90_pts": [
+  -5.06013,
+  13.2378
+ ],
+ "rule.current.noflag.review.tango95_pts": [
+  -8.1554,
+  16.1941
+ ],
+ "rule.current.noflag.review.wins": 1,
+ "rule.current.nolangchain.best.both": 20,
+ "rule.current.nolangchain.best.diff_pts": -2.63158,
+ "rule.current.nolangchain.best.losses": 1,
+ "rule.current.nolangchain.best.mcnemar_exact": 1.0,
+ "rule.current.nolangchain.best.mcnemar_midp": 0.5,
+ "rule.current.nolangchain.best.n": 38,
+ "rule.current.nolangchain.best.neither": 17,
+ "rule.current.nolangchain.best.newcombe90_pts": [
+  -8.49502,
+  3.3031
+ ],
+ "rule.current.nolangchain.best.newcombe95_pts": [
+  -9.52589,
+  4.36131
+ ],
+ "rule.current.nolangchain.best.tango90_pts": [
+  -10.9707,
+  4.18995
+ ],
+ "rule.current.nolangchain.best.tango95_pts": [
+  -13.4949,
+  6.79101
+ ],
+ "rule.current.nolangchain.best.wins": 0,
+ "rule.current.nolangchain.resolved": [
+  21,
+  21,
+  20
+ ],
+ "rule.current.nolangchain.review.both": 21,
+ "rule.current.nolangchain.review.diff_pts": 0.0,
+ "rule.current.nolangchain.review.losses": 0,
+ "rule.current.nolangchain.review.mcnemar_exact": 1.0,
+ "rule.current.nolangchain.review.mcnemar_midp": 1.0,
+ "rule.current.nolangchain.review.n": 38,
+ "rule.current.nolangchain.review.neither": 17,
+ "rule.current.nolangchain.review.newcombe90_pts": [
+  -4.24036,
+  4.24036
+ ],
+ "rule.current.nolangchain.review.newcombe95_pts": [
+  -5.00944,
+  5.00944
+ ],
+ "rule.current.nolangchain.review.tango90_pts": [
+  -6.64662,
+  6.64662
+ ],
+ "rule.current.nolangchain.review.tango95_pts": [
+  -9.18099,
+  9.18099
+ ],
+ "rule.current.nolangchain.review.wins": 0,
+ "rule.first.all48.best.both": 15,
+ "rule.first.all48.best.diff_pts": -6.25,
+ "rule.first.all48.best.losses": 5,
+ "rule.first.all48.best.mcnemar_exact": 0.453125,
+ "rule.first.all48.best.mcnemar_midp": 0.289062,
+ "rule.first.all48.best.n": 48,
+ "rule.first.all48.best.neither": 26,
+ "rule.first.all48.best.newcombe90_pts": [
+  -15.5473,
+  3.25276
+ ],
+ "rule.first.all48.best.newcombe95_pts": [
+  -17.2209,
+  5.00768
+ ],
+ "rule.first.all48.best.tango90_pts": [
+  -16.5774,
+  3.2763
+ ],
+ "rule.first.all48.best.tango95_pts": [
+  -18.9369,
+  5.54116
+ ],
+ "rule.first.all48.best.wins": 2,
+ "rule.first.all48.resolved": [
+  20,
+  19,
+  17
+ ],
+ "rule.first.all48.review.both": 16,
+ "rule.first.all48.review.diff_pts": -2.08333,
+ "rule.first.all48.review.losses": 4,
+ "rule.first.all48.review.mcnemar_exact": 1.0,
+ "rule.first.all48.review.mcnemar_midp": 0.726562,
+ "rule.first.all48.review.n": 48,
+ "rule.first.all48.review.neither": 25,
+ "rule.first.all48.review.newcombe90_pts": [
+  -11.5161,
+  7.42609
+ ],
+ "rule.first.all48.review.newcombe95_pts": [
+  -13.2154,
+  9.15545
+ ],
+ "rule.first.all48.review.tango90_pts": [
+  -12.2949,
+  7.87895
+ ],
+ "rule.first.all48.review.tango95_pts": [
+  -14.6482,
+  10.204
+ ],
+ "rule.first.all48.review.wins": 3,
+ "rule.first.issue41.best.both": 14,
+ "rule.first.issue41.best.diff_pts": -7.31707,
+ "rule.first.issue41.best.losses": 5,
+ "rule.first.issue41.best.mcnemar_exact": 0.453125,
+ "rule.first.issue41.best.mcnemar_midp": 0.289062,
+ "rule.first.issue41.best.n": 41,
+ "rule.first.issue41.best.neither": 20,
+ "rule.first.issue41.best.newcombe90_pts": [
+  -18.0129,
+  3.74355
+ ],
+ "rule.first.issue41.best.newcombe95_pts": [
+  -19.8792,
+  5.75053
+ ],
+ "rule.first.issue41.best.tango90_pts": [
+  -19.1949,
+  3.80931
+ ],
+ "rule.first.issue41.best.tango95_pts": [
+  -21.849,
+  6.41967
+ ],
+ "rule.first.issue41.best.wins": 2,
+ "rule.first.issue41.resolved": [
+  19,
+  18,
+  16
+ ],
+ "rule.first.issue41.review.both": 15,
+ "rule.first.issue41.review.diff_pts": -2.43902,
+ "rule.first.issue41.review.losses": 4,
+ "rule.first.issue41.review.mcnemar_exact": 1.0,
+ "rule.first.issue41.review.mcnemar_midp": 0.726562,
+ "rule.first.issue41.review.n": 41,
+ "rule.first.issue41.review.neither": 19,
+ "rule.first.issue41.review.newcombe90_pts": [
+  -13.3651,
+  8.61577
+ ],
+ "rule.first.issue41.review.newcombe95_pts": [
+  -15.2864,
+  10.5867
+ ],
+ "rule.first.issue41.review.tango90_pts": [
+  -14.2546,
+  9.14717
+ ],
+ "rule.first.issue41.review.tango95_pts": [
+  -16.9233,
+  11.8051
+ ],
+ "rule.first.issue41.review.wins": 3,
+ "rule.first.noBC.best.both": 10,
+ "rule.first.noBC.best.diff_pts": -7.89474,
+ "rule.first.noBC.best.losses": 5,
+ "rule.first.noBC.best.mcnemar_exact": 0.453125,
+ "rule.first.noBC.best.mcnemar_midp": 0.289062,
+ "rule.first.noBC.best.n": 38,
+ "rule.first.noBC.best.neither": 21,
+ "rule.first.noBC.best.newcombe90_pts": [
+  -19.535,
+  4.0915
+ ],
+ "rule.first.noBC.best.newcombe95_pts": [
+  -21.609,
+  6.30148
+ ],
+ "rule.first.noBC.best.tango90_pts": [
+  -20.5876,
+  4.09484
+ ],
+ "rule.first.noBC.best.tango95_pts": [
+  -23.3899,
+  6.88775
+ ],
+ "rule.first.noBC.best.wins": 2,
+ "rule.first.noBC.resolved": [
+  15,
+  14,
+  12
+ ],
+ "rule.first.noBC.review.both": 11,
+ "rule.first.noBC.review.diff_pts": -2.63158,
+ "rule.first.noBC.review.losses": 4,
+ "rule.first.noBC.review.mcnemar_exact": 1.0,
+ "rule.first.noBC.review.mcnemar_midp": 0.726562,
+ "rule.first.noBC.review.n": 38,
+ "rule.first.noBC.review.neither": 20,
+ "rule.first.noBC.review.newcombe90_pts": [
+  -14.4799,
+  9.34895
+ ],
+ "rule.first.noBC.review.newcombe95_pts": [
+  -16.5895,
+  11.5097
+ ],
+ "rule.first.noBC.review.tango90_pts": [
+  -15.2996,
+  9.82498
+ ],
+ "rule.first.noBC.review.tango95_pts": [
+  -18.1301,
+  12.6562
+ ],
+ "rule.first.noBC.review.wins": 3,
+ "rule.first.noflag.best.both": 10,
+ "rule.first.noflag.best.diff_pts": -9.67742,
+ "rule.first.noflag.best.losses": 5,
+ "rule.first.noflag.best.mcnemar_exact": 0.453125,
+ "rule.first.noflag.best.mcnemar_midp": 0.289062,
+ "rule.first.noflag.best.n": 31,
+ "rule.first.noflag.best.neither": 14,
+ "rule.first.noflag.best.newcombe90_pts": [
+  -23.4763,
+  4.86884
+ ],
+ "rule.first.noflag.best.newcombe95_pts": [
+  -25.7928,
+  7.46539
+ ],
+ "rule.first.noflag.best.tango90_pts": [
+  -24.7809,
+  4.96295
+ ],
+ "rule.first.noflag.best.tango95_pts": [
+  -27.9933,
+  8.30021
+ ],
+ "rule.first.noflag.best.wins": 2,
+ "rule.first.noflag.resolved": [
+  15,
+  13,
+  12
+ ],
+ "rule.first.noflag.review.both": 11,
+ "rule.first.noflag.review.diff_pts": -6.45161,
+ "rule.first.noflag.review.losses": 4,
+ "rule.first.noflag.review.mcnemar_exact": 0.6875,
+ "rule.first.noflag.review.mcnemar_midp": 0.453125,
+ "rule.first.noflag.review.n": 31,
+ "rule.first.noflag.review.neither": 14,
+ "rule.first.noflag.review.newcombe90_pts": [
+  -19.5772,
+  7.14946
+ ],
+ "rule.first.noflag.review.newcombe95_pts": [
+  -21.7974,
+  9.54766
+ ],
+ "rule.first.noflag.review.tango90_pts": [
+  -20.9275,
+  7.53306
+ ],
+ "rule.first.noflag.review.tango95_pts": [
+  -24.124,
+  10.7918
+ ],
+ "rule.first.noflag.review.wins": 2,
+ "rule.first.nolangchain.best.both": 11,
+ "rule.first.nolangchain.best.diff_pts": -7.89474,
+ "rule.first.nolangchain.best.losses": 4,
+ "rule.first.nolangchain.best.mcnemar_exact": 0.375,
+ "rule.first.nolangchain.best.mcnemar_midp": 0.21875,
+ "rule.first.nolangchain.best.n": 38,
+ "rule.first.nolangchain.best.neither": 22,
+ "rule.first.nolangchain.best.newcombe90_pts": [
+  -17.9994,
+  2.45043
+ ],
+ "rule.first.nolangchain.best.newcombe95_pts": [
+  -19.8249,
+  4.37313
+ ],
+ "rule.first.nolangchain.best.tango90_pts": [
+  -19.4283,
+  2.25104
+ ],
+ "rule.first.nolangchain.best.tango95_pts": [
+  -22.1326,
+  4.88242
+ ],
+ "rule.first.nolangchain.best.wins": 1,
+ "rule.first.nolangchain.resolved": [
+  15,
+  13,
+  12
+ ],
+ "rule.first.nolangchain.review.both": 12,
+ "rule.first.nolangchain.review.diff_pts": -5.26316,
+ "rule.first.nolangchain.review.losses": 3,
+ "rule.first.nolangchain.review.mcnemar_exact": 0.625,
+ "rule.first.nolangchain.review.mcnemar_midp": 0.375,
+ "rule.first.nolangchain.review.n": 38,
+ "rule.first.nolangchain.review.neither": 22,
+ "rule.first.nolangchain.review.newcombe90_pts": [
+  -14.6077,
+  4.22733
+ ],
+ "rule.first.nolangchain.review.newcombe95_pts": [
+  -16.3019,
+  5.9805
+ ],
+ "rule.first.nolangchain.review.tango90_pts": [
+  -16.0997,
+  4.41108
+ ],
+ "rule.first.nolangchain.review.tango95_pts": [
+  -18.7632,
+  7.01814
+ ],
+ "rule.first.nolangchain.review.wins": 1,
+ "rule.missing.all48.best.both": 22,
+ "rule.missing.all48.best.diff_pts": 8.33333,
+ "rule.missing.all48.best.losses": 1,
+ "rule.missing.all48.best.mcnemar_exact": 0.21875,
+ "rule.missing.all48.best.mcnemar_midp": 0.125,
+ "rule.missing.all48.best.n": 48,
+ "rule.missing.all48.best.neither": 20,
+ "rule.missing.all48.best.newcombe90_pts": [
+  -0.444449,
+  16.7817
+ ],
+ "rule.missing.all48.best.newcombe95_pts": [
+  -2.04753,
+  18.2567
+ ],
+ "rule.missing.all48.best.tango90_pts": [
+  -0.0753182,
+  18.2372
+ ],
+ "rule.missing.all48.best.tango95_pts": [
+  -2.21222,
+  20.5526
+ ],
+ "rule.missing.all48.best.wins": 5,
+ "rule.missing.all48.resolved": [
+  23,
+  26,
+  27
+ ],
+ "rule.missing.all48.review.both": 23,
+ "rule.missing.all48.review.diff_pts": 6.25,
+ "rule.missing.all48.review.losses": 0,
+ "rule.missing.all48.review.mcnemar_exact": 0.25,
+ "rule.missing.all48.review.mcnemar_midp": 0.125,
+ "rule.missing.all48.review.n": 48,
+ "rule.missing.all48.review.neither": 22,
+ "rule.missing.all48.review.newcombe90_pts": [
+  -0.355402,
+  12.6679
+ ],
+ "rule.missing.all48.review.newcombe95_pts": [
+  -1.55458,
+  13.7942
+ ],
+ "rule.missing.all48.review.tango90_pts": [
+  0.580719,
+  14.6436
+ ],
+ "rule.missing.all48.review.tango95_pts": [
+  -1.62314,
+  16.8354
+ ],
+ "rule.missing.all48.review.wins": 3,
+ "rule.missing.issue41.best.both": 20,
+ "rule.missing.issue41.best.diff_pts": 9.7561,
+ "rule.missing.issue41.best.losses": 1,
+ "rule.missing.issue41.best.mcnemar_exact": 0.21875,
+ "rule.missing.issue41.best.mcnemar_midp": 0.125,
+ "rule.missing.issue41.best.n": 41,
+ "rule.missing.issue41.best.neither": 15,
+ "rule.missing.issue41.best.newcombe90_pts": [
+  -0.492416,
+  19.5504
+ ],
+ "rule.missing.issue41.best.newcombe95_pts": [
+  -2.36178,
+  21.2448
+ ],
+ "rule.missing.issue41.best.tango90_pts": [
+  -0.0876497,
+  21.1032
+ ],
+ "rule.missing.issue41.best.tango95_pts": [
+  -2.5645,
+  23.698
+ ],
+ "rule.missing.issue41.best.wins": 5,
+ "rule.missing.issue41.resolved": [
+  21,
+  24,
+  25
+ ],
+ "rule.missing.issue41.review.both": 21,
+ "rule.missing.issue41.review.diff_pts": 7.31707,
+ "rule.missing.issue41.review.losses": 0,
+ "rule.missing.issue41.review.mcnemar_exact": 0.25,
+ "rule.missing.issue41.review.mcnemar_midp": 0.125,
+ "rule.missing.issue41.review.n": 41,
+ "rule.missing.issue41.review.neither": 17,
+ "rule.missing.issue41.review.newcombe90_pts": [
+  -0.389412,
+  14.7716
+ ],
+ "rule.missing.issue41.review.newcombe95_pts": [
+  -1.78653,
+  16.0715
+ ],
+ "rule.missing.issue41.review.tango90_pts": [
+  0.673728,
+  16.9566
+ ],
+ "rule.missing.issue41.review.tango95_pts": [
+  -1.87652,
+  19.4274
+ ],
+ "rule.missing.issue41.review.wins": 3,
+ "rule.missing.noBC.best.both": 20,
+ "rule.missing.noBC.best.diff_pts": 7.89474,
+ "rule.missing.noBC.best.losses": 0,
+ "rule.missing.noBC.best.mcnemar_exact": 0.25,
+ "rule.missing.noBC.best.mcnemar_midp": 0.125,
+ "rule.missing.noBC.best.n": 38,
+ "rule.missing.noBC.best.neither": 15,
+ "rule.missing.noBC.best.newcombe90_pts": [
+  -0.408792,
+  15.9148
+ ],
+ "rule.missing.noBC.best.newcombe95_pts": [
+  -1.91579,
+  17.3126
+ ],
+ "rule.missing.noBC.best.tango90_pts": [
+  0.723382,
+  18.1875
+ ],
+ "rule.missing.noBC.best.tango95_pts": [
+  -2.01106,
+  20.7994
+ ],
+ "rule.missing.noBC.best.wins": 3,
+ "rule.missing.noBC.resolved": [
+  20,
+  22,
+  23
+ ],
+ "rule.missing.noBC.review.both": 20,
+ "rule.missing.noBC.review.diff_pts": 5.26316,
+ "rule.missing.noBC.review.losses": 0,
+ "rule.missing.noBC.review.mcnemar_exact": 0.5,
+ "rule.missing.noBC.review.mcnemar_midp": 0.25,
+ "rule.missing.noBC.review.n": 38,
+ "rule.missing.noBC.review.neither": 16,
+ "rule.missing.noBC.review.newcombe90_pts": [
+  -1.97209,
+  12.3291
+ ],
+ "rule.missing.noBC.review.newcombe95_pts": [
+  -3.27366,
+  13.5656
+ ],
+ "rule.missing.noBC.review.tango90_pts": [
+  -1.73329,
+  14.7161
+ ],
+ "rule.missing.noBC.review.tango95_pts": [
+  -4.40104,
+  17.2855
+ ],
+ "rule.missing.noBC.review.wins": 2,
+ "rule.missing.noflag.best.both": 20,
+ "rule.missing.noflag.best.diff_pts": 6.45161,
+ "rule.missing.noflag.best.losses": 0,
+ "rule.missing.noflag.best.mcnemar_exact": 0.5,
+ "rule.missing.noflag.best.mcnemar_midp": 0.25,
+ "rule.missing.noflag.best.n": 31,
+ "rule.missing.noflag.best.neither": 9,
+ "rule.missing.noflag.best.newcombe90_pts": [
+  -2.61054,
+  15.5494
+ ],
+ "rule.missing.noflag.best.newcombe95_pts": [
+  -4.36861,
+  17.3022
+ ],
+ "rule.missing.noflag.best.tango90_pts": [
+  -2.09326,
+  17.736
+ ],
+ "rule.missing.noflag.best.tango95_pts": [
+  -5.28525,
+  20.7186
+ ],
+ "rule.missing.noflag.best.wins": 2,
+ "rule.missing.noflag.resolved": [
+  20,
+  21,
+  22
+ ],
+ "rule.missing.noflag.review.both": 20,
+ "rule.missing.noflag.review.diff_pts": 3.22581,
+ "rule.missing.noflag.review.losses": 0,
+ "rule.missing.noflag.review.mcnemar_exact": 1.0,
+ "rule.missing.noflag.review.mcnemar_midp": 0.5,
+ "rule.missing.noflag.review.n": 31,
+ "rule.missing.noflag.review.neither": 10,
+ "rule.missing.noflag.review.newcombe90_pts": [
+  -4.3417,
+  10.8441
+ ],
+ "rule.missing.noflag.review.newcombe95_pts": [
+  -5.83431,
+  12.3455
+ ],
+ "rule.missing.noflag.review.tango90_pts": [
+  -5.06013,
+  13.2378
+ ],
+ "rule.missing.noflag.review.tango95_pts": [
+  -8.1554,
+  16.1941
+ ],
+ "rule.missing.noflag.review.wins": 1,
+ "rule.missing.nolangchain.best.both": 16,
+ "rule.missing.nolangchain.best.diff_pts": 5.26316,
+ "rule.missing.nolangchain.best.losses": 1,
+ "rule.missing.nolangchain.best.mcnemar_exact": 0.625,
+ "rule.missing.nolangchain.best.mcnemar_midp": 0.375,
+ "rule.missing.nolangchain.best.n": 38,
+ "rule.missing.nolangchain.best.neither": 18,
+ "rule.missing.nolangchain.best.newcombe90_pts": [
+  -4.12073,
+  14.3998
+ ],
+ "rule.missing.nolangchain.best.newcombe95_pts": [
+  -5.79447,
+  15.9792
+ ],
+ "rule.missing.nolangchain.best.tango90_pts": [
+  -4.41108,
+  16.0997
+ ],
+ "rule.missing.nolangchain.best.tango95_pts": [
+  -7.01814,
+  18.7632
+ ],
+ "rule.missing.nolangchain.best.wins": 3,
+ "rule.missing.nolangchain.resolved": [
+  17,
+  18,
+  19
+ ],
+ "rule.missing.nolangchain.review.both": 17,
+ "rule.missing.nolangchain.review.diff_pts": 2.63158,
+ "rule.missing.nolangchain.review.losses": 0,
+ "rule.missing.nolangchain.review.mcnemar_exact": 1.0,
+ "rule.missing.nolangchain.review.mcnemar_midp": 0.5,
+ "rule.missing.nolangchain.review.n": 38,
+ "rule.missing.nolangchain.review.neither": 20,
+ "rule.missing.nolangchain.review.newcombe90_pts": [
+  -3.3031,
+  8.49502
+ ],
+ "rule.missing.nolangchain.review.newcombe95_pts": [
+  -4.36131,
+  9.52589
+ ],
+ "rule.missing.nolangchain.review.tango90_pts": [
+  -4.18995,
+  10.9707
+ ],
+ "rule.missing.nolangchain.review.tango95_pts": [
+  -6.79101,
+  13.4949
+ ],
+ "rule.missing.nolangchain.review.wins": 1,
+ "run.allow_unpriced": true,
+ "run.backend": "modal",
+ "run.check_base_commit": true,
+ "run.concurrency": 8,
+ "run.dataset_revision": "3638632e8153",
+ "run.gold_file": "runs/gold/gold.jsonl",
+ "run.invocations": [
+  "2026-10-29T17:54:03Z",
+  "2026-10-31T01:43:11Z"
+ ],
+ "run.isolate_history": true,
+ "run.max_cost_usd": 40.0,
+ "run.seed": 7,
+ "run.since": "2026-07-01",
+ "run.solve_timeout_s": 3600.0,
+ "run_order.excess_as_reads_usd": 0.113967,
+ "run_order.solo_base_drop_pct": 8.67113,
+ "run_order.solo_first": 48,
+ "run_order.solo_higher": 40,
+ "run_order.solo_review_best": 48,
+ "run_order.uncached_ratio": 1.30751,
+ "run_order.uncached_ratio.t95": [
+  1.16875,
+  1.46274
+ ],
+ "run_order.uncached_ratio_totals": 1.54359,
+ "run_order.understatement_factor": 1.09494,
+ "runs.by_role.best_judge": 144,
+ "runs.by_role.best_worker": 144,
+ "runs.by_role.review_coder": 61,
+ "runs.by_role.review_reviewer": 61,
+ "runs.by_role.solo_worker": 48,
+ "runs.exit0": 458,
+ "runs.total": 458,
+ "sandbox.grading_hours.best": 4.78802,
+ "sandbox.grading_hours.review": 4.35628,
+ "sandbox.grading_hours.solo": 5.12153,
+ "sandbox.solve_hours.best": 21.7004,
+ "sandbox.solve_hours.review": 8.75223,
+ "sandbox.solve_hours.solo": 3.83821,
+ "scores.between_share_pct": 81.6667,
+ "scores.icc": 0.729697,
+ "scores.judge_all": {
+  "2.0": 2,
+  "3.0": 1,
+  "5.0": 5,
+  "6.0": 8,
+  "7.0": 7,
+  "7.5": 8,
+  "8.0": 20,
+  "8.5": 26,
+  "9.0": 61,
+  "9.5": 6
+ },
+ "scores.judge_ge8_pct": 78.4722,
+ "scores.judge_mean": 8.16667,
+ "scores.judge_median": 8.5,
+ "scores.means_by_outcome.judge_chosen": [
+  8.55357,
+  8.475
+ ],
+ "scores.means_by_outcome.review_final": [
+  8.34483,
+  8.28947
+ ],
+ "scores.means_by_outcome.review_first": [
+  7.84483,
+  7.71053
+ ],
+ "scores.r_review_judge": 0.813826,
+ "scores.review_returned": {
+  "4.0": 1,
+  "7.0": 1,
+  "7.5": 1,
+  "8.0": 21,
+  "8.5": 6,
+  "9.0": 18
+ },
+ "selection.dropped": 22,
+ "selection.dropped_as_unresolved_pct": [
+  38.5714,
+  41.4286,
+  40.0
+ ],
+ "selection.repos_mixed": 4,
+ "selection.repos_sampled": 32,
+ "selection.rust_dropped": 10,
+ "selection.rust_share_kept_pct": 16.6667,
+ "selection.rust_share_pool_pct": 29.4372,
+ "sens.min_exact_p.appB": 0.21875,
+ "sens.sign_count.appB": [
+  20,
+  6,
+  14
+ ],
+ "set.all48.n": 48,
+ "set.issue41.n": 41,
+ "set.noBC.n": 38,
+ "set.noflag.n": 31,
+ "set.nolangchain.n": 38,
+ "share.role.base.best_pct": [
+  65.6521,
+  34.3479
+ ],
+ "share.role.base.review_pct": [
+  69.821,
+  30.179
+ ],
+ "share.role.billed.best_pct": [
+  74.028,
+  25.972
+ ],
+ "share.role.billed.review_pct": [
+  81.3228,
+  18.6772
+ ],
+ "sign_test.base.best": 7.10543e-15,
+ "sign_test.base.review": 1.51383e-09,
+ "sign_test.billed.best": 8.36309e-12,
+ "sign_test.billed.review": 1.36805e-08,
+ "superseded.cost_usd": 1.14179,
+ "superseded.graded": 4,
+ "superseded.graded_resolved": 2,
+ "superseded.graded_same_verdict": 4,
+ "superseded.mid_run": 1,
+ "superseded.no_model": 106,
+ "superseded.started_range": [
+  "2026-10-29T19:09:04Z",
+  "2026-10-29T19:26:32Z"
+ ],
+ "superseded.swap_resolved.best": 28,
+ "superseded.swap_resolved.review": 29,
+ "superseded.swap_resolved.solo": 27,
+ "superseded.with_cost": 4,
+ "tasks.age_days_median": 105.331,
+ "tasks.age_days_range": [
+  94.3632,
+  120.235
+ ],
+ "tasks.created_range": [
+  "2026-07-01",
+  "2026-07-28"
+ ],
+ "tasks.f2p_max": 3953,
+ "tasks.f2p_median": 3.0,
+ "tasks.f2p_one": 16,
+ "tasks.f2p_over100": 14,
+ "tasks.languages.C": 8,
+ "tasks.languages.C#": 9,
+ "tasks.languages.C++": 2,
+ "tasks.languages.Java": 18,
+ "tasks.languages.JavaScript": 3,
+ "tasks.languages.Rust": 8,
+ "tasks.n": 48,
+ "tasks.p2p_median": 2410.0,
+ "tasks.p2p_range": [
+  0,
+  46691
+ ],
+ "time.geomean_ratio.best": 2.61312,
+ "time.geomean_ratio.best.t95": [
+  2.14429,
+  3.18444
+ ],
+ "time.geomean_ratio.review": 2.2392,
+ "time.geomean_ratio.review.t95": [
+  1.7336,
+  2.89227
+ ],
+ "time.longest_min": 47.7914,
+ "time.longest_pair": [
+  "lance-format__lance-7565",
+  "best"
+ ],
+ "time.mean_s.best": 484.576,
+ "time.mean_s.review": 478.587,
+ "time.mean_s.solo": 287.866,
+ "time.median_s.best": 266.582,
+ "time.median_s.review": 200.716,
+ "time.median_s.solo": 77.2115,
+ "time.reached_limit": 0,
+ "time.slower.best": 45,
+ "time.slower.review": 40,
+ "tokens.cache_read_share_pct.all": 96.3271,
+ "tokens.cache_read_share_pct.best": 96.3198,
+ "tokens.cache_read_share_pct.review": 96.5865,
+ "tokens.cache_read_share_pct.solo": 95.8736,
+ "tokens.input.best": 266860225,
+ "tokens.input.review": 126726846,
+ "tokens.input.solo": 68197444,
+ "tokens.output.best": 2718402,
+ "tokens.output.review": 1362890,
+ "tokens.output.solo": 617452,
+ "tokens.ratio.input.best": 3.91305,
+ "tokens.ratio.input.review": 1.85823,
+ "tokens.ratio.output.best": 4.40261,
+ "tokens.ratio.output.review": 2.20728,
+ "total.billed_all_records": 16.8086,
+ "total.billed_final": 15.6668,
+ "trailer_credit.resolved_each": [
+  8,
+  8,
+  8
+ ],
+ "trailer_credit.tasks": 13,
+ "unflagged.auc.judge_chosen": 0.674242,
+ "unflagged.auc.judge_chosen.boot95": [
+  0.4375,
+  0.88587
+ ],
+ "unflagged.auc.judge_chosen.boot_used": 199993,
+ "unflagged.auc.review_final": 0.664141,
+ "unflagged.auc.review_final.boot95": [
+  0.46,
+  0.846154
+ ],
+ "unflagged.auc.review_final.boot_used": 199993,
+ "unflagged.judge_flag": [
+  22,
+  6,
+  0,
+  3
+ ],
+ "unflagged.judge_flag.passed": 28,
+ "unflagged.judge_flag.unresolved": 9,
+ "unflagged.n": 31,
+ "unflagged.review_final": [
+  22,
+  9,
+  0,
+  0
+ ],
+ "unflagged.review_final.passed": 31,
+ "unflagged.review_final.unresolved": 9,
+ "unflagged.review_first": [
+  20,
+  5,
+  2,
+  4
+ ],
+ "unflagged.review_first.passed": 25,
+ "unflagged.review_first.unresolved": 9,
+ "unresolved.total": 60,
+ "upper.cluster.90.best_pts": 9.66705,
+ "upper.cluster.90.review_pts": 10.1708,
+ "upper.cluster.95.best_pts": 11.2425,
+ "upper.cluster.95.review_pts": 11.4182,
+ "upper.exact.90.best_pts": 10.2514,
+ "upper.exact.90.missing.best_pts": 18.4362,
+ "upper.exact.90.missing.review_pts": 15.3689,
+ "upper.exact.90.noBC.best_pts": 15.6557,
+ "upper.exact.90.noBC.review_pts": 15.6557,
+ "upper.exact.90.review_pts": 12.5414,
+ "upper.exact.95.best_pts": 13.2134,
+ "upper.exact.95.review_pts": 14.2541,
+ "upper.newcombe.90.best_pts": 8.75458,
+ "upper.newcombe.90.review_pts": 9.8973,
+ "upper.newcombe.95.best_pts": 9.96036,
+ "upper.newcombe.95.review_pts": 10.944,
+ "upper.tango.90.best_pts": 10.1138,
+ "upper.tango.90.review_pts": 11.8359,
+ "upper.tango.95.best_pts": 12.2772,
+ "upper.tango.95.review_pts": 13.9757,
+ "verdicts.nowrite_cited": 11,
+ "verdicts.nowrite_cited_by_role": [
+  3,
+  8
+ ],
+ "verdicts.nowrite_cited_stored": 10,
+ "verdicts.nowrite_keywords": "would write|writ\\w* (?:build )?(?:output|bin/obj|artifacts)? ?in(?:to|side) (?:the repo|/testbed)|not allowed to modify|did not write to it|avoid (?:building|writing|modifying)|build tree lives inside the repo|since building would|to avoid building inside",
+ "verdicts.parsed": 205,
+ "verdicts.stored_messages_cut": 27,
+ "without_lance.base.best": 4.67633,
+ "without_lance.base.review": 2.34549,
+ "without_lance.billed.best": 4.36465,
+ "without_lance.billed.review": 2.86914
+}
