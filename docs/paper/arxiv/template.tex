@@ -1,0 +1,143 @@
+\pdfoutput=1
+% Built from docs/paper/index.md by docs/paper/arxiv/build.py; do not edit by hand.
+% Converter: pandoc $converter$
+\documentclass[11pt,letterpaper]{article}
+
+% Reproducible output: no trailer ID, no pdfTeX file information; the dates come from
+% SOURCE_DATE_EPOCH (build.py sets it with FORCE_SOURCE_DATE=1).
+\pdftrailerid{}
+\pdfsuppressptexinfo=-1
+\tracinglostchars=2
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage[protrusion=true,expansion=true]{microtype}
+\DisableLigatures{encoding = *, family = tt*}
+
+% The non-ASCII characters of index.md that pandoc leaves in main.tex. LaTeX maps the accented
+% letters, the en dash and the section sign itself; build.py fails on any other character
+% that is not listed here. The superscripts share one form, so "10⁻¹⁵" sets evenly.
+\usepackage{newunicodechar}
+\newunicodechar{−}{\textminus}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{×}{\texttimes}
+\newunicodechar{÷}{\textdiv}
+\newunicodechar{ψ}{\ensuremath{\psi}}
+\newunicodechar{·}{\textperiodcentered}
+\newunicodechar{…}{\textellipsis}
+\newunicodechar{¹}{\textsuperscript{1}}
+\newunicodechar{⁵}{\textsuperscript{5}}
+\newunicodechar{⁹}{\textsuperscript{9}}
+\newunicodechar{⁻}{\textsuperscript{\textminus}}
+
+\usepackage{etoolbox}
+\usepackage{graphicx}
+% Recent versions of pdftex.def add a transparency /Group to every included PDF, which pdfTeX
+% already copies from cairo's page, so the figure XObjects would carry the key twice. This
+% switches the addition off, as older drivers, which have no such switch, never make it.
+\makeatletter
+\ifdefined\Gread@transgrouptrue\let\Gread@transgrouptrue\Gread@transgroupfalse\fi
+\makeatother
+\usepackage{xcolor}
+\definecolor{linkblue}{rgb}{0.05,0.20,0.55}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{needspace}
+\usepackage{enumitem}
+\usepackage{flafter}
+\usepackage{placeins}
+\usepackage{fvextra}
+\usepackage{upquote}
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable}
+\usepackage{titlesec}
+\usepackage{xurl}
+% xurl lets a URL break anywhere; breaking after a separator is far cheaper than inside a word.
+\makeatletter
+\def\UrlBigBreaks{\do\/\do\.\do\-\do\_\do\:\do\=\do\&\do\?\do\#\do\,\do\;}
+\makeatother
+\mathchardef\UrlBigBreakPenalty=100
+\mathchardef\UrlBreakPenalty=4000
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=linkblue,
+  citecolor=linkblue,
+  urlcolor=linkblue,
+  filecolor=linkblue,
+  bookmarksnumbered=true,
+  pdftitle={$title-meta$},
+  pdfauthor={$author-meta$}
+}
+
+% Headings read as in index.md: "1. Introduction", "5.1 ...", "Appendix A. ..."; set ragged
+% right, so that a two-line heading keeps its natural spaces.
+\titleformat{\section}{\normalfont\Large\bfseries\filright}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries\filright}{\thesubsection}{0.5em}{}
+\appto\appendix{%
+  \titleformat{\section}{\normalfont\Large\bfseries\filright}{\appendixname~\thesection.}{0.5em}{}}
+
+% Captions: the "Table X." and "Figure X." labels are part of the text, so LaTeX adds none.
+\captionsetup{font=small,labelformat=empty,labelsep=none,justification=justified,
+  singlelinecheck=false,skip=5pt}
+\captionsetup[table]{position=top}
+\setlength{\LTcapwidth}{\textwidth}
+\setlength{\LTpre}{9pt plus 2pt}
+\setlength{\LTpost}{9pt plus 2pt}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash\hspace{0pt}}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash\hspace{0pt}}p{#1}}
+
+% Inline code: break points after a separator, every 8 characters of a long hex string,
+% (much costlier) after "_" or "-" inside a name, and, only when nothing else fits, after a
+% "-" inside a command-line flag; spaces stretch a little (a typewriter space does not), so
+% that a line holding mostly code can still be justified.
+\newcommand{\codebrk}{\penalty50\relax}
+\newcommand{\codebrkh}{\penalty100\relax}
+\newcommand{\codebrkx}{\penalty500\relax}
+\newcommand{\codebrkf}{\penalty2000\relax}
+\newcommand{\codesp}{\hskip 0.5em plus 0.25em minus 0.1em\relax}
+
+% Code blocks at \scriptsize: a framed line holds 109 characters, so the prompts keep their
+% own line breaks.
+\fvset{fontsize=\scriptsize,frame=single,framerule=0.4pt,rulecolor=\color{black!35},
+  framesep=1.5mm,samepage=true,breaklines=true,
+  breaksymbolleft={\tiny\ensuremath{\hookrightarrow}},breakaftersymbolpre={}}
+
+\newtcolorbox{readerbox}[1]{breakable,title={#1},fonttitle=\bfseries\small,fontupper=\small,
+  colback=linkblue!3,colframe=linkblue!55,colbacktitle=linkblue!12,coltitle=black,
+  boxrule=0.5pt,arc=1pt,left=6pt,right=6pt,top=4pt,bottom=4pt,before skip=10pt,after skip=10pt}
+
+% Floats stay near their first mention; a paragraph with long code may stretch rather than
+% overflow.
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.12}
+\renewcommand{\floatpagefraction}{0.75}
+\makeatletter
+\setlength{\@fptop}{0pt}
+\makeatother
+\setlength{\emergencystretch}{2em}
+\brokenpenalty=10000 % no word hyphenated across a page break
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setlist[itemize]{topsep=4pt}
+
+\title{$title-tex$}
+\author{$author$\\[2pt]\url{$repo-url$}}
+\date{$date$}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+$abstract$
+\end{abstract}
+
+$body$
+
+\end{document}
