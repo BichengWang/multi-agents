@@ -1,0 +1,7 @@
+# SVG source and PDF of each figure: sha256 of the SVG, sha256 of the PDF, SVG name.
+# Written by docs/paper/arxiv/build.py; build.py --check compares the SVG hashes with docs/paper/figures/.
+bdb9bebe7a5d215b66e2a73eda14c06de96966d8ed98db416310214e97e05b40  bedee5212553cd39245bc7d0f7cf3187482691833abc012388755066b5c325be  fig1-outcome-grid.svg
+3f55d4c7d54cee6abf6d8ce055d320edfebcb903bf67c2788fc985c9faf33b4e  079686c61c1f0561cf91d41506f14704d7cac55dde8b27c86014d706cd76c9a0  fig2-paired-difference.svg
+c64fd2391b18b5a41a4292afa2fbd28949fc42ba4b8a401eebd47c0627f0df05  796983eced57bed6932ceaee3c6a3bba78889b8e47c163ab5c0999188e13f09e  figA1-cost-ratio.svg
+95ea3b7ef3c43112ba15b687ddbe7961ca3e2ce75028ee79596c376ffdbcecbd  da0d60c5f49734d81c659e323f7254a487571b5aa369c6874d659b3adf9fd457  figA2-power.svg
+770c10b3cc827bcf3d4e088ceaae54330a2cf0f9c9a3141a45c513575ef5c043  57a359d3b69acafe9c1bdca9e369f50df86294192ad8e2d91809e75226dd9403  figA3-verifier-scores.svg

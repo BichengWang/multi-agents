@@ -1,0 +1,11 @@
+# Fields of the arXiv submission form, from docs/paper/index.md and docs/paper/paper.pdf.
+# Written by docs/paper/arxiv/build.py; do not edit by hand.
+
+Title: Measuring Coding-Agent Teams Against One Agent: Lessons from a 48-Task Pilot
+
+Authors: Bicheng Wang
+
+Abstract:
+In a 48-task pilot on SWE-bench-Live MultiLang, one rollout per task, a single Claude Code agent (Claude Haiku 5.5) and two teams of it (a coder-reviewer loop and an LLM-judged best of 3) resolved 27, 29 and 28 tasks. The paired differences, +4.2 points (95% intervals: Newcombe -2.7 to +10.9, Tango -3.6 to +14.0; exact McNemar p = 0.50) and +2.1 (-5.9 to +10.0; -7.4 to +12.3; p = 1.00), rest on three tasks, two in one repository; the exact test needs six discordant tasks to reject at 0.05 (mid-p, five). Under the runner's superseded grading rule both were negative (-2.1, -6.3). An audit (one coding pass, then a written rule not blind to it) flags 17 tasks whose tests cannot, or need not, respond to the fix; 10 are decidable before any run. The reviewer approved 47 of 48 final patches, 19 of them unresolved; the judge's top score tied on 32 of 48 tasks. At base prices (post hoc) the teams cost 1.9 (95% bootstrap 1.2 to 3.1) and 3.9 (2.9 to 5.4) times the single agent, more on 44 and 48 of 48 tasks; as billed, 1.6 and 2.7, because one solo run is 47.1% of solo's billed cost. We size each hazard, give its check and plan a decisive comparison.
+
+Comments: 25 pages, 5 figures, 19 tables. Code and data: https://github.com/BichengWang/multi-agents (commit 3f60bba; paper files at 25e82c5)
